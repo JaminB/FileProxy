@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}New S3 Credentials{% endblock %}
+
+{% block content %}
+  <h1>New S3 Credentials</h1>
+
+  <div id="flash" role="status" aria-live="polite"></div>
+
+  <form id="s3-form">
+    {% csrf_token %}
+
+    <div>
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" />
+    </div>
+
+    <div>
+      <label for="access_key_id">Access Key ID</label>
+      <input id="access_key_id" name="access_key_id" type="text" autocomplete="off" />
+    </div>
+
+    <div>
+      <label for="secret_access_key">Secret Access Key</label>
+      <input id="secret_access_key" name="secret_access_key" type="password" autocomplete="off" />
+    </div>
+
+    <div>
+      <label for="session_token">Session Token (optional)</label>
+      <input id="session_token" name="session_token" type="password" autocomplete="off" />
+    </div>
+
+    <div>
+      <button type="submit">Save</button>
+      <a href="/vault/">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

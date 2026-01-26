@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Vault{% endblock %}
+
+{% block content %}
+  <div class="main">
+    <section class="content stack">
+
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="breadcrumb-sep">/</span>
+        <span>Vault</span>
+      </nav>
+
+      <!-- Header -->
+      <header class="page-header">
+        <div>
+          <h1 class="h1">Vault</h1>
+          <p class="subtitle">Credentials and rotation metadata.</p>
+        </div>
+
+        <div class="controls">
+          <a href="/vault/new/" class="action-link">
+            + New credentials
+          </a>
+        </div>
+      </header>
+
+      <div id="flash" role="status" aria-live="polite"></div>
+
+      <!-- Table -->
+      <section aria-label="Vault items" class="panel">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Kind</th>
+                <th>Updated</th>
+                <th>Rotated</th>
+                <th class="num">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="vault-rows">
+              <tr>
+                <td colspan="5" class="muted">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </section>
+  </div>
+{% endblock %}
