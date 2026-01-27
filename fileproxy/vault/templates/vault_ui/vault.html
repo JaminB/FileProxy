@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Vault{% endblock %}
 
@@ -15,13 +16,20 @@
 
       <!-- Header -->
       <header class="page-header">
-        <div>
-          <h1 class="h1">Vault</h1>
-          <p class="subtitle">Credentials and rotation metadata.</p>
+        <div class="row" style="gap: var(--s-12); align-items: center;">
+          <!-- Vault icon -->
+          <svg class="icon" aria-hidden="true">
+            <use href="#i-vault"></use>
+          </svg>
+
+          <div>
+            <h1 class="h1">Vault</h1>
+            <p class="subtitle">Securely store credentials used to connect to your cloud storage services.</p>
+          </div>
         </div>
 
         <div class="controls">
-          <a href="/vault/new/" class="action-link">
+          <a href="/vault/new/" class="action-link action-link-primary">
             + New credentials
           </a>
         </div>
@@ -53,4 +61,8 @@
 
     </section>
   </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/vault/tables/credentials.js' %}"></script>
 {% endblock %}

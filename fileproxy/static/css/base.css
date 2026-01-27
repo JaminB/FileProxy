@@ -409,3 +409,56 @@ button, input, select { font: inherit; }
   /* Optional: when using .main.has-sidebar, stack columns */
   .main.has-sidebar { grid-template-columns: 1fr; }
 }
+
+
+/* Icons */
+.icon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.125em;
+  color: var(--muted);
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover .icon {
+  color: var(--text);
+}
+
+/* Primary action link — square, restrained */
+.action-link.action-link-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-8);
+  height: 34px;
+  padding: 0 var(--s-12);
+
+  border-radius: var(--r-6);
+  border: var(--b-1) solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+
+  font-size: var(--text-13);
+  font-weight: 500;
+
+  text-decoration: none;
+}
+
+.action-link.action-link-primary:hover {
+  border-color: var(--text);
+  background: var(--subtle);
+  text-decoration: none;
+}
+
+.action-link.action-link-primary:active {
+  transform: translateY(1px);
+}

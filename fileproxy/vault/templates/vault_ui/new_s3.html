@@ -1,41 +1,104 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}New S3 Credentials{% endblock %}
+{% block title %}New S3 credentials{% endblock %}
 
 {% block content %}
-  <h1>New S3 Credentials</h1>
+  <div class="main">
+    <section class="content stack">
 
-  <div id="flash" role="status" aria-live="polite"></div>
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="breadcrumb-sep">/</span>
+        <a href="/vault/">Vault</a>
+        <span class="breadcrumb-sep">/</span>
+        <a href="/vault/new/">New credentials</a>
+        <span class="breadcrumb-sep">/</span>
+        <span>Amazon S3</span>
+      </nav>
 
-  <form id="s3-form">
-    {% csrf_token %}
+      <!-- Header with icon -->
+      <header class="page-header">
+        <div class="row" style="gap: var(--s-12); align-items: center;">
+          <img
+            src="{% static 'images/logos/s3.svg' %}"
+            alt=""
+            width="28"
+            height="28"
+            style="opacity: 0.85;"
+          />
+          <div>
+            <h1 class="h1">Amazon S3</h1>
+            <p class="subtitle">Add access keys for S3 buckets.</p>
+          </div>
+        </div>
+      </header>
 
-    <div>
-      <label for="name">Name</label>
-      <input id="name" name="name" type="text" />
-    </div>
+      <div id="flash" role="status" aria-live="polite"></div>
 
-    <div>
-      <label for="access_key_id">Access Key ID</label>
-      <input id="access_key_id" name="access_key_id" type="text" autocomplete="off" />
-    </div>
+      <!-- Centered form -->
+      <div style="display: flex; justify-content: center;">
+        <section class="panel" style="padding: var(--s-16); width: 100%; max-width: 640px;">
+          <form id="credential-form" class="stack">
+            {% csrf_token %}
 
-    <div>
-      <label for="secret_access_key">Secret Access Key</label>
-      <input id="secret_access_key" name="secret_access_key" type="password" autocomplete="off" />
-    </div>
+            <div class="field">
+              <label class="label" for="name">Name</label>
+              <input
+                class="input"
+                id="name"
+                name="name"
+                type="text"
+                placeholder="e.g. prod-backups"
+              />
+            </div>
 
-    <div>
-      <label for="session_token">Session Token (optional)</label>
-      <input id="session_token" name="session_token" type="password" autocomplete="off" />
-    </div>
+            <div class="field">
+              <label class="label" for="access_key_id">Access key id</label>
+              <input
+                class="input"
+                id="access_key_id"
+                name="access_key_id"
+                type="text"
+                autocomplete="off"
+              />
+            </div>
 
-    <div>
-      <button type="submit">Save</button>
-      <a href="/vault/">Cancel</a>
-    </div>
-  </form>
+            <div class="field">
+              <label class="label" for="secret_access_key">Secret access key</label>
+              <input
+                class="input"
+                id="secret_access_key"
+                name="secret_access_key"
+                type="password"
+                autocomplete="off"
+              />
+            </div>
+
+            <div class="field">
+              <label class="label" for="session_token">Session token (optional)</label>
+              <input
+                class="input"
+                id="session_token"
+                name="session_token"
+                type="password"
+                autocomplete="off"
+              />
+            </div>
+
+            <div class="controls" style="justify-content: flex-end;">
+              <a class="action-link" href="/vault/">Cancel</a>
+              <button class="btn primary" type="submit">Save</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+    </section>
+  </div>
 {% endblock %}
 
 {% block scripts %}
+  <script type="module" src="{% static 'js/vault/forms/s3.js' %}"></script>
 {% endblock %}
