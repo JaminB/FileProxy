@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from vault.models import VaultItem, VaultItemKind
-from vault.schemas import S3StaticCredentials
-from vault.service import create_s3_credentials
+from ..models import VaultItem
+from ..schemas import S3StaticCredentials
+from ..service import create_s3_credentials
 
 
 class VaultItemListSerializer(serializers.ModelSerializer):
@@ -13,18 +13,38 @@ class VaultItemListSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "kind", "created_at", "updated_at", "rotated_at"]
 
 
+class VaultItemDetailSerializer(serializers.ModelSerializer):
+    bucket = serializers.SerializerMethodField()
+
+    class Meta:
+        model = VaultItem
+        fields = ["id", "name", "kind", "bucket", "created_at", "updated_at", "rotated_at"]
+
+    def get_bucket(self, obj):
+        payload = obj.get_payload()
+        settings_obj = payload.get("settings", {})
+        if isinstance(settings_obj, dict):
+            return settings_obj.get("bucket")
+        return None
+
+
 class S3CredentialsCreateSerializer(serializers.Serializer):
-    """
-    Input-only serializer for creating S3 credentials.
-    Never returns secrets.
-    """
+    """Create S3 credentials without returning secrets."""
 
     name = serializers.CharField(max_length=120)
+    bucket = serializers.CharField(max_length=63, trim_whitespace=True)
+
     access_key_id = serializers.CharField(max_length=128, trim_whitespace=True)
     secret_access_key = serializers.CharField(max_length=256, trim_whitespace=True)
     session_token = serializers.CharField(
         max_length=2048, required=False, allow_null=True, allow_blank=True, trim_whitespace=True
     )
+
+    def validate_bucket(self, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise serializers.ValidationError("bucket is required")
+        return v
 
     def validate_access_key_id(self, v: str) -> str:
         v = v.strip()
@@ -39,7 +59,6 @@ class S3CredentialsCreateSerializer(serializers.Serializer):
         return v
 
     def validate(self, attrs):
-        # normalize session token
         st = attrs.get("session_token")
         if st is not None:
             st = st.strip()
@@ -48,17 +67,30 @@ class S3CredentialsCreateSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         request = self.context["request"]
+        scope = f"user:{request.user.id}"
+
         creds = S3StaticCredentials(
             access_key_id=validated_data["access_key_id"],
             secret_access_key=validated_data["secret_access_key"],
             session_token=validated_data.get("session_token"),
         )
-        item = create_s3_credentials(
-            user=request.user,
+
+        settings_obj = {
+            "bucket": validated_data["bucket"],
+            "user_id": request.user.id,
+        }
+        secrets_obj = {
+            "access_key_id": creds.access_key_id,
+            "secret_access_key": creds.secret_access_key,
+            "session_token": creds.session_token,
+        }
+
+        return create_s3_credentials(
+            scope=scope,
             name=validated_data["name"],
-            creds=creds,
+            settings_obj=settings_obj,
+            secrets_obj=secrets_obj,
         )
-        return item
 
 
 class VaultItemRenameSerializer(serializers.Serializer):

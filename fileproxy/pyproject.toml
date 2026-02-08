@@ -12,7 +12,8 @@ dependencies = [
     "cryptography (>=46.0.3,<47.0.0)",
     "psycopg[binary] (>=3.3.2,<4.0.0)",
     "djangorestframework (>=3.16.1,<4.0.0)",
-    "python-dotenv (>=1.2.1,<2.0.0)"
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "boto3 (>=1.42.44,<2.0.0)"
 ]
 
 [tool.poetry]

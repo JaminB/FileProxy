@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any, Mapping, cast
+
 from django.db import transaction
 
 from .models import VaultItem, VaultItemKind
@@ -5,10 +9,16 @@ from .schemas import S3StaticCredentials
 
 
 @transaction.atomic
-def create_s3_credentials(*, user, name: str, creds: S3StaticCredentials) -> VaultItem:
-    item = VaultItem(user=user, name=name, kind=VaultItemKind.AWS_S3)
+def create_s3_credentials(
+    *,
+    scope: str,
+    name: str,
+    settings_obj: Mapping[str, Any],
+    secrets_obj: Mapping[str, Any],
+) -> VaultItem:
+    item = VaultItem(scope=scope, name=name, kind=VaultItemKind.AWS_S3)
     item.save(force_insert=True)  # ensures id exists for AAD binding
-    item.set_payload(creds.to_payload())
+    item.set_payload(settings_obj=settings_obj, secrets_obj=secrets_obj)
     item.save()
     return item
 
@@ -16,4 +26,15 @@ def create_s3_credentials(*, user, name: str, creds: S3StaticCredentials) -> Vau
 def load_s3_credentials(*, item: VaultItem) -> S3StaticCredentials:
     if item.kind != VaultItemKind.AWS_S3:
         raise ValueError("VaultItem is not AWS S3 credentials")
-    return S3StaticCredentials.from_payload(item.get_payload())
+
+    payload = item.get_payload()
+    secrets = payload.get("secrets", {})
+
+    if not isinstance(secrets, Mapping):
+        raise ValueError("VaultItem secrets payload is invalid")
+
+    return S3StaticCredentials(
+        access_key_id=cast(str, secrets.get("access_key_id")),
+        secret_access_key=cast(str, secrets.get("secret_access_key")),
+        session_token=cast(str | None, secrets.get("session_token")),
+    )

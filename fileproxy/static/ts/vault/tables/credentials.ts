@@ -1,7 +1,18 @@
-// static/ts/vault/tables/credentials.ts
-
 import { qs, setFlash } from "../../utils/dom.js";
 import { spriteIcon } from "../../utils/icons.js";
+import { getCsrfToken } from "../../utils/cookies.js";
+
+async function deleteVaultItem(id: string | number): Promise<Response> {
+  const csrf = getCsrfToken();
+  return fetch(`/api/v1/vault-items/${id}/`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      ...(csrf ? { "X-CSRFToken": csrf } : {}),
+    },
+    credentials: "same-origin",
+  });
+}
 
 type VaultItem = {
   id?: string | number;
@@ -101,12 +112,31 @@ function renderItems(tbody: HTMLTableSectionElement, items: VaultItem[]): void {
     viewBtn.appendChild(spriteIcon("i-eye"));
 
     // Delete
-    const deleteBtn = iconButton("Delete", () => {
-      if (!id) return;
+    const deleteBtn = iconButton("Delete", async () => {
+      if (id == null) return;
       if (!confirm("Delete this credential? This cannot be undone.")) return;
 
-      // TODO: wire DELETE /api/v1/vault-items/{id}/
-      console.warn("Delete not yet implemented:", id);
+      try {
+        deleteBtn.disabled = true;
+
+        const resp = await deleteVaultItem(id);
+        if (!resp.ok) {
+          const msg = `Delete failed (${resp.status}).`;
+          setFlash(msg, "error");
+          deleteBtn.disabled = false;
+          return;
+        }
+
+        tr.remove();
+        setFlash("Deleted.", "info");
+
+        if (tbody.children.length === 0) {
+          messageRow(tbody, "No credentials yet.");
+        }
+      } catch (err) {
+        setFlash(`Delete failed: ${String(err)}`, "error");
+        deleteBtn.disabled = false;
+      }
     });
     deleteBtn.appendChild(spriteIcon("i-trash"));
 

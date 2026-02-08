@@ -7,7 +7,6 @@
   <div class="main">
     <section class="content stack">
 
-      <!-- Breadcrumb -->
       <nav class="breadcrumb" aria-label="Breadcrumb">
         <a href="/">Home</a>
         <span class="breadcrumb-sep">/</span>
@@ -18,7 +17,6 @@
         <span>Amazon S3</span>
       </nav>
 
-      <!-- Header with icon -->
       <header class="page-header">
         <div class="row" style="gap: var(--s-12); align-items: center;">
           <img
@@ -30,7 +28,7 @@
           />
           <div>
             <h1 class="h1">Amazon S3</h1>
-            <p class="subtitle">Add access keys for S3 buckets.</p>
+            <p class="subtitle">Add access keys for an S3 bucket.</p>
           </div>
         </div>
       </header>
@@ -51,7 +49,24 @@
                 name="name"
                 type="text"
                 placeholder="e.g. prod-backups"
+                required
               />
+            </div>
+
+            <div class="field">
+              <label class="label" for="bucket">Bucket name</label>
+              <input
+                class="input"
+                id="bucket"
+                name="bucket"
+                type="text"
+                placeholder="e.g. my-prod-bucket"
+                required
+                autocomplete="off"
+              />
+              <p class="hint muted">
+                The S3 bucket this credential will be used to access.
+              </p>
             </div>
 
             <div class="field">
@@ -62,6 +77,7 @@
                 name="access_key_id"
                 type="text"
                 autocomplete="off"
+                required
               />
             </div>
 
@@ -73,17 +89,7 @@
                 name="secret_access_key"
                 type="password"
                 autocomplete="off"
-              />
-            </div>
-
-            <div class="field">
-              <label class="label" for="session_token">Session token (optional)</label>
-              <input
-                class="input"
-                id="session_token"
-                name="session_token"
-                type="password"
-                autocomplete="off"
+                required
               />
             </div>
 

@@ -5,9 +5,12 @@ from django.shortcuts import render
 def vault_page(request):
     return render(request, "vault_ui/vault.html")
 
+@login_required
 def vault_new_credentials(request):
     return render(request, "vault_ui/new_credentials.html")
 
 @login_required
 def vault_new_s3_credentials(request):
     return render(request, "vault_ui/new_s3.html")
+
+
