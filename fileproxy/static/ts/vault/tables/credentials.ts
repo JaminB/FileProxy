@@ -1,5 +1,4 @@
 import { qs, setFlash } from "../../utils/dom.js";
-import { spriteIcon } from "../../utils/icons.js";
 import { getCsrfToken } from "../../utils/cookies.js";
 
 async function deleteVaultItem(id: string | number): Promise<Response> {
@@ -22,14 +21,12 @@ type VaultItem = {
   rotated?: string | null;
 };
 
-type VaultListResponse =
-  | VaultItem[]
-  | { results: VaultItem[] };
+type VaultListResponse = VaultItem[] | { results: VaultItem[] };
 
 function toItems(payload: VaultListResponse): VaultItem[] {
   if (Array.isArray(payload)) return payload;
-  const results = (payload as any)?.results;
-  return Array.isArray(results) ? results : [];
+  const results = (payload as { results?: unknown }).results;
+  return Array.isArray(results) ? (results as VaultItem[]) : [];
 }
 
 function fmtDate(value?: string | null): string {
@@ -54,20 +51,35 @@ function messageRow(tbody: HTMLTableSectionElement, text: string): void {
   const tr = document.createElement("tr");
   const td = document.createElement("td");
   td.colSpan = 5;
-  td.className = "muted";
+  td.className = "text-secondary";
   td.textContent = text;
   tr.appendChild(td);
   tbody.appendChild(tr);
 }
 
-function iconButton(title: string, onClick?: () => void): HTMLButtonElement {
+function bsIcon(className: string): HTMLElement {
+  const i = document.createElement("i");
+  i.className = className;
+  i.setAttribute("aria-hidden", "true");
+  return i;
+}
+
+function actionButton(
+  label: string,
+  btnClasses: string,
+  iconClasses: string,
+  onClick: () => void
+): HTMLButtonElement {
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "btn ghost icon-btn";
-  btn.title = title;
-  btn.setAttribute("aria-label", title);
+  btn.className = `btn ${btnClasses}`;
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
 
-  if (onClick) btn.addEventListener("click", onClick);
+  btn.appendChild(bsIcon(`${iconClasses} me-1`));
+  btn.appendChild(document.createTextNode(label));
+
+  btn.addEventListener("click", onClick);
   return btn;
 }
 
@@ -95,54 +107,62 @@ function renderItems(tbody: HTMLTableSectionElement, items: VaultItem[]): void {
     rotatedTd.textContent = fmtDate(item.rotated);
 
     const actionsTd = document.createElement("td");
-    actionsTd.className = "num";
+    actionsTd.className = "text-end";
 
-    const row = document.createElement("div");
-    row.className = "row";
-    row.style.justifyContent = "flex-end";
+    const group = document.createElement("div");
+    group.className = "btn-group btn-group-sm";
+    group.setAttribute("role", "group");
+    group.setAttribute("aria-label", "Vault item actions");
 
     const id = item.id;
 
-    // View
-    const viewBtn = iconButton("View", () => {
-      if (id != null) {
-        window.location.href = `/vault/item/${id}/`;
+    const viewBtn = actionButton(
+      "View",
+      "btn-outline-secondary",
+      "bi bi-eye",
+      () => {
+        if (id != null) {
+          window.location.href = `/vault/item/${id}/`;
+        }
       }
-    });
-    viewBtn.appendChild(spriteIcon("i-eye"));
+    );
 
-    // Delete
-    const deleteBtn = iconButton("Delete", async () => {
-      if (id == null) return;
-      if (!confirm("Delete this credential? This cannot be undone.")) return;
+    const deleteBtn = actionButton(
+      "Delete",
+      "btn-outline-danger",
+      "bi bi-trash",
+      async () => {
+        if (id == null) return;
+        if (!confirm("Delete this credential? This cannot be undone.")) return;
 
-      try {
-        deleteBtn.disabled = true;
+        try {
+          deleteBtn.disabled = true;
 
-        const resp = await deleteVaultItem(id);
-        if (!resp.ok) {
-          const msg = `Delete failed (${resp.status}).`;
-          setFlash(msg, "error");
+          const resp = await deleteVaultItem(id);
+          if (!resp.ok) {
+            const msg = `Delete failed (${resp.status}).`;
+            setFlash(msg, "error");
+            deleteBtn.disabled = false;
+            return;
+          }
+
+          tr.remove();
+          setFlash("Deleted.", "info");
+
+          // If we removed the last row, show empty state
+          if (tbody.querySelectorAll("tr").length === 0) {
+            messageRow(tbody, "No credentials yet.");
+          }
+        } catch (err) {
+          setFlash(`Delete failed: ${String(err)}`, "error");
           deleteBtn.disabled = false;
-          return;
         }
-
-        tr.remove();
-        setFlash("Deleted.", "info");
-
-        if (tbody.children.length === 0) {
-          messageRow(tbody, "No credentials yet.");
-        }
-      } catch (err) {
-        setFlash(`Delete failed: ${String(err)}`, "error");
-        deleteBtn.disabled = false;
       }
-    });
-    deleteBtn.appendChild(spriteIcon("i-trash"));
+    );
 
-    row.appendChild(viewBtn);
-    row.appendChild(deleteBtn);
-    actionsTd.appendChild(row);
+    group.appendChild(viewBtn);
+    group.appendChild(deleteBtn);
+    actionsTd.appendChild(group);
 
     tr.appendChild(nameTd);
     tr.appendChild(kindTd);

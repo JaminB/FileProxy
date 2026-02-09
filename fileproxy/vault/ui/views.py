@@ -13,4 +13,7 @@ def vault_new_credentials(request):
 def vault_new_s3_credentials(request):
     return render(request, "vault_ui/new_s3.html")
 
+@login_required
+def vault_item_page(request, item_id: int):
+    return render(request, "vault_ui/item.html", {"item_id": item_id})
 

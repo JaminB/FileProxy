@@ -4,59 +4,60 @@
 {% block title %}New S3 credentials{% endblock %}
 
 {% block content %}
-  <div class="main">
-    <section class="content stack">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/vault/">Vault</a></li>
+      <li class="breadcrumb-item"><a href="/vault/new/">New credentials</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Amazon S3</li>
+    </ol>
+  </nav>
 
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a href="/">Home</a>
-        <span class="breadcrumb-sep">/</span>
-        <a href="/vault/">Vault</a>
-        <span class="breadcrumb-sep">/</span>
-        <a href="/vault/new/">New credentials</a>
-        <span class="breadcrumb-sep">/</span>
-        <span>Amazon S3</span>
-      </nav>
+  <!-- Header -->
+  <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <img
+        src="{% static 'images/logos/s3.svg' %}"
+        alt=""
+        width="20"
+        height="20"
+        class="opacity-75 flex-shrink-0"
+      />
+      <div>
+        <h1 class="h3 mb-1">Amazon S3</h1>
+        <p class="text-secondary mb-0">Add access keys for an S3 bucket.</p>
+      </div>
+    </div>
+  </div>
 
-      <header class="page-header">
-        <div class="row" style="gap: var(--s-12); align-items: center;">
-          <img
-            src="{% static 'images/logos/s3.svg' %}"
-            alt=""
-            width="28"
-            height="28"
-            style="opacity: 0.85;"
-          />
-          <div>
-            <h1 class="h1">Amazon S3</h1>
-            <p class="subtitle">Add access keys for an S3 bucket.</p>
-          </div>
-        </div>
-      </header>
+  <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
 
-      <div id="flash" role="status" aria-live="polite"></div>
-
-      <!-- Centered form -->
-      <div style="display: flex; justify-content: center;">
-        <section class="panel" style="padding: var(--s-16); width: 100%; max-width: 640px;">
-          <form id="credential-form" class="stack">
+  <!-- Centered form -->
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8 col-xl-6">
+      <div class="card">
+        <div class="card-body">
+          <form id="credential-form" class="needs-validation" novalidate>
             {% csrf_token %}
 
-            <div class="field">
-              <label class="label" for="name">Name</label>
+            <div class="mb-3">
+              <label class="form-label" for="name">Name</label>
               <input
-                class="input"
+                class="form-control"
                 id="name"
                 name="name"
                 type="text"
                 placeholder="e.g. prod-backups"
                 required
               />
+              <div class="invalid-feedback">Name is required.</div>
             </div>
 
-            <div class="field">
-              <label class="label" for="bucket">Bucket name</label>
+            <div class="mb-3">
+              <label class="form-label" for="bucket">Bucket name</label>
               <input
-                class="input"
+                class="form-control"
                 id="bucket"
                 name="bucket"
                 type="text"
@@ -64,44 +65,50 @@
                 required
                 autocomplete="off"
               />
-              <p class="hint muted">
+              <div class="form-text">
                 The S3 bucket this credential will be used to access.
-              </p>
+              </div>
+              <div class="invalid-feedback">Bucket name is required.</div>
             </div>
 
-            <div class="field">
-              <label class="label" for="access_key_id">Access key id</label>
+            <div class="mb-3">
+              <label class="form-label" for="access_key_id">Access key id</label>
               <input
-                class="input"
+                class="form-control"
                 id="access_key_id"
                 name="access_key_id"
                 type="text"
                 autocomplete="off"
                 required
               />
+              <div class="invalid-feedback">Access key id is required.</div>
             </div>
 
-            <div class="field">
-              <label class="label" for="secret_access_key">Secret access key</label>
+            <div class="mb-3">
+              <label class="form-label" for="secret_access_key">Secret access key</label>
               <input
-                class="input"
+                class="form-control"
                 id="secret_access_key"
                 name="secret_access_key"
                 type="password"
                 autocomplete="off"
                 required
               />
+              <div class="invalid-feedback">Secret access key is required.</div>
             </div>
 
-            <div class="controls" style="justify-content: flex-end;">
-              <a class="action-link" href="/vault/">Cancel</a>
-              <button class="btn primary" type="submit">Save</button>
+            <div class="d-flex justify-content-end gap-2">
+              <a class="btn btn-outline-secondary" href="/vault/">Cancel</a>
+              <button class="btn btn-primary" type="submit">Save</button>
             </div>
           </form>
-        </section>
+        </div>
       </div>
 
-    </section>
+      <p class="text-secondary small mt-3 mb-0">
+        Your secret access key is stored encrypted and will not be shown again.
+      </p>
+    </div>
   </div>
 {% endblock %}
 

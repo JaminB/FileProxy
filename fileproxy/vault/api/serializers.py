@@ -7,25 +7,18 @@ from ..schemas import S3StaticCredentials
 from ..service import create_s3_credentials
 
 
+
 class VaultItemListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VaultItem
-        fields = ["id", "name", "kind", "created_at", "updated_at", "rotated_at"]
-
-
-class VaultItemDetailSerializer(serializers.ModelSerializer):
     bucket = serializers.SerializerMethodField()
 
     class Meta:
         model = VaultItem
         fields = ["id", "name", "kind", "bucket", "created_at", "updated_at", "rotated_at"]
 
-    def get_bucket(self, obj):
+    def get_bucket(self, obj: VaultItem) -> str | None:
         payload = obj.get_payload()
-        settings_obj = payload.get("settings", {})
-        if isinstance(settings_obj, dict):
-            return settings_obj.get("bucket")
-        return None
+        settings = payload.get("settings", {})
+        return settings.get("bucket")
 
 
 class S3CredentialsCreateSerializer(serializers.Serializer):

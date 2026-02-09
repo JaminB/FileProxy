@@ -4,62 +4,61 @@
 {% block title %}Vault{% endblock %}
 
 {% block content %}
-  <div class="main">
-    <section class="content stack">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Vault</li>
+    </ol>
+  </nav>
 
-      <!-- Breadcrumb -->
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a href="/">Home</a>
-        <span class="breadcrumb-sep">/</span>
-        <span>Vault</span>
-      </nav>
+  <!-- Header -->
+  <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <!-- Icon sized via Bootstrap font-size utility (fs-*) + 1em SVG sizing -->
+      <svg
+        aria-hidden="true"
+        class="text-secondary fs-5 flex-shrink-0"
+        style="width: 1em; height: 1em;"
+      >
+        <use href="#i-vault"></use>
+      </svg>
 
-      <!-- Header -->
-      <header class="page-header">
-        <div class="row" style="gap: var(--s-12); align-items: center;">
-          <!-- Vault icon -->
-          <svg class="icon" aria-hidden="true">
-            <use href="#i-vault"></use>
-          </svg>
+      <div>
+        <h1 class="h3 mb-1">Vault</h1>
+        <p class="text-secondary mb-0">
+          Securely store credentials used to connect to your cloud storage services.
+        </p>
+      </div>
+    </div>
 
-          <div>
-            <h1 class="h1">Vault</h1>
-            <p class="subtitle">Securely store credentials used to connect to your cloud storage services.</p>
-          </div>
-        </div>
+    <div class="d-flex gap-2">
+      <a href="/vault/new/" class="btn btn-primary">New credentials</a>
+    </div>
+  </div>
 
-        <div class="controls">
-          <a href="/vault/new/" class="action-link action-link-primary">
-            + New credentials
-          </a>
-        </div>
-      </header>
+  <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
 
-      <div id="flash" role="status" aria-live="polite"></div>
-
-      <!-- Table -->
-      <section aria-label="Vault items" class="panel">
-        <div class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Kind</th>
-                <th>Updated</th>
-                <th>Rotated</th>
-                <th class="num">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="vault-rows">
-              <tr>
-                <td colspan="5" class="muted">Loading…</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-    </section>
+  <!-- Table -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Kind</th>
+            <th>Updated</th>
+            <th>Rotated</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="vault-rows">
+          <tr>
+            <td colspan="5" class="text-secondary">Loading…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 {% endblock %}
 
