@@ -13,7 +13,8 @@ dependencies = [
     "psycopg[binary] (>=3.3.2,<4.0.0)",
     "djangorestframework (>=3.16.1,<4.0.0)",
     "python-dotenv (>=1.2.1,<2.0.0)",
-    "boto3 (>=1.42.44,<2.0.0)"
+    "boto3 (>=1.42.44,<2.0.0)",
+    "drf-spectacular (>=0.29.0,<0.30.0)"
 ]
 
 [tool.poetry]
