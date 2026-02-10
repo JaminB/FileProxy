@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from ..models import VaultItem, VaultItemKind
+from ..models import VaultItem
 from ..schemas import S3StaticCredentials
 from ..service import create_s3_credentials, load_s3_credentials
 

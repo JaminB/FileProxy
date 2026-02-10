@@ -13,6 +13,26 @@ class BackendConnectionError(BackendError):
     """Raised when backend connectivity or authentication fails."""
 
 
+class BackendTestError(BackendConnectionError):
+    """Raised when backend test/health check fails."""
+
+
+class BackendEnumerateError(BackendError):
+    """Raised when enumeration/listing fails."""
+
+
+class BackendReadError(BackendError):
+    """Raised when reading an object fails."""
+
+
+class BackendWriteError(BackendError):
+    """Raised when creating/updating an object fails."""
+
+
+class BackendDeleteError(BackendError):
+    """Raised when deleting an object fails."""
+
+
 @dataclass(frozen=True, slots=True)
 class BackendConfig:
     """Backend configuration and secrets."""
@@ -47,7 +67,7 @@ class Backend(ABC):
         """Validate connectivity and credentials.
 
         Raises:
-            BackendConnectionError: If validation fails.
+            BackendTestError: If validation fails.
         """
         raise NotImplementedError
 
@@ -60,6 +80,9 @@ class Backend(ABC):
 
         Returns:
             Iterable of backend objects.
+
+        Raises:
+            BackendEnumerateError: If listing fails.
         """
         raise NotImplementedError
 
@@ -72,6 +95,9 @@ class Backend(ABC):
 
         Returns:
             Raw object bytes.
+
+        Raises:
+            BackendReadError: If reading fails.
         """
         raise NotImplementedError
 
@@ -82,6 +108,9 @@ class Backend(ABC):
         Args:
             path: Backend-specific object path.
             data: Object contents.
+
+        Raises:
+            BackendWriteError: If write fails.
         """
         raise NotImplementedError
 
@@ -91,5 +120,8 @@ class Backend(ABC):
 
         Args:
             path: Backend-specific object path.
+
+        Raises:
+            BackendDeleteError: If delete fails.
         """
         raise NotImplementedError

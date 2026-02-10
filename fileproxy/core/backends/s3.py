@@ -6,7 +6,7 @@ from typing import Any, Iterable, Optional
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
-from .base import Backend, BackendConfig, BackendConnectionError, BackendError
+from .base import Backend, BackendConfig, BackendConnectionError, BackendError, BackendTestError
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,17 +35,120 @@ class S3Backend(Backend):
         )
 
     def test(self) -> None:
-        """Validate S3 connectivity and credentials."""
+        """Validate S3 connectivity and credentials by performing a full R/W/L/D cycle.
+
+        Raises:
+            BackendTestError: If any step fails. Error messages explicitly name the failing action.
+        """
+        import uuid
+
+        test_key = f"fileproxy-test/{uuid.uuid4().hex}.txt"
+        test_bytes = f"fileproxy connectivity test {test_key}".encode("utf-8")
+
+        wrote = False
+        deleted = False
+
+        def _err(action: str, *, code: str | None = None, extra: str | None = None) -> "BackendTestError":
+            parts = [f"S3 test failed at {action}:"]
+            if extra:
+                parts.append(extra)
+            parts.append(f"bucket={self._bucket}")
+            if action != "head_bucket":
+                parts.append(f"key={test_key}")
+            if code:
+                parts.append(f"code={code}")
+            return BackendTestError(" ".join(parts))
+
+        def _client_error_code(e: ClientError) -> str | None:
+            return (e.response.get("Error") or {}).get("Code")
+
         try:
-            self._client.head_bucket(Bucket=self._bucket)
-        except NoCredentialsError as e:
-            raise BackendConnectionError("Missing AWS credentials") from e
-        except ClientError as e:
-            code = (e.response.get("Error") or {}).get("Code")
-            msg = f"S3 head_bucket failed (bucket={self._bucket}, code={code})"
-            raise BackendConnectionError(msg) from e
-        except BotoCoreError as e:
-            raise BackendConnectionError("S3 connectivity check failed") from e
+            # 1) Bucket access
+            try:
+                self._client.head_bucket(Bucket=self._bucket)
+            except NoCredentialsError as e:
+                raise _err("head_bucket", extra="missing AWS credentials") from e
+            except ClientError as e:
+                raise _err("head_bucket", code=_client_error_code(e)) from e
+            except BotoCoreError as e:
+                raise _err("head_bucket", extra="connectivity error") from e
+
+            # 2) Write
+            try:
+                self._client.put_object(Bucket=self._bucket, Key=test_key, Body=test_bytes)
+                wrote = True
+            except NoCredentialsError as e:
+                raise _err("write", extra="missing AWS credentials") from e
+            except ClientError as e:
+                raise _err("write", code=_client_error_code(e)) from e
+            except BotoCoreError as e:
+                raise _err("write", extra="connectivity error") from e
+
+            # 3) Read + validate
+            try:
+                resp = self._client.get_object(Bucket=self._bucket, Key=test_key)
+                got = resp["Body"].read()
+                if got != test_bytes:
+                    raise _err("read", extra="content mismatch")
+            except NoCredentialsError as e:
+                raise _err("read", extra="missing AWS credentials") from e
+            except ClientError as e:
+                raise _err("read", code=_client_error_code(e)) from e
+            except BotoCoreError as e:
+                raise _err("read", extra="connectivity error") from e
+
+            # 4) List + confirm presence
+            try:
+                found = False
+                paginator = self._client.get_paginator("list_objects_v2")
+                for page in paginator.paginate(Bucket=self._bucket, Prefix=test_key):
+                    for obj in page.get("Contents", []) or []:
+                        if obj.get("Key") == test_key:
+                            found = True
+                            break
+                    if found:
+                        break
+
+                if not found:
+                    raise _err("list", extra="test key not found in listing")
+            except NoCredentialsError as e:
+                raise _err("list", extra="missing AWS credentials") from e
+            except ClientError as e:
+                raise _err("list", code=_client_error_code(e)) from e
+            except BotoCoreError as e:
+                raise _err("list", extra="connectivity error") from e
+
+            # 5) Delete
+            try:
+                self._client.delete_object(Bucket=self._bucket, Key=test_key)
+                deleted = True
+            except NoCredentialsError as e:
+                raise _err("delete", extra="missing AWS credentials") from e
+            except ClientError as e:
+                raise _err("delete", code=_client_error_code(e)) from e
+            except BotoCoreError as e:
+                raise _err("delete", extra="connectivity error") from e
+
+            # 6) Verify deletion
+            try:
+                self._client.head_object(Bucket=self._bucket, Key=test_key)
+                raise _err("delete_verification", extra="key still exists after delete")
+            except ClientError as e:
+                code = _client_error_code(e)
+                if code not in ("404", "NotFound", "NoSuchKey"):
+                    raise _err("delete_verification", code=code, extra="unexpected head_object error") from e
+            except BotoCoreError as e:
+                raise _err("delete_verification", extra="connectivity error") from e
+
+        finally:
+            # Best-effort cleanup if we wrote but didn't successfully delete.
+            if wrote and not deleted:
+                try:
+                    self._client.delete_object(Bucket=self._bucket, Key=test_key)
+                except Exception as e:  # noqa: BLE001
+                    raise BackendTestError(
+                        f"S3 test cleanup failed: bucket={self._bucket} key={test_key}"
+                    ) from e
 
     def enumerate(self, *, prefix: str | None = None) -> Iterable[S3Object]:
         """List objects in the bucket."""

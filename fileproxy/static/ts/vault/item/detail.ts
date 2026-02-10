@@ -139,13 +139,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnTest.addEventListener("click", async () => {
+    const prevText = btnTest.textContent || "Test";
+    btnTest.disabled = true;
+    btnTest.textContent = "Testing…";
+
     try {
-      const out = await api<{ detail?: string }>(`/api/v1/vault-items/${itemId}/test/`, {
-        method: "POST",
-      });
-      setFlash(out.detail || "Connection OK.", "success");
+      const out = await api<{ ok: boolean; message: string; details?: unknown }>(
+        `/api/v1/vault-items/${itemId}/test/`,
+        { method: "POST" },
+      );
+      if (out.ok) {
+        setFlash(out.message || "Connection OK.", "success");
+      } else {
+        setFlash(out.message || "Test failed.", "error");
+      }
     } catch (e) {
       setFlash(`Test failed: ${(e as Error).message}`, "error");
+    } finally {
+      btnTest.disabled = false;
+      btnTest.textContent = prevText;
     }
   });
 

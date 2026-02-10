@@ -84,6 +84,6 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         try:
             backend.test()
         except BackendConnectionError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": str(e), "ok": False}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({"detail": "Connection OK."})
+        return Response({"detail": "Connection OK.", "ok": True})
