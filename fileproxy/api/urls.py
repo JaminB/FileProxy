@@ -1,0 +1,6 @@
+from django.urls import include, path
+
+urlpatterns = [
+    path("", include("vault.api.urls")),
+    path("", include("files.api.urls")),
+]

@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class VaultConfig(AppConfig):
+class FilesConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "vault"
+    name = "files"

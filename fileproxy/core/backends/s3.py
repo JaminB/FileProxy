@@ -6,7 +6,16 @@ from typing import Any, Iterable, Optional
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
-from .base import Backend, BackendConfig, BackendConnectionError, BackendError, BackendTestError
+from .base import (
+    Backend,
+    BackendConfig,
+    BackendDeleteError,
+    BackendEnumerateError,
+    BackendError,
+    BackendReadError,
+    BackendTestError,
+    BackendWriteError,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,7 +57,7 @@ class S3Backend(Backend):
         wrote = False
         deleted = False
 
-        def _err(action: str, *, code: str | None = None, extra: str | None = None) -> "BackendTestError":
+        def _err(action: str, *, code: str | None = None, extra: str | None = None) -> BackendTestError:
             parts = [f"S3 test failed at {action}:"]
             if extra:
                 parts.append(extra)
@@ -167,30 +176,50 @@ class S3Backend(Backend):
                         path=key,
                         size=int(size) if size is not None else None,
                     )
-        except (ClientError, BotoCoreError) as e:
-            raise BackendError("S3 enumerate failed") from e
+        except NoCredentialsError as e:
+            raise BackendEnumerateError("S3 enumerate failed: missing AWS credentials") from e
+        except ClientError as e:
+            code = (e.response.get("Error") or {}).get("Code")
+            raise BackendEnumerateError(f"S3 enumerate failed (code={code})") from e
+        except BotoCoreError as e:
+            raise BackendEnumerateError("S3 enumerate failed: connectivity error") from e
 
     def read(self, path: str) -> bytes:
         """Read an object from S3."""
         try:
             resp = self._client.get_object(Bucket=self._bucket, Key=path)
             return resp["Body"].read()
-        except (ClientError, BotoCoreError) as e:
-            raise BackendError(f"S3 read failed (path={path})") from e
+        except NoCredentialsError as e:
+            raise BackendReadError(f"S3 read failed (path={path}): missing AWS credentials") from e
+        except ClientError as e:
+            code = (e.response.get("Error") or {}).get("Code")
+            raise BackendReadError(f"S3 read failed (path={path}) (code={code})") from e
+        except BotoCoreError as e:
+            raise BackendReadError(f"S3 read failed (path={path}): connectivity error") from e
 
     def write(self, path: str, data: bytes) -> None:
         """Write an object to S3."""
         try:
             self._client.put_object(Bucket=self._bucket, Key=path, Body=data)
-        except (ClientError, BotoCoreError) as e:
-            raise BackendError(f"S3 write failed (path={path})") from e
+        except NoCredentialsError as e:
+            raise BackendWriteError(f"S3 write failed (path={path}): missing AWS credentials") from e
+        except ClientError as e:
+            code = (e.response.get("Error") or {}).get("Code")
+            raise BackendWriteError(f"S3 write failed (path={path}) (code={code})") from e
+        except BotoCoreError as e:
+            raise BackendWriteError(f"S3 write failed (path={path}): connectivity error") from e
 
     def delete(self, path: str) -> None:
         """Delete an object from S3."""
         try:
             self._client.delete_object(Bucket=self._bucket, Key=path)
-        except (ClientError, BotoCoreError) as e:
-            raise BackendError(f"S3 delete failed (path={path})") from e
+        except NoCredentialsError as e:
+            raise BackendDeleteError(f"S3 delete failed (path={path}): missing AWS credentials") from e
+        except ClientError as e:
+            code = (e.response.get("Error") or {}).get("Code")
+            raise BackendDeleteError(f"S3 delete failed (path={path}) (code={code})") from e
+        except BotoCoreError as e:
+            raise BackendDeleteError(f"S3 delete failed (path={path}): connectivity error") from e
 
     def _require_setting_str(self, key: str) -> str:
         val = self.config.settings.get(key)

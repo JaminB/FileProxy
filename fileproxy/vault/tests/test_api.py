@@ -13,11 +13,15 @@ class VaultApiTests(APITestCase):
         self.client.login(username="u1", password="pw")
         self.scope = f"user:{self.user.id}"
 
+        # Required by S3 backend config (settings.bucket)
+        self.bucket = "fileproxy-test-bucket"
+
     def test_create_s3_and_list_does_not_return_secrets(self):
         resp = self.client.post(
             "/api/v1/vault-items/s3/",
             {
                 "name": "prod",
+                "bucket": self.bucket,
                 "access_key_id": "AKIA1234567890ABCDE",
                 "secret_access_key": "supersecretsecretsecretsecretsecret",
             },
@@ -39,6 +43,7 @@ class VaultApiTests(APITestCase):
             "/api/v1/vault-items/s3/",
             {
                 "name": "prod",
+                "bucket": self.bucket,
                 "access_key_id": "AKIA1234567890ABCDE",
                 "secret_access_key": "supersecretsecretsecretsecretsecret",
                 "session_token": "",

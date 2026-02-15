@@ -55,8 +55,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
-    "core",
-    "vault",
+    "core.apps.CoreConfig",
+    "vault.apps.VaultConfig",
+    "files.apps.FilesConfig",
+    "api.apps.ApiConfig",
 ]
 
 MIDDLEWARE = [
