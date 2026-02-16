@@ -27,9 +27,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 VAULT_MASTER_KEY = env_bytes_b64url(
-"FILEPROXY_VAULT_MASTER_KEY",
-required=True,
-expected_len=32,
+    "FILEPROXY_VAULT_MASTER_KEY",
+    required=True,
+    expected_len=32,
 )
 
 # Quick-start development settings - unsuitable for production

@@ -17,7 +17,9 @@ def env_bool(name: str, default: bool = False) -> bool:
     return val in {"1", "true", "yes", "y", "on"}
 
 
-def env_bytes_b64url(name: str, *, required: bool = False, expected_len: int | None = None) -> bytes:
+def env_bytes_b64url(
+    name: str, *, required: bool = False, expected_len: int | None = None
+) -> bytes:
     """
     Reads a URL-safe base64 string from env and returns decoded bytes.
     """
@@ -30,6 +32,8 @@ def env_bytes_b64url(name: str, *, required: bool = False, expected_len: int | N
         raise RuntimeError(f"Invalid urlsafe base64 for {name}") from exc
 
     if expected_len is not None and len(decoded) != expected_len:
-        raise RuntimeError(f"{name} must decode to {expected_len} bytes (got {len(decoded)})")
+        raise RuntimeError(
+            f"{name} must decode to {expected_len} bytes (got {len(decoded)})"
+        )
 
     return decoded

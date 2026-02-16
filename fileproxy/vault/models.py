@@ -76,7 +76,9 @@ class VaultItem(models.Model):
     class Meta:
         indexes = [models.Index(fields=["scope", "kind"])]
         constraints = [
-            models.UniqueConstraint(fields=["scope", "name"], name="uniq_vaultitem_scope_name"),
+            models.UniqueConstraint(
+                fields=["scope", "name"], name="uniq_vaultitem_scope_name"
+            ),
         ]
 
     def _payload_aad(self) -> bytes:
@@ -99,7 +101,9 @@ class VaultItem(models.Model):
         nonce_b64, ct_b64 = wrapped.split(".", 1)
         return _aesgcm_decrypt(kek, _b64d(nonce_b64), _b64d(ct_b64), aad)
 
-    def set_payload(self, *, settings_obj: Mapping[str, Any], secrets_obj: Mapping[str, Any]) -> None:
+    def set_payload(
+        self, *, settings_obj: Mapping[str, Any], secrets_obj: Mapping[str, Any]
+    ) -> None:
         """Encrypt and store settings and secrets.
 
         Args:
@@ -120,7 +124,9 @@ class VaultItem(models.Model):
             "settings": dict(settings_obj),
             "secrets": dict(secrets_obj),
         }
-        plaintext = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        plaintext = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
+            "utf-8"
+        )
         nonce, ct = _aesgcm_encrypt(dek, plaintext, self._payload_aad())
         self.payload_nonce = _b64e(nonce)
         self.payload_ciphertext = _b64e(ct)
@@ -173,10 +179,12 @@ class VaultItem(models.Model):
             settings_obj=cast(Mapping[str, Any], payload.get("settings", {})),
             secrets_obj=cast(Mapping[str, Any], payload.get("secrets", {})),
         )
-        self.save(update_fields=[
-            "wrapped_dek",
-            "payload_nonce",
-            "payload_ciphertext",
-            "rotated_at",
-            "updated_at",
-        ])
+        self.save(
+            update_fields=[
+                "wrapped_dek",
+                "payload_nonce",
+                "payload_ciphertext",
+                "rotated_at",
+                "updated_at",
+            ]
+        )

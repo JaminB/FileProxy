@@ -5,15 +5,12 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.backends.factory import backend_from_config
 from core.backends.base import BackendConnectionError
+from core.backends.factory import backend_from_config
 
 from ..models import VaultItem
-from .serializers import (
-    S3CredentialsCreateSerializer,
-    VaultItemListSerializer,
-    VaultItemRenameSerializer,
-)
+from .serializers import (S3CredentialsCreateSerializer,
+                          VaultItemListSerializer, VaultItemRenameSerializer)
 
 
 def _default_scope_from_request(request) -> str:
@@ -53,10 +50,14 @@ class VaultItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="s3")
     def create_s3(self, request):
-        serializer = S3CredentialsCreateSerializer(data=request.data, context={"request": request})
+        serializer = S3CredentialsCreateSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         item = serializer.save()
-        return Response(VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED)
+        return Response(
+            VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED
+        )
 
     @action(detail=True, methods=["post"])
     def rotate(self, request, pk=None):
@@ -73,8 +74,6 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         item.save(update_fields=["name", "updated_at"])
         return Response(VaultItemListSerializer(item).data)
 
-
-
     @action(detail=True, methods=["post"])
     def test(self, request, pk=None):
         """POST /api/v1/vault-items/{id}/test/"""
@@ -84,6 +83,8 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         try:
             backend.test()
         except BackendConnectionError as e:
-            return Response({"detail": str(e), "ok": False}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": str(e), "ok": False}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response({"detail": "Connection OK.", "ok": True})

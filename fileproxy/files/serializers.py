@@ -24,3 +24,12 @@ class WriteFileSerializer(serializers.Serializer):
 
 class DeleteFileSerializer(serializers.Serializer):
     path = serializers.CharField()
+
+
+class VaultItemMetaSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    kind = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+    rotated_at = serializers.DateTimeField(allow_null=True)

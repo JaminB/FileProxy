@@ -6,16 +6,9 @@ from typing import Any, Iterable, Optional
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
-from .base import (
-    Backend,
-    BackendConfig,
-    BackendDeleteError,
-    BackendEnumerateError,
-    BackendError,
-    BackendReadError,
-    BackendTestError,
-    BackendWriteError,
-)
+from .base import (Backend, BackendConfig, BackendDeleteError,
+                   BackendEnumerateError, BackendError, BackendReadError,
+                   BackendTestError, BackendWriteError)
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +50,9 @@ class S3Backend(Backend):
         wrote = False
         deleted = False
 
-        def _err(action: str, *, code: str | None = None, extra: str | None = None) -> BackendTestError:
+        def _err(
+            action: str, *, code: str | None = None, extra: str | None = None
+        ) -> BackendTestError:
             parts = [f"S3 test failed at {action}:"]
             if extra:
                 parts.append(extra)
@@ -84,7 +79,9 @@ class S3Backend(Backend):
 
             # 2) Write
             try:
-                self._client.put_object(Bucket=self._bucket, Key=test_key, Body=test_bytes)
+                self._client.put_object(
+                    Bucket=self._bucket, Key=test_key, Body=test_bytes
+                )
                 wrote = True
             except NoCredentialsError as e:
                 raise _err("write", extra="missing AWS credentials") from e
@@ -145,7 +142,11 @@ class S3Backend(Backend):
             except ClientError as e:
                 code = _client_error_code(e)
                 if code not in ("404", "NotFound", "NoSuchKey"):
-                    raise _err("delete_verification", code=code, extra="unexpected head_object error") from e
+                    raise _err(
+                        "delete_verification",
+                        code=code,
+                        extra="unexpected head_object error",
+                    ) from e
             except BotoCoreError as e:
                 raise _err("delete_verification", extra="connectivity error") from e
 
@@ -177,12 +178,16 @@ class S3Backend(Backend):
                         size=int(size) if size is not None else None,
                     )
         except NoCredentialsError as e:
-            raise BackendEnumerateError("S3 enumerate failed: missing AWS credentials") from e
+            raise BackendEnumerateError(
+                "S3 enumerate failed: missing AWS credentials"
+            ) from e
         except ClientError as e:
             code = (e.response.get("Error") or {}).get("Code")
             raise BackendEnumerateError(f"S3 enumerate failed (code={code})") from e
         except BotoCoreError as e:
-            raise BackendEnumerateError("S3 enumerate failed: connectivity error") from e
+            raise BackendEnumerateError(
+                "S3 enumerate failed: connectivity error"
+            ) from e
 
     def read(self, path: str) -> bytes:
         """Read an object from S3."""
@@ -190,36 +195,52 @@ class S3Backend(Backend):
             resp = self._client.get_object(Bucket=self._bucket, Key=path)
             return resp["Body"].read()
         except NoCredentialsError as e:
-            raise BackendReadError(f"S3 read failed (path={path}): missing AWS credentials") from e
+            raise BackendReadError(
+                f"S3 read failed (path={path}): missing AWS credentials"
+            ) from e
         except ClientError as e:
             code = (e.response.get("Error") or {}).get("Code")
             raise BackendReadError(f"S3 read failed (path={path}) (code={code})") from e
         except BotoCoreError as e:
-            raise BackendReadError(f"S3 read failed (path={path}): connectivity error") from e
+            raise BackendReadError(
+                f"S3 read failed (path={path}): connectivity error"
+            ) from e
 
     def write(self, path: str, data: bytes) -> None:
         """Write an object to S3."""
         try:
             self._client.put_object(Bucket=self._bucket, Key=path, Body=data)
         except NoCredentialsError as e:
-            raise BackendWriteError(f"S3 write failed (path={path}): missing AWS credentials") from e
+            raise BackendWriteError(
+                f"S3 write failed (path={path}): missing AWS credentials"
+            ) from e
         except ClientError as e:
             code = (e.response.get("Error") or {}).get("Code")
-            raise BackendWriteError(f"S3 write failed (path={path}) (code={code})") from e
+            raise BackendWriteError(
+                f"S3 write failed (path={path}) (code={code})"
+            ) from e
         except BotoCoreError as e:
-            raise BackendWriteError(f"S3 write failed (path={path}): connectivity error") from e
+            raise BackendWriteError(
+                f"S3 write failed (path={path}): connectivity error"
+            ) from e
 
     def delete(self, path: str) -> None:
         """Delete an object from S3."""
         try:
             self._client.delete_object(Bucket=self._bucket, Key=path)
         except NoCredentialsError as e:
-            raise BackendDeleteError(f"S3 delete failed (path={path}): missing AWS credentials") from e
+            raise BackendDeleteError(
+                f"S3 delete failed (path={path}): missing AWS credentials"
+            ) from e
         except ClientError as e:
             code = (e.response.get("Error") or {}).get("Code")
-            raise BackendDeleteError(f"S3 delete failed (path={path}) (code={code})") from e
+            raise BackendDeleteError(
+                f"S3 delete failed (path={path}) (code={code})"
+            ) from e
         except BotoCoreError as e:
-            raise BackendDeleteError(f"S3 delete failed (path={path}): connectivity error") from e
+            raise BackendDeleteError(
+                f"S3 delete failed (path={path}): connectivity error"
+            ) from e
 
     def _require_setting_str(self, key: str) -> str:
         val = self.config.settings.get(key)

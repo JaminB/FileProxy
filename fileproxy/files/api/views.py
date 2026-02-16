@@ -7,30 +7,27 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.backends.base import (
-    BackendConnectionError,
-    BackendDeleteError,
-    BackendEnumerateError,
-    BackendReadError,
-    BackendTestError,
-    BackendWriteError,
-)
+from core.backends.base import (BackendConnectionError, BackendDeleteError,
+                                BackendEnumerateError, BackendReadError,
+                                BackendTestError, BackendWriteError)
 
-from files.serializers import (
-    BackendObjectSerializer,
-    DeleteFileSerializer,
-    EnumerateQuerySerializer,
-    ReadFileQuerySerializer,
-    WriteFileSerializer,
-)
-from files.services import VaultItemNotFound, get_backend_for_user_vault_item
+from ..serializers import (BackendObjectSerializer, DeleteFileSerializer,
+                           EnumerateQuerySerializer, ReadFileQuerySerializer,
+                           VaultItemMetaSerializer, WriteFileSerializer)
+from ..services import (VaultItemNotFound, get_backend_for_user_vault_item,
+                        vault_items_for_user)
 
 
 class FilesViewSet(viewsets.ViewSet):
     """
     Backend-agnostic file API.
 
-    URL is keyed by vault item *name* so end users never need to know backend types.
+    - GET  /api/v1/files/                         -> list vault items for current user (metadata only)
+    - POST /api/v1/files/{vault_item_name}/test/   -> backend connectivity test
+    - GET  /api/v1/files/{vault_item_name}/objects -> enumerate backend
+    - GET  /api/v1/files/{vault_item_name}/read    -> read object
+    - POST /api/v1/files/{vault_item_name}/write   -> write object
+    - POST /api/v1/files/{vault_item_name}/delete  -> delete object
     """
 
     permission_classes = [IsAuthenticated]
@@ -38,7 +35,9 @@ class FilesViewSet(viewsets.ViewSet):
     lookup_url_kwarg = "vault_item_name"
 
     def _backend(self, request, vault_item_name: str):
-        return get_backend_for_user_vault_item(user=request.user, vault_item_name=vault_item_name)
+        return get_backend_for_user_vault_item(
+            user=request.user, vault_item_name=vault_item_name
+        )
 
     def _error(self, e: Exception) -> Response:
         if isinstance(e, VaultItemNotFound):
@@ -47,15 +46,30 @@ class FilesViewSet(viewsets.ViewSet):
         if isinstance(e, (BackendTestError, BackendConnectionError)):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if isinstance(e, (BackendEnumerateError, BackendReadError, BackendWriteError, BackendDeleteError)):
+        if isinstance(
+            e,
+            (
+                BackendEnumerateError,
+                BackendReadError,
+                BackendWriteError,
+                BackendDeleteError,
+            ),
+        ):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Fallback
-        return Response({"detail": "Unexpected error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"detail": "Unexpected error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    def list(self, request):
+        """GET /api/v1/files/"""
+        items = vault_items_for_user(request.user).only(
+            "id", "name", "kind", "created_at", "updated_at", "rotated_at"
+        )
+        return Response(VaultItemMetaSerializer(items, many=True).data)
 
     @action(detail=True, methods=["post"])
     def test(self, request, vault_item_name: str = ""):
-        """POST /api/v1/files/{vault_item_name}/test/"""
         try:
             backend = self._backend(request, vault_item_name)
             backend.test()
@@ -65,7 +79,6 @@ class FilesViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["get"], url_path="objects")
     def objects(self, request, vault_item_name: str = ""):
-        """GET /api/v1/files/{vault_item_name}/objects/?prefix=..."""
         try:
             backend = self._backend(request, vault_item_name)
 
@@ -80,7 +93,6 @@ class FilesViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["get"], url_path="read")
     def read(self, request, vault_item_name: str = ""):
-        """GET /api/v1/files/{vault_item_name}/read/?path=..."""
         try:
             backend = self._backend(request, vault_item_name)
 
@@ -89,13 +101,14 @@ class FilesViewSet(viewsets.ViewSet):
             path = q.validated_data["path"]
 
             data = backend.read(path)
-            return Response({"path": path, "data_base64": base64.b64encode(data).decode("ascii")})
+            return Response(
+                {"path": path, "data_base64": base64.b64encode(data).decode("ascii")}
+            )
         except Exception as e:  # noqa: BLE001
             return self._error(e)
 
     @action(detail=True, methods=["post"], url_path="write")
     def write(self, request, vault_item_name: str = ""):
-        """POST /api/v1/files/{vault_item_name}/write/"""
         try:
             backend = self._backend(request, vault_item_name)
 
@@ -112,7 +125,6 @@ class FilesViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["post"], url_path="delete")
     def delete(self, request, vault_item_name: str = ""):
-        """POST /api/v1/files/{vault_item_name}/delete/"""
         try:
             backend = self._backend(request, vault_item_name)
 

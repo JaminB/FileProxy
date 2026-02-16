@@ -46,7 +46,9 @@ class _FakeS3Client:
             self._buckets[b] = {}
 
     def _client_error(self, code: str, message: str = "error") -> ClientError:
-        return ClientError({"Error": {"Code": code, "Message": message}}, "FakeOperation")
+        return ClientError(
+            {"Error": {"Code": code, "Message": message}}, "FakeOperation"
+        )
 
     def head_bucket(self, *, Bucket: str):
         if Bucket not in self._buckets:
@@ -104,7 +106,10 @@ class FilesApiS3Tests(APITestCase):
                 pass
 
         # Sanity: ensure at least one patch applied
-        self.assertTrue(self._patchers, "Failed to patch core.backends.s3 boto client; check import style")
+        self.assertTrue(
+            self._patchers,
+            "Failed to patch core.backends.s3 boto client; check import style",
+        )
 
         resp = self.client.post(
             "/api/v1/vault-items/s3/",
@@ -123,7 +128,6 @@ class FilesApiS3Tests(APITestCase):
         for p in reversed(self._patchers):
             p.stop()
 
-
     def test_write_read_objects_delete_roundtrip(self):
         path = "folder/a.txt"
         payload = b"hello files api"
@@ -139,7 +143,9 @@ class FilesApiS3Tests(APITestCase):
         self.assertEqual(resp.data["path"], path)
 
         # read
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
+        resp = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/read/", {"path": path}
+        )
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["path"], path)
         self.assertEqual(base64.b64decode(resp.data["data_base64"]), payload)
@@ -151,7 +157,9 @@ class FilesApiS3Tests(APITestCase):
         self.assertIn(path, paths)
 
         # objects (prefix filters)
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/", {"prefix": "folder/"})
+        resp = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/objects/", {"prefix": "folder/"}
+        )
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual({o["path"] for o in resp.data}, {path})
 
@@ -169,7 +177,9 @@ class FilesApiS3Tests(APITestCase):
         self.assertNotIn(path, {o["path"] for o in resp.data})
 
     def test_test_endpoint_runs_backend_healthcheck(self):
-        resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/test/", format="json")
+        resp = self.client.post(
+            f"/api/v1/files/{self.vault_item_name}/test/", format="json"
+        )
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["detail"], "Connection OK.")
 

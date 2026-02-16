@@ -7,13 +7,20 @@ from ..schemas import S3StaticCredentials
 from ..service import create_s3_credentials
 
 
-
 class VaultItemListSerializer(serializers.ModelSerializer):
     bucket = serializers.SerializerMethodField()
 
     class Meta:
         model = VaultItem
-        fields = ["id", "name", "kind", "bucket", "created_at", "updated_at", "rotated_at"]
+        fields = [
+            "id",
+            "name",
+            "kind",
+            "bucket",
+            "created_at",
+            "updated_at",
+            "rotated_at",
+        ]
 
     def get_bucket(self, obj: VaultItem) -> str | None:
         payload = obj.get_payload()
@@ -30,7 +37,11 @@ class S3CredentialsCreateSerializer(serializers.Serializer):
     access_key_id = serializers.CharField(max_length=128, trim_whitespace=True)
     secret_access_key = serializers.CharField(max_length=256, trim_whitespace=True)
     session_token = serializers.CharField(
-        max_length=2048, required=False, allow_null=True, allow_blank=True, trim_whitespace=True
+        max_length=2048,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        trim_whitespace=True,
     )
 
     def validate_bucket(self, v: str) -> str:
