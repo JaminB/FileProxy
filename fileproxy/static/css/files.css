@@ -1,0 +1,108 @@
+/* ================================
+   FileProxy — Files Browser Skin
+   ================================ */
+
+/* Layout tightening */
+.files-card .card-body {
+  padding: 0.5rem;
+}
+
+.files-card .btn {
+  --bs-btn-padding-y: 0.2rem;
+  --bs-btn-padding-x: 0.45rem;
+}
+
+.files-card .breadcrumb {
+  margin-bottom: 0.25rem;
+}
+
+.files-card .form-text {
+  margin-top: 0.25rem;
+}
+
+/* Vault list */
+.files-vault-item {
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.4rem;
+}
+
+.files-vault-item.active {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: transparent;
+}
+
+.files-vault-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* Table compactness */
+.files-table-wrap {
+  overflow: visible; /* prevent dropdown clipping */
+}
+
+@media (max-width: 992px) {
+  .files-table-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+}
+
+.files-card table.table-sm th,
+.files-card table.table-sm td {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+/* Dropdown actions */
+.files-card .dropdown-menu {
+  min-width: 9rem;
+  font-size: 0.875rem;
+}
+
+.files-card .dropdown-item {
+  padding: 0.35rem 0.75rem;
+}
+
+/* Header area */
+#browser-title {
+  font-size: 0.9rem;
+}
+
+#browser-subtitle {
+  font-size: 0.75rem;
+}
+
+/* Upload section */
+#upload-status {
+  min-height: 1rem;
+  font-size: 0.8rem;
+}
+
+.files-card hr {
+  opacity: 0.1;
+  margin: 0.75rem 0;
+}
+
+.files-table-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.table-responsive {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.files-table-wrap .dropdown-menu {
+  z-index: 2000;
+}
+
+.files-table-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.files-upload-row {
+  position: relative;
+  z-index: 0;
+}

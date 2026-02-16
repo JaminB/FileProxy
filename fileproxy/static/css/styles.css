@@ -1,290 +1,131 @@
-/* Minimal light skin that de-Bootstraps Bootstrap */
-/* Load AFTER bootstrap.css */
+/* ================================
+   FileProxy — Files Browser Skin
+   ================================ */
 
-:root{
-  --bg: #ffffff;
-  --text: #0f172a;       /* slate-900 */
-  --muted: #475569;      /* slate-600 */
-  --border: #e5e7eb;     /* gray-200 */
-  --border-2: #eef2f7;   /* very soft */
-  --surface: #ffffff;
-  --surface-2: #f8fafc;  /* slate-50 */
-
-  --radius: 10px;
-  --radius-sm: 8px;
-
-  --focus: rgba(15, 23, 42, 0.14);
+:root {
+  --files-gap: 0.5rem;
 }
 
-/* Base */
-html, body{
-  background: var(--bg);
-  color: var(--text);
+/* Card + general spacing */
+.files-card .card-body {
+  padding: 0.75rem;
 }
 
-body{
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+.files-card hr {
+  opacity: 0.12;
+  margin: 0.85rem 0;
 }
 
-/* Layout hooks */
-.app-header{
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+/* Buttons slightly tighter */
+.files-card .btn {
+  --bs-btn-padding-y: 0.22rem;
+  --bs-btn-padding-x: 0.5rem;
 }
 
-.app-header-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  min-height: 56px;
-  padding: 10px 0;
+/* Prevent dropdown clipping inside table wrapper */
+.files-table-wrap {
+  overflow: visible;
+}
+@media (max-width: 992px) {
+  .files-table-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
 }
 
-.app-brand{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  text-decoration:none;
-  color: var(--text);
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
-.app-brand:hover{ color: var(--text); }
-
-.app-header-actions{
-  display:flex;
-  align-items:center;
-  gap:10px;
+/* Table compactness */
+.files-card table.table-sm th,
+.files-card table.table-sm td {
+  padding-top: 0.38rem;
+  padding-bottom: 0.38rem;
 }
 
-.app-main{
-  padding-top: 22px;
-  padding-bottom: 32px;
+/* Header text sizing */
+#browser-title {
+  font-size: 0.95rem;
+}
+#browser-subtitle {
+  font-size: 0.8rem;
 }
 
-.app-flash{ margin-bottom: 16px; }
-.app-alert{
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  color: var(--muted);
+/* Vault list — FIX LEGIBILITY + better whitespace */
+#vault-list .list-group-item {
+  border-radius: 0.6rem;
+  margin-bottom: 0.35rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  color: #111; /* fixes white-on-white */
 }
 
-/* Make Bootstrap components look “plain” and consistent */
-.card{
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: none;
-}
-.card-header{
-  background: transparent;
-  border-bottom: 1px solid var(--border);
+#vault-list .list-group-item .fw-semibold {
+  color: #111;
 }
 
-/* Buttons: neutral by default, no Bootstrap-y gradients */
-.btn{
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: none;
-  font-weight: 600;
-  padding: 8px 12px;
+#vault-list .list-group-item .text-muted {
+  color: rgba(0, 0, 0, 0.6) !important;
 }
 
-.btn:hover{
-  background: var(--surface-2);
-  border-color: #dbe2ea;
-  color: var(--text);
+#vault-list .list-group-item:hover {
+  background: rgba(0, 0, 0, 0.03);
 }
 
-.btn:active{
-  transform: none;
+#vault-list .list-group-item.active {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #111;
 }
 
-.btn-primary{
-  background: var(--text);
-  border-color: var(--text);
-  color: #fff;
-}
-.btn-primary:hover{
-  background: #111827; /* slightly different than --text */
-  border-color: #111827;
-  color: #fff;
-}
-.btn-outline-primary{
-  background: var(--surface);
-  color: var(--text);
-  border-color: var(--border);
-}
-.btn-outline-primary:hover{
-  background: var(--surface-2);
-  border-color: #dbe2ea;
-  color: var(--text);
+#vault-list .list-group-item.active .text-muted {
+  color: rgba(0, 0, 0, 0.65) !important;
 }
 
-/* Inputs: quiet, consistent */
-.form-control,
-.form-select{
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  box-shadow: none;
-  padding: 10px 12px;
+/* Breadcrumb tighten */
+.files-card .breadcrumb {
+  margin-bottom: 0.35rem;
 }
 
-.form-control:focus,
-.form-select:focus{
-  border-color: #cbd5e1; /* slate-300 */
-  box-shadow: 0 0 0 4px var(--focus);
-}
-
-/* Kill the “Bootstrap blue glow” on buttons too */
-.btn:focus,
-.btn:focus-visible{
-  box-shadow: 0 0 0 4px var(--focus) !important;
-}
-
-/* Tabs: make them look like simple text filters, not Bootstrap tabs */
-.nav-tabs{
-  border-bottom: 1px solid var(--border);
-  gap: 8px;
-}
-
-.nav-tabs .nav-link{
-  border: 0;
-  border-radius: 0;
-  color: var(--muted);
-  padding: 8px 0;
-  margin-right: 14px;
-  background: transparent;
-}
-
-.nav-tabs .nav-link:hover{
-  color: var(--text);
-}
-
-.nav-tabs .nav-link.active{
-  color: var(--text);
-  background: transparent;
-  border-bottom: 2px solid var(--text);
-  padding-bottom: 6px;
-}
-
-/* Tables: lighter chrome */
-.table{
-  color: var(--text);
-}
-.table thead th{
-  color: var(--muted);
-  font-weight: 600;
-  border-bottom-color: var(--border);
-}
-.table td, .table th{
-  border-top-color: var(--border-2);
-}
-
-/* Alerts: stop looking like stock Bootstrap */
-.alert{
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--muted);
-}
-
-/* Dropdown menus: simple and clean */
-.dropdown-menu{
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: none;
-  padding: 6px;
-}
-.dropdown-item{
-  border-radius: 8px;
-}
-.dropdown-item:hover{
-  background: var(--surface-2);
-}
-
-
-/* Page header (icon + title) */
-.page-icon{
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+/* Upload row alignment + whitespace */
+.files-upload-row {
   display: grid;
-  place-items: center;
-  flex: 0 0 auto;
+  grid-template-columns: 1fr 240px auto;
+  align-items: end; /* ensures inputs/buttons align */
+  gap: var(--files-gap);
 }
 
-.page-icon-svg{
-  width: 18px;
-  height: 18px;
-  color: var(--muted);
+@media (max-width: 992px) {
+  .files-upload-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
 }
 
-/* Use a “real” title style instead of bootstrap heading utilities */
-.page-title{
-  font-size: 20px;
-  line-height: 1.15;
-  font-weight: 650;
-  letter-spacing: 0.2px;
-  color: var(--text);
-  margin: 0;
+.files-upload-row .form-label {
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
 }
 
-.page-subtitle{
-  margin-top: 4px;
-  font-size: 14px;
-  line-height: 1.35;
-  color: var(--muted);
+.files-upload-row .form-text {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
 }
 
-/* Provider selection cards */
-.provider-card{
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  transition: border-color .15s ease, background .15s ease;
-  height: 100%;
+#upload-status {
+  min-height: 1rem;
+  font-size: 0.8rem;
 }
 
-.provider-card:hover{
-  border-color: #dbe2ea;
-  background: var(--surface-2);
+/* Dropdown actions */
+.files-card .dropdown-menu {
+  min-width: 9rem;
+  font-size: 0.875rem;
 }
 
-.provider-card-body{
-  padding: 16px;
-  height: 100%;
+.files-card .dropdown-item {
+  padding: 0.35rem 0.75rem;
 }
 
-/* Provider header */
-.provider-header{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-.provider-title{
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-/* Description text */
-.provider-description{
-  font-size: 14px;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
-/* Remove default card look if any sneak in */
-.card.provider-card{
-  box-shadow: none;
+/* Make the main two-pane layout breathe a bit */
+.files-pane {
+  padding: 0.25rem;
 }

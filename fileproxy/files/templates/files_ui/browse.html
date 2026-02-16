@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Files{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{% static 'css/files.css' %}" />
+{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Files</li>
+    </ol>
+  </nav>
+
+  <div class="row g-2">
+    <!-- Left: Vaults -->
+    <div class="col-12 col-lg-3">
+      <div class="card ab-card files-card h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="fw-semibold small">
+              <i class="bi bi-hdd-stack me-1 opacity-75"></i>
+              Vaults
+            </div>
+            <button
+              id="vault-refresh"
+              class="btn btn-sm btn-outline-secondary"
+              type="button"
+              title="Refresh vault list"
+            >
+              <i class="bi bi-arrow-repeat"></i>
+            </button>
+          </div>
+
+          <div id="vault-list" class="list-group">
+            <div class="text-muted small">Loading…</div>
+          </div>
+
+          <div class="form-text small mt-2">
+            Pick a vault to browse its files.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Browser -->
+    <div class="col-12 col-lg-9">
+      <div class="card ab-card files-card">
+        <div class="card-body">
+          <!-- Header -->
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <button id="up" class="btn btn-sm btn-outline-secondary" type="button" disabled title="Up">
+                <i class="bi bi-arrow-up"></i>
+              </button>
+
+              <div class="lh-sm">
+                <div class="fw-semibold small" id="browser-title">Select a vault</div>
+                <div class="small text-muted" id="browser-subtitle"></div>
+              </div>
+            </div>
+
+            <button id="refresh" class="btn btn-sm btn-primary" type="button" disabled>
+              <i class="bi bi-arrow-repeat me-1"></i>
+              Refresh
+            </button>
+          </div>
+
+          <!-- Path -->
+          <nav aria-label="Path" class="mb-2">
+            <ol class="breadcrumb mb-0 small" id="path-crumbs">
+              <li class="breadcrumb-item text-muted">—</li>
+            </ol>
+          </nav>
+
+          <!-- Entries -->
+          <div class="table-responsive files-table-wrap">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th style="width: 50%;">Name</th>
+                  <th style="width: 30%;">Path</th>
+                  <th style="width: 10%;">Size</th>
+                  <th style="width: 10%;" class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="entries">
+                <tr>
+                  <td colspan="4" class="text-muted small">
+                    Choose a vault from the left to start browsing.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <hr class="my-2" />
+
+          <!-- Upload -->
+          <div class="files-upload-row">
+            <div>
+              <label class="form-label mb-1 small">Upload to current folder</label>
+              <input id="upload-file" class="form-control form-control-sm" type="file" disabled />
+              <div class="form-text small" id="upload-hint">Select a vault to enable upload.</div>
+            </div>
+
+            <div>
+              <label class="form-label mb-1 small">Name</label>
+              <input
+                id="upload-name"
+                class="form-control form-control-sm"
+                placeholder="Defaults to filename"
+                disabled
+              />
+            </div>
+            <br>
+            <div class="d-flex align-items-end float-end">
+              <button id="upload" class="btn btn-sm btn-success" type="button" disabled>
+                <i class="bi bi-upload me-1"></i>
+                Upload
+              </button>
+            </div>
+          </div>
+
+          <div class="small text-muted mt-1" id="upload-status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/files/browse.js' %}"></script>
+{% endblock %}

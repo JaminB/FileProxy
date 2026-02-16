@@ -5,6 +5,7 @@ import base64
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.backends.base import (BackendConnectionError, BackendDeleteError,
@@ -33,6 +34,7 @@ class FilesViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     lookup_field = "vault_item_name"
     lookup_url_kwarg = "vault_item_name"
+    lookup_value_regex = r"[^/]+"
 
     def _backend(self, request, vault_item_name: str):
         return get_backend_for_user_vault_item(
@@ -123,16 +125,17 @@ class FilesViewSet(viewsets.ViewSet):
         except Exception as e:  # noqa: BLE001
             return self._error(e)
 
-    @action(detail=True, methods=["post"], url_path="delete")
-    def delete(self, request, vault_item_name: str = ""):
+    @action(detail=True, methods=["delete"], url_path="object")
+    def delete_object(self, request: Request, vault_item_name: str = ""):
+        """DELETE /api/v1/files/{vault_item_name}/object/?path=..."""
         try:
             backend = self._backend(request, vault_item_name)
 
-            s = DeleteFileSerializer(data=request.data)
-            s.is_valid(raise_exception=True)
+            q = ReadFileQuerySerializer(data=request.query_params)
+            q.is_valid(raise_exception=True)
+            path = q.validated_data["path"]
 
-            path = s.validated_data["path"]
             backend.delete(path)
-            return Response({"detail": "OK", "path": path})
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:  # noqa: BLE001
             return self._error(e)

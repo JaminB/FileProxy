@@ -10,6 +10,7 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path("admin/", admin.site.urls),
+    path("files/", include("files.ui.urls")),
     path("vault/", include("vault.ui.urls")),
     path("api/v1/", include("api.urls")),
 ]
