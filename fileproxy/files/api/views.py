@@ -4,7 +4,7 @@ import base64
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -31,7 +31,6 @@ class FilesViewSet(viewsets.ViewSet):
     - POST /api/v1/files/{vault_item_name}/delete  -> delete object
     """
 
-    permission_classes = [IsAuthenticated]
     lookup_field = "vault_item_name"
     lookup_url_kwarg = "vault_item_name"
     lookup_value_regex = r"[^/]+"
@@ -42,6 +41,9 @@ class FilesViewSet(viewsets.ViewSet):
         )
 
     def _error(self, e: Exception) -> Response:
+        if isinstance(e, ValidationError):
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
         if isinstance(e, VaultItemNotFound):
             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
 

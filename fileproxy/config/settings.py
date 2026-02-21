@@ -86,8 +86,7 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "FileProxy API",
     "DESCRIPTION": "API documentation",
     "VERSION": "1.0.0",
-    # optional but nice:
-    # "SERVE_INCLUDE_SCHEMA": False,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
 }
 
 

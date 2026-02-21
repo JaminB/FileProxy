@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.backends.base import BackendConnectionError
@@ -23,8 +22,6 @@ def _default_scope_from_request(request) -> str:
 
 class VaultItemViewSet(viewsets.ModelViewSet):
     """Vault item API (metadata only)."""
-
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         scope = _default_scope_from_request(self.request)
