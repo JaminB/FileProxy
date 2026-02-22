@@ -53,6 +53,10 @@
   padding-bottom: 0.35rem;
 }
 
+.files-card table.table-sm td {
+  font-size: 0.875rem;
+}
+
 /* Dropdown actions */
 .files-card .dropdown-menu {
   min-width: 9rem;

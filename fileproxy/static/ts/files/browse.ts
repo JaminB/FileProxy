@@ -21,7 +21,14 @@ type Entry =
   | { kind: "folder"; name: string; path: string }
   | { kind: "file"; name: string; path: string; size: number | null };
 
-type State = { vault: string | null; prefix: string };
+type State = {
+  vault: string | null;
+  prefix: string;
+  pageSize: number;               // 25 | 50 | 100 | 200
+  cursors: Array<string | null>;  // cursors[i] = cursor needed to fetch page i; cursors[0] = null
+  page: number;                   // current 0-indexed page
+  hasNextPage: boolean;
+};
 
 /* ----------------------------- DOM helpers ----------------------------- */
 
@@ -48,11 +55,20 @@ const el = {
   uploadBtn: () => mustGet<HTMLButtonElement>("#upload"),
   uploadHint: () => mustGet<HTMLElement>("#upload-hint"),
   uploadStatus: () => mustGet<HTMLElement>("#upload-status"),
+
+  pageControls: () => mustGet<HTMLElement>("#page-controls"),
 };
 
 /* ----------------------------- State ----------------------------- */
 
-const state: State = { vault: null, prefix: "" };
+const state: State = {
+  vault: null,
+  prefix: "",
+  pageSize: 50,
+  cursors: [null],
+  page: 0,
+  hasNextPage: false,
+};
 
 /* ----------------------------- Small utils ----------------------------- */
 
@@ -66,6 +82,27 @@ function fmtBytes(n: number | null | undefined): string {
     i += 1;
   }
   return i === 0 ? `${v} ${units[i]}` : `${v.toFixed(1)} ${units[i]}`;
+}
+
+function fileIcon(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["jpg", "jpeg", "png", "gif", "svg", "webp", "bmp"].includes(ext)) return "bi-file-earmark-image";
+  if (ext === "pdf") return "bi-file-earmark-pdf";
+  if (["doc", "docx"].includes(ext)) return "bi-file-earmark-word";
+  if (["xls", "xlsx", "csv"].includes(ext)) return "bi-file-earmark-excel";
+  if (["ppt", "pptx"].includes(ext)) return "bi-file-earmark-slides";
+  if (["zip", "gz", "tar", "bz2", "7z", "rar"].includes(ext)) return "bi-file-earmark-zip";
+  if (["mp4", "mov", "avi", "mkv", "webm"].includes(ext)) return "bi-file-earmark-play";
+  if (["mp3", "wav", "ogg", "flac", "m4a"].includes(ext)) return "bi-file-earmark-music";
+  if (["js", "ts", "py", "java", "c", "cpp", "cs", "go", "rs", "rb", "php", "html", "css", "json", "xml", "yaml", "yml"].includes(ext)) return "bi-file-earmark-code";
+  if (["txt", "md", "log"].includes(ext)) return "bi-file-earmark-text";
+  return "bi-file-earmark";
+}
+
+function resetPagination(): void {
+  state.cursors = [null];
+  state.page = 0;
+  state.hasNextPage = false;
 }
 
 /* ----------------------------- UI state ----------------------------- */
@@ -123,6 +160,7 @@ function setCrumbs(): void {
     a.addEventListener("click", (e) => {
       e.preventDefault();
       state.prefix = prefix;
+      resetPagination();
       void refresh();
     });
     li.appendChild(a);
@@ -151,6 +189,7 @@ function setCrumbs(): void {
       a.addEventListener("click", (e) => {
         e.preventDefault();
         state.prefix = target;
+        resetPagination();
         void refresh();
       });
       li.appendChild(a);
@@ -299,6 +338,7 @@ function render(entries: Entry[]): void {
       btn.innerHTML = `<i class="bi bi-folder2 me-2 opacity-75"></i>${entry.name}`;
       btn.addEventListener("click", () => {
         state.prefix = entry.path;
+        resetPagination();
         void refresh();
       });
 
@@ -306,7 +346,8 @@ function render(entries: Entry[]): void {
       tdPath.textContent = entry.path;
       tdSize.textContent = "";
     } else {
-      tdName.innerHTML = `<i class="bi bi-file-earmark me-2 opacity-75"></i>${entry.name}`;
+      const icon = fileIcon(entry.name);
+      tdName.innerHTML = `<i class="bi ${icon} me-2 opacity-75"></i>${entry.name}`;
       tdPath.textContent = entry.path;
       tdSize.textContent = fmtBytes(entry.size);
       tdAct.appendChild(makeFileActions(entry));
@@ -320,6 +361,73 @@ function render(entries: Entry[]): void {
   }
 }
 
+function renderPagination(): void {
+  const host = el.pageControls();
+  host.innerHTML = "";
+
+  if (!state.vault) return;
+
+  // Prev button
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.className = "btn btn-sm btn-outline-secondary";
+  prevBtn.innerHTML = `<i class="bi bi-chevron-left"></i>`;
+  prevBtn.disabled = state.page === 0;
+  prevBtn.addEventListener("click", () => {
+    state.page--;
+    void refresh();
+  });
+
+  // Page label
+  const pageLabel = document.createElement("span");
+  pageLabel.className = "text-muted";
+  pageLabel.textContent = `Page ${state.page + 1}`;
+
+  // Next button
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = "btn btn-sm btn-outline-secondary";
+  nextBtn.innerHTML = `<i class="bi bi-chevron-right"></i>`;
+  nextBtn.disabled = !state.hasNextPage;
+  nextBtn.addEventListener("click", () => {
+    state.page++;
+    void refresh();
+  });
+
+  // Nav group (left side)
+  const navGroup = document.createElement("div");
+  navGroup.className = "d-flex align-items-center gap-2";
+  navGroup.appendChild(prevBtn);
+  navGroup.appendChild(pageLabel);
+  navGroup.appendChild(nextBtn);
+
+  // Page size selector (right side)
+  const sizeLabel = document.createElement("label");
+  sizeLabel.className = "text-muted d-flex align-items-center gap-1";
+
+  const sizeSelect = document.createElement("select");
+  sizeSelect.className = "form-select form-select-sm";
+  sizeSelect.style.width = "auto";
+  for (const size of [25, 50, 100, 200]) {
+    const opt = document.createElement("option");
+    opt.value = String(size);
+    opt.textContent = String(size);
+    opt.selected = size === state.pageSize;
+    sizeSelect.appendChild(opt);
+  }
+  sizeSelect.addEventListener("change", () => {
+    state.pageSize = Number(sizeSelect.value);
+    resetPagination();
+    void refresh();
+  });
+
+  sizeLabel.appendChild(document.createTextNode("Per page:"));
+  sizeLabel.appendChild(sizeSelect);
+
+  host.appendChild(navGroup);
+  host.appendChild(sizeLabel);
+}
+
 /* ----------------------------- API flows ----------------------------- */
 
 async function refresh(): Promise<void> {
@@ -328,26 +436,31 @@ async function refresh(): Promise<void> {
 
   if (!state.vault) {
     render([]);
+    renderPagination();
     return;
   }
 
-  const allObjects: BackendObject[] = [];
-  let cursor: string | null = null;
-  do {
-    const params = new URLSearchParams();
-    if (state.prefix) params.set("prefix", state.prefix);
-    if (cursor) params.set("cursor", cursor);
-    const qsPart = params.size ? `?${params.toString()}` : "";
-    const page = await apiJson<ObjectPage>(
-      `/api/v1/files/${encodeURIComponent(state.vault!)}/objects/${qsPart}`
-    );
-    allObjects.push(...page.objects);
-    // Display results incrementally as each page is loaded.
-    render(toEntries(allObjects, state.prefix));
-    cursor = page.next_cursor;
-  } while (cursor !== null);
+  const params = new URLSearchParams();
+  if (state.prefix) params.set("prefix", state.prefix);
+  const cursor = state.cursors[state.page];
+  if (cursor) params.set("cursor", cursor);
+  params.set("page_size", String(state.pageSize));
 
-  render(toEntries(allObjects, state.prefix));
+  const page = await apiJson<ObjectPage>(
+    `/api/v1/files/${encodeURIComponent(state.vault!)}/objects/?${params.toString()}`
+  );
+
+  // Store next cursor for forward navigation
+  if (page.next_cursor) {
+    state.cursors[state.page + 1] = page.next_cursor;
+    state.hasNextPage = true;
+  } else {
+    state.hasNextPage = false;
+  }
+
+  render(toEntries(page.objects, state.prefix));
+  renderPagination();
+
   el.up().disabled = state.prefix === "";
   updateUploadButtonState();
 }
@@ -425,6 +538,7 @@ function goUp(): void {
   const parts = state.prefix.split("/").filter(Boolean);
   parts.pop();
   state.prefix = parts.length ? `${parts.join("/")}/` : "";
+  resetPagination();
   void refresh();
 }
 
@@ -469,6 +583,7 @@ async function loadVaults(): Promise<void> {
 
       state.vault = it.name;
       state.prefix = "";
+      resetPagination();
       void refresh();
 
       for (const elItem of Array.from(host.querySelectorAll(".list-group-item"))) {
