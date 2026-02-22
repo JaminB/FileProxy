@@ -342,6 +342,8 @@ async function refresh(): Promise<void> {
       `/api/v1/files/${encodeURIComponent(state.vault!)}/objects/${qsPart}`
     );
     allObjects.push(...page.objects);
+    // Display results incrementally as each page is loaded.
+    render(toEntries(allObjects, state.prefix));
     cursor = page.next_cursor;
   } while (cursor !== null);
 
