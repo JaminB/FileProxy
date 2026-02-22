@@ -258,9 +258,20 @@ async function refresh() {
         render([]);
         return;
     }
-    const qsPart = state.prefix ? `?prefix=${encodeURIComponent(state.prefix)}` : "";
-    const objects = await apiJson(`/api/v1/files/${encodeURIComponent(state.vault)}/objects/${qsPart}`);
-    render(toEntries(objects, state.prefix));
+    const allObjects = [];
+    let cursor = null;
+    do {
+        const params = new URLSearchParams();
+        if (state.prefix)
+            params.set("prefix", state.prefix);
+        if (cursor)
+            params.set("cursor", cursor);
+        const qsPart = params.size ? `?${params.toString()}` : "";
+        const page = await apiJson(`/api/v1/files/${encodeURIComponent(state.vault)}/objects/${qsPart}`);
+        allObjects.push(...page.objects);
+        cursor = page.next_cursor;
+    } while (cursor !== null);
+    render(toEntries(allObjects, state.prefix));
     el.up().disabled = state.prefix === "";
     updateUploadButtonState();
 }

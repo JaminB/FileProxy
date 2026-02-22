@@ -17,8 +17,9 @@ from core.backends.base import (BackendConnectionError, BackendDeleteError,
                                 BackendTestError, BackendWriteError)
 
 from ..serializers import (BackendObjectSerializer, DeleteFileSerializer,
-                           EnumerateQuerySerializer, ReadFileQuerySerializer,
-                           VaultItemMetaSerializer, WriteFileSerializer)
+                           EnumeratePageSerializer, EnumerateQuerySerializer,
+                           ReadFileQuerySerializer, VaultItemMetaSerializer,
+                           WriteFileSerializer)
 from ..services import (VaultItemNotFound, get_backend_for_user_vault_item,
                         vault_items_for_user)
 
@@ -89,13 +90,14 @@ class FilesViewSet(viewsets.ViewSet):
     def objects(self, request, vault_item_name: str = ""):
         try:
             backend = self._backend(request, vault_item_name)
-
             q = EnumerateQuerySerializer(data=request.query_params)
             q.is_valid(raise_exception=True)
-            prefix = q.validated_data.get("prefix") or None
-
-            objs = list(backend.enumerate(prefix=prefix))
-            return Response(BackendObjectSerializer(objs, many=True).data)
+            page = backend.enumerate_page(
+                prefix=q.validated_data.get("prefix") or None,
+                cursor=q.validated_data.get("cursor") or None,
+                page_size=q.validated_data["page_size"],
+            )
+            return Response(EnumeratePageSerializer(page).data)
         except Exception as e:  # noqa: BLE001
             return self._error(e)
 
