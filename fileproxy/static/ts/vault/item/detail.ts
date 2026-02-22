@@ -1,10 +1,15 @@
 import { setFlash } from "../../utils/dom.js";
 
+const KIND_META: Record<string, { label: string; src: string }> = {
+  aws_s3:         { label: "Amazon S3",    src: "/static/images/logos/s3.svg" },
+  gdrive_oauth2:  { label: "Google Drive", src: "/static/images/logos/gdrive.svg" },
+  dropbox_oauth2: { label: "Dropbox",      src: "/static/images/logos/dropbox.png" },
+};
+
 type VaultItemDetail = {
   id: number;
   name: string;
   kind: string;
-  bucket?: string | null;
   created_at: string;
   updated_at: string;
   rotated_at: string | null;
@@ -72,11 +77,23 @@ function fmtDate(iso: string | null): string {
 
 function render(item: VaultItemDetail): void {
   qs<HTMLElement>("#item-title").textContent = item.name;
-  qs<HTMLElement>("#item-subtitle").textContent = "Credential metadata and actions.";
 
   qs<HTMLElement>("#meta-name").textContent = item.name;
-  qs<HTMLElement>("#meta-kind").textContent = item.kind;
-  qs<HTMLElement>("#meta-bucket").textContent = item.bucket ?? "—";
+
+  const kindEl = qs<HTMLElement>("#meta-kind");
+  const km = KIND_META[item.kind ?? ""];
+  if (km) {
+    const img = document.createElement("img");
+    img.src = km.src; img.alt = ""; img.width = 14; img.height = 14;
+    img.className = "me-1 opacity-75";
+    img.setAttribute("aria-hidden", "true");
+    kindEl.innerHTML = "";
+    kindEl.appendChild(img);
+    kindEl.appendChild(document.createTextNode(km.label));
+  } else {
+    kindEl.textContent = item.kind;
+  }
+
   qs<HTMLElement>("#meta-created").textContent = fmtDate(item.created_at);
   qs<HTMLElement>("#meta-updated").textContent = fmtDate(item.updated_at);
   qs<HTMLElement>("#meta-rotated").textContent = fmtDate(item.rotated_at);
