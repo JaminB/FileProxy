@@ -7,7 +7,7 @@ from typing import Any
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaInMemoryUpload, MediaIoBaseDownload
+from googleapiclient.http import MediaInMemoryUpload, MediaIoBaseDownload, MediaIoBaseUpload
 import google.auth.exceptions
 import google.oauth2.credentials
 
@@ -215,6 +215,63 @@ class GDriveBackend(Backend):
                 ).execute()
         except HttpError as e:
             raise BackendWriteError(f"GDrive write failed (path={path}): {e}") from e
+        except google.auth.exceptions.RefreshError as e:
+            raise BackendWriteError(f"GDrive auth refresh failed: {e}") from e
+
+    def read_stream(self, path: str):
+        folder_path, filename = self._split_path(path)
+        try:
+            folder_id = self._resolve_folder(folder_path)
+            if folder_id is None:
+                raise BackendReadError(f"GDrive read_stream failed: folder not found (path={path})")
+
+            file_id = self._find_child(folder_id, filename)
+            if file_id is None:
+                raise BackendReadError(f"GDrive read_stream failed: file not found (path={path})")
+
+            request = self._service.files().get_media(fileId=file_id)
+            buf = io.BytesIO()
+            downloader = MediaIoBaseDownload(buf, request, chunksize=8 * 1024 * 1024)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+                chunk = buf.getvalue()
+                buf.seek(0)
+                buf.truncate(0)
+                yield chunk
+        except BackendReadError:
+            raise
+        except HttpError as e:
+            raise BackendReadError(f"GDrive read_stream failed (path={path}): {e}") from e
+        except google.auth.exceptions.RefreshError as e:
+            raise BackendReadError(f"GDrive auth refresh failed: {e}") from e
+
+    def write_stream(self, path: str, stream) -> None:
+        folder_path, filename = self._split_path(path)
+        try:
+            folder_id = self._get_or_create_folder(folder_path)
+            existing_id = self._find_child(folder_id, filename)
+            media = MediaIoBaseUpload(
+                stream,
+                mimetype="application/octet-stream",
+                chunksize=8 * 1024 * 1024,
+                resumable=True,
+            )
+
+            if existing_id:
+                self._service.files().update(
+                    fileId=existing_id,
+                    media_body=media,
+                ).execute()
+            else:
+                meta = {"name": filename, "parents": [folder_id]}
+                self._service.files().create(
+                    body=meta,
+                    media_body=media,
+                    fields="id",
+                ).execute()
+        except HttpError as e:
+            raise BackendWriteError(f"GDrive write_stream failed (path={path}): {e}") from e
         except google.auth.exceptions.RefreshError as e:
             raise BackendWriteError(f"GDrive auth refresh failed: {e}") from e
 
