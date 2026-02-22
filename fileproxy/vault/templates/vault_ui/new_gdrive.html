@@ -53,30 +53,6 @@
   <div class="row justify-content-center">
     <div class="col-12 col-md-10 col-lg-8 col-xl-6">
 
-      <!-- Auth method selector -->
-      <div class="mb-4">
-        <label class="form-label fw-semibold">Authentication method</label>
-        <div class="d-flex gap-2 flex-wrap">
-          <button
-            type="button"
-            class="btn btn-sm btn-primary"
-            aria-pressed="true"
-          >OAuth 2.0</button>
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            disabled
-            title="Coming soon"
-          >Service Account</button>
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            disabled
-            title="Coming soon"
-          >API Key</button>
-        </div>
-      </div>
-
       {% if not gdrive_enabled %}
         <div class="alert alert-warning">
           Google Drive is not configured on this server. An administrator must set
