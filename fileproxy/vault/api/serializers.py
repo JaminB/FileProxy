@@ -102,5 +102,10 @@ class GDriveInitiateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
 
 
+class DropboxInitiateSerializer(serializers.Serializer):
+    """Validates the pre-OAuth form fields for Dropbox."""
+    name = serializers.CharField(max_length=120)
+
+
 class VaultItemRenameSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
