@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+  <div class="mb-4">
+    <div class="fw-semibold small mb-1">
+      <i class="bi bi-house me-1 opacity-75"></i>Home
+    </div>
+    <p class="text-secondary small mb-0">Manage cloud storage credentials and browse files.</p>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-4">
+      <a href="/vault/" class="text-decoration-none">
+        <div class="card ab-card h-100">
+          <div class="card-body">
+            <div class="mb-2">
+              <i class="bi bi-safe fs-3 text-secondary"></i>
+            </div>
+            <h6 class="card-title fw-semibold mb-1">Vault</h6>
+            <p class="card-text text-secondary small mb-0">Manage encrypted cloud storage credentials.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="/files/" class="text-decoration-none">
+        <div class="card ab-card h-100">
+          <div class="card-body">
+            <div class="mb-2">
+              <i class="bi bi-folder2-open fs-3 text-secondary"></i>
+            </div>
+            <h6 class="card-title fw-semibold mb-1">Files</h6>
+            <p class="card-text text-secondary small mb-0">Browse and manage files across backends.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="/api/docs/" class="text-decoration-none">
+        <div class="card ab-card h-100">
+          <div class="card-body">
+            <div class="mb-2">
+              <i class="bi bi-file-earmark-code fs-3 text-secondary"></i>
+            </div>
+            <h6 class="card-title fw-semibold mb-1">API Docs</h6>
+            <p class="card-text text-secondary small mb-0">Swagger UI — interactive API documentation.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+{% endblock %}
