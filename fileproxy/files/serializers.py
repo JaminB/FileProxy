@@ -11,7 +11,7 @@ class BackendObjectSerializer(serializers.Serializer):
 
 class EnumerateQuerySerializer(serializers.Serializer):
     prefix = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    cursor = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    cursor = serializers.CharField(required=False, allow_null=True)
     page_size = serializers.IntegerField(required=False, default=1000, min_value=1, max_value=1000)
 
 
