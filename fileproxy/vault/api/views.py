@@ -11,7 +11,7 @@ from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
 from ..models import VaultItem
-from .serializers import (DropboxInitiateSerializer, GDriveInitiateSerializer,
+from .serializers import (DropboxCreateSerializer, GDriveCreateSerializer,
                           S3CredentialsCreateSerializer, VaultItemListSerializer,
                           VaultItemRenameSerializer)
 
@@ -60,8 +60,8 @@ class VaultItemViewSet(viewsets.ModelViewSet):
             VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED
         )
 
-    @action(detail=False, methods=["post"], url_path="gdrive/initiate")
-    def gdrive_initiate(self, request):
+    @action(detail=False, methods=["post"], url_path="gdrive")
+    def gdrive_create(self, request):
         client_id = django_settings.GOOGLE_CLIENT_ID
         client_secret = django_settings.GOOGLE_CLIENT_SECRET
         if not client_id or not client_secret:
@@ -70,7 +70,7 @@ class VaultItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        serializer = GDriveInitiateSerializer(data=request.data)
+        serializer = GDriveCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         state = secrets_mod.token_urlsafe(32)
@@ -98,8 +98,8 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         )
         return Response({"auth_url": auth_url})
 
-    @action(detail=False, methods=["post"], url_path="dropbox/initiate")
-    def dropbox_initiate(self, request):
+    @action(detail=False, methods=["post"], url_path="dropbox")
+    def dropbox_create(self, request):
         app_key = django_settings.DROPBOX_APP_KEY
         app_secret = django_settings.DROPBOX_APP_SECRET
         if not app_key or not app_secret:
@@ -108,7 +108,7 @@ class VaultItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        serializer = DropboxInitiateSerializer(data=request.data)
+        serializer = DropboxCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         state = secrets_mod.token_urlsafe(32)
