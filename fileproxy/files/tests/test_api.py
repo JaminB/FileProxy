@@ -112,7 +112,10 @@ class _FakeS3Client:
             try:
                 start = all_keys.index(ContinuationToken) + 1
             except ValueError:
-                start = 0
+                # Simulate S3 behavior: invalid continuation tokens result in an error
+                raise self._client_error(
+                    "InvalidArgument", "Invalid or unknown continuation token"
+                )
         page_keys = all_keys[start: start + MaxKeys]
         result = {}
         if page_keys:
