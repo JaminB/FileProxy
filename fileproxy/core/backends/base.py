@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping, Protocol, runtime_checkable
+from typing import Any, BinaryIO, Iterable, Iterator, Mapping, Protocol, runtime_checkable
 
 
 class BackendError(RuntimeError):
@@ -125,3 +125,11 @@ class Backend(ABC):
             BackendDeleteError: If delete fails.
         """
         raise NotImplementedError
+
+    def read_stream(self, path: str) -> Iterator[bytes]:
+        """Yield object bytes as chunks. Default: reads all at once."""
+        yield self.read(path)
+
+    def write_stream(self, path: str, stream: BinaryIO) -> None:
+        """Write from a file-like stream. Default: reads all and calls write()."""
+        self.write(path, stream.read())

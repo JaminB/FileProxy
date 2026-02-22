@@ -37,32 +37,6 @@ function fmtBytes(n) {
     }
     return i === 0 ? `${v} ${units[i]}` : `${v.toFixed(1)} ${units[i]}`;
 }
-function b64ToBytes(b64) {
-    const bin = atob(b64);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++)
-        out[i] = bin.charCodeAt(i);
-    return out;
-}
-function bytesToB64(bytes) {
-    const chunkSize = 0x8000;
-    let bin = "";
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-        bin += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-    }
-    return btoa(bin);
-}
-function downloadBytes(filename, bytes) {
-    const blob = new Blob([bytes]);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename || "download";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-}
 /* ----------------------------- UI state ----------------------------- */
 function setUploadEnabled(enabled) {
     el.uploadFile().disabled = !enabled;
@@ -200,16 +174,16 @@ function makeFileActions(entry) {
         li.innerHTML = `<hr class="dropdown-divider">`;
         menu.appendChild(li);
     };
-    addItem(`<i class="bi bi-download me-2"></i>Download`, async () => {
+    addItem(`<i class="bi bi-download me-2"></i>Download`, () => {
         if (!state.vault)
             return;
-        try {
-            const resp = await apiJson(`/api/v1/files/${encodeURIComponent(state.vault)}/read/?path=${encodeURIComponent(entry.path)}`);
-            downloadBytes(entry.name || "download", b64ToBytes(resp.data_base64));
-        }
-        catch (err) {
-            setFlash(err instanceof Error ? err.message : "Download failed.", "error");
-        }
+        const url = `/api/v1/files/${encodeURIComponent(state.vault)}/download/?path=${encodeURIComponent(entry.path)}`;
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = entry.name || "download";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
     });
     addDivider();
     addItem(`<i class="bi bi-trash me-2"></i>Delete`, async () => {

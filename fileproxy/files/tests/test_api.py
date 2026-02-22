@@ -14,6 +14,23 @@ from core.backends.base import BackendTestError
 User = get_user_model()
 
 
+class _FakeStreamingBody:
+    """Minimal stand-in for boto3's StreamingBody that supports both read() and iter_chunks()."""
+
+    def __init__(self, data: bytes):
+        self._stream = io.BytesIO(data)
+
+    def read(self) -> bytes:
+        return self._stream.read()
+
+    def iter_chunks(self, chunk_size: int = 1024 * 1024):
+        while True:
+            chunk = self._stream.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+
+
 class _FakePaginator:
     def __init__(self, client: "_FakeS3Client"):
         self._client = client
@@ -66,7 +83,7 @@ class _FakeS3Client:
             raise self._client_error("404", "NoSuchBucket")
         if Key not in self._buckets[Bucket]:
             raise self._client_error("NoSuchKey", "NotFound")
-        return {"Body": io.BytesIO(self._buckets[Bucket][Key])}
+        return {"Body": _FakeStreamingBody(self._buckets[Bucket][Key])}
 
     def delete_object(self, *, Bucket: str, Key: str):
         if Bucket not in self._buckets:
@@ -79,6 +96,11 @@ class _FakeS3Client:
         if Key not in self._buckets[Bucket]:
             raise self._client_error("404", "NotFound")
         return {"ContentLength": len(self._buckets[Bucket][Key])}
+
+    def upload_fileobj(self, fileobj, bucket: str, key: str, Config=None):
+        if bucket not in self._buckets:
+            raise self._client_error("404", "NoSuchBucket")
+        self._buckets[bucket][key] = fileobj.read()
 
     def get_paginator(self, operation_name: str):
         if operation_name != "list_objects_v2":
@@ -552,3 +574,59 @@ class FilesTestEndpointTests(_BaseFilesTest):
             self.assertIn("detail", resp.data)
         finally:
             self._fake_s3.head_bucket = original_head_bucket
+
+
+class FilesDownloadTests(_BaseFilesTest):
+    def test_download_returns_binary_response(self):
+        payload = b"\x00\x01\x02binary content\xff"
+        path = "dl/test.bin"
+        self._write(path, payload)
+
+        resp = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/download/", {"path": path}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
+        self.assertIn("attachment", resp.get("Content-Disposition", ""))
+        self.assertEqual(b"".join(resp.streaming_content), payload)
+
+    def test_download_missing_path_returns_400(self):
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/download/")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_download_nonexistent_path_returns_400(self):
+        resp = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/download/",
+            {"path": "does/not/exist.bin"},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_download_unknown_vault_item_returns_404(self):
+        resp = self.client.get(
+            "/api/v1/files/no-such-item/download/", {"path": "anything.bin"}
+        )
+        self.assertEqual(resp.status_code, 404)
+        self.assertIn("detail", resp.data)
+
+
+class FilesWriteStreamTests(_BaseFilesTest):
+    def test_write_stream_via_multipart_roundtrip(self):
+        """Large binary data written via multipart (write_stream) round-trips cleanly."""
+        path = "stream/large.bin"
+        # 1 MB of repeating bytes — exercises the upload_fileobj path
+        data = bytes(range(256)) * (1024 * 4)
+
+        resp = self.client.post(
+            f"/api/v1/files/{self.vault_item_name}/write/",
+            {"path": path, "file": io.BytesIO(data)},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertEqual(resp.data["path"], path)
+
+        # Confirm it lands correctly via the read endpoint
+        resp = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/read/", {"path": path}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(base64.b64decode(resp.data["data_base64"]), data)

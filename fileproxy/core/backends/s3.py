@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional
+from typing import Any, BinaryIO, Iterable, Iterator, Optional
 
 import boto3
+from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 from .base import (Backend, BackendConfig, BackendDeleteError,
@@ -241,6 +242,36 @@ class S3Backend(Backend):
             raise BackendDeleteError(
                 f"S3 delete failed (path={path}): connectivity error"
             ) from e
+
+    def read_stream(self, path: str) -> Iterator[bytes]:
+        """Stream object bytes from S3 in 8 MB chunks."""
+        try:
+            resp = self._client.get_object(Bucket=self._bucket, Key=path)
+        except NoCredentialsError as e:
+            raise BackendReadError(f"S3 read failed (path={path}): missing AWS credentials") from e
+        except ClientError as e:
+            code = (e.response.get("Error") or {}).get("Code")
+            raise BackendReadError(f"S3 read failed (path={path}) (code={code})") from e
+        except BotoCoreError as e:
+            raise BackendReadError(f"S3 read failed (path={path}): connectivity error") from e
+        return resp["Body"].iter_chunks(chunk_size=8 * 1024 * 1024)
+
+    def write_stream(self, path: str, stream: BinaryIO) -> None:
+        """Upload a file-like object to S3 using multipart for files >= 8 MB."""
+        from boto3.s3.transfer import TransferConfig
+        config = TransferConfig(
+            multipart_threshold=8 * 1024 * 1024,
+            multipart_chunksize=8 * 1024 * 1024,
+        )
+        try:
+            self._client.upload_fileobj(stream, self._bucket, path, Config=config)
+        except (S3UploadFailedError, NoCredentialsError) as e:
+            raise BackendWriteError(f"S3 write_stream failed (path={path}): {e}") from e
+        except ClientError as e:
+            code = (e.response.get("Error") or {}).get("Code")
+            raise BackendWriteError(f"S3 write_stream failed (path={path}) (code={code})") from e
+        except BotoCoreError as e:
+            raise BackendWriteError(f"S3 write_stream failed (path={path}): connectivity error") from e
 
     def _require_setting_str(self, key: str) -> str:
         val = self.config.settings.get(key)

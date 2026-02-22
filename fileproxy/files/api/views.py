@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 
+from django.http import StreamingHttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -128,7 +129,8 @@ class FilesViewSet(viewsets.ViewSet):
                     raise ValidationError({"path": "This field is required."})
                 if not file_obj:
                     raise ValidationError({"file": "This field is required."})
-                raw = file_obj.read()
+                backend.write_stream(path, file_obj)
+                return Response({"detail": "OK", "path": path})
 
             elif "application/octet-stream" in content_type:
                 path = (request.query_params.get("path") or "").strip()
@@ -159,5 +161,22 @@ class FilesViewSet(viewsets.ViewSet):
 
             backend.delete(path)
             return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:  # noqa: BLE001
+            return self._error(e)
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, vault_item_name: str = ""):
+        """GET /api/v1/files/{vault_item_name}/download/?path=... — binary streaming download."""
+        try:
+            backend = self._backend(request, vault_item_name)
+            q = ReadFileQuerySerializer(data=request.query_params)
+            q.is_valid(raise_exception=True)
+            path = q.validated_data["path"]
+            filename = path.rsplit("/", 1)[-1] or "download"
+
+            chunks = backend.read_stream(path)
+            resp = StreamingHttpResponse(chunks, content_type="application/octet-stream")
+            resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return resp
         except Exception as e:  # noqa: BLE001
             return self._error(e)

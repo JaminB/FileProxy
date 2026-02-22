@@ -14,8 +14,6 @@ type VaultItemMeta = {
 
 type BackendObject = { name: string; path: string; size: number | null };
 
-type ReadResponse = { path: string; data_base64: string };
-
 type Entry =
   | { kind: "folder"; name: string; path: string }
   | { kind: "file"; name: string; path: string; size: number | null };
@@ -65,34 +63,6 @@ function fmtBytes(n: number | null | undefined): string {
     i += 1;
   }
   return i === 0 ? `${v} ${units[i]}` : `${v.toFixed(1)} ${units[i]}`;
-}
-
-function b64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-function bytesToB64(bytes: Uint8Array): string {
-  const chunkSize = 0x8000;
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(bin);
-}
-
-function downloadBytes(filename: string, bytes: Uint8Array): void {
-  const blob = new Blob([bytes as unknown as BlobPart]);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename || "download";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 /* ----------------------------- UI state ----------------------------- */
@@ -257,16 +227,15 @@ function makeFileActions(entry: Extract<Entry, { kind: "file" }>): HTMLElement {
     menu.appendChild(li);
   };
 
-  addItem(`<i class="bi bi-download me-2"></i>Download`, async () => {
+  addItem(`<i class="bi bi-download me-2"></i>Download`, () => {
     if (!state.vault) return;
-    try {
-      const resp = await apiJson<ReadResponse>(
-        `/api/v1/files/${encodeURIComponent(state.vault)}/read/?path=${encodeURIComponent(entry.path)}`
-      );
-      downloadBytes(entry.name || "download", b64ToBytes(resp.data_base64));
-    } catch (err) {
-      setFlash(err instanceof Error ? err.message : "Download failed.", "error");
-    }
+    const url = `/api/v1/files/${encodeURIComponent(state.vault)}/download/?path=${encodeURIComponent(entry.path)}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = entry.name || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   });
 
   addDivider();
