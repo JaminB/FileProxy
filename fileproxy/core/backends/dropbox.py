@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import BinaryIO, Iterator
 
 import dropbox
 import dropbox.exceptions
@@ -147,6 +148,55 @@ class DropboxBackend(Backend):
             )
         except dropbox.exceptions.ApiError as e:
             raise BackendWriteError(f"Dropbox write failed (path={path}): {e}") from e
+        except dropbox.exceptions.AuthError as e:
+            raise BackendWriteError(f"Dropbox auth failed: {e}") from e
+
+    def read_stream(self, path: str) -> Iterator[bytes]:
+        abs_path = _ensure_abs(path)
+        try:
+            _, resp = self._dbx.files_download(abs_path)
+        except dropbox.exceptions.ApiError as e:
+            raise BackendReadError(f"Dropbox read_stream failed (path={path}): {e}") from e
+        except dropbox.exceptions.AuthError as e:
+            raise BackendReadError(f"Dropbox auth failed: {e}") from e
+        return resp.iter_content(chunk_size=8 * 1024 * 1024)
+
+    def write_stream(self, path: str, stream: BinaryIO) -> None:
+        abs_path = _ensure_abs(path)
+        chunk_size = 8 * 1024 * 1024
+        try:
+            first_chunk = stream.read(chunk_size)
+            if len(first_chunk) < chunk_size:
+                # Small file — use simple upload
+                self._dbx.files_upload(
+                    first_chunk,
+                    abs_path,
+                    mode=dropbox.files.WriteMode.overwrite,
+                )
+                return
+
+            # Large file — use upload session
+            result = self._dbx.files_upload_session_start(first_chunk)
+            session_id = result.session_id
+            offset = len(first_chunk)
+
+            while True:
+                chunk = stream.read(chunk_size)
+                cursor = dropbox.files.UploadSessionCursor(
+                    session_id=session_id, offset=offset
+                )
+                if len(chunk) < chunk_size:
+                    # Last chunk (possibly empty)
+                    commit = dropbox.files.CommitInfo(
+                        path=abs_path,
+                        mode=dropbox.files.WriteMode.overwrite,
+                    )
+                    self._dbx.files_upload_session_finish(chunk, cursor, commit)
+                    return
+                self._dbx.files_upload_session_append_v2(chunk, cursor)
+                offset += len(chunk)
+        except dropbox.exceptions.ApiError as e:
+            raise BackendWriteError(f"Dropbox write_stream failed (path={path}): {e}") from e
         except dropbox.exceptions.AuthError as e:
             raise BackendWriteError(f"Dropbox auth failed: {e}") from e
 
