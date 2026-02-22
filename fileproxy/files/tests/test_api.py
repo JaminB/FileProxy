@@ -119,7 +119,7 @@ class _FakeS3Client:
             result["Contents"] = [
                 {"Key": k, "Size": len(self._buckets[Bucket][k])} for k in page_keys
             ]
-        if start + MaxKeys < len(all_keys):
+        if page_keys and start + MaxKeys < len(all_keys):
             result["NextContinuationToken"] = page_keys[-1]
             result["IsTruncated"] = True
         else:
