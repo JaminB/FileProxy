@@ -44,3 +44,25 @@ class GoogleDriveOAuth2Credentials:
             client_secret=p["client_secret"],
             refresh_token=p["refresh_token"],
         )
+
+
+@dataclass(frozen=True)
+class DropboxOAuth2Credentials:
+    app_key: str
+    app_secret: str
+    refresh_token: str
+
+    def to_payload(self) -> Dict[str, Any]:
+        return {
+            "app_key": self.app_key,
+            "app_secret": self.app_secret,
+            "refresh_token": self.refresh_token,
+        }
+
+    @classmethod
+    def from_payload(cls, d: Dict[str, Any]) -> "DropboxOAuth2Credentials":
+        return cls(
+            app_key=d["app_key"],
+            app_secret=d["app_secret"],
+            refresh_token=d["refresh_token"],
+        )

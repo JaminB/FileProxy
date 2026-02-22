@@ -11,8 +11,9 @@ from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
 from ..models import VaultItem
-from .serializers import (GDriveInitiateSerializer, S3CredentialsCreateSerializer,
-                          VaultItemListSerializer, VaultItemRenameSerializer)
+from .serializers import (DropboxInitiateSerializer, GDriveInitiateSerializer,
+                          S3CredentialsCreateSerializer, VaultItemListSerializer,
+                          VaultItemRenameSerializer)
 
 
 def _default_scope_from_request(request) -> str:
@@ -95,6 +96,44 @@ class VaultItemViewSet(viewsets.ModelViewSet):
             prompt="consent",
             state=state,
         )
+        return Response({"auth_url": auth_url})
+
+    @action(detail=False, methods=["post"], url_path="dropbox/initiate")
+    def dropbox_initiate(self, request):
+        app_key = django_settings.DROPBOX_APP_KEY
+        app_secret = django_settings.DROPBOX_APP_SECRET
+        if not app_key or not app_secret:
+            return Response(
+                {"detail": "Dropbox is not configured on this server."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        serializer = DropboxInitiateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        state = secrets_mod.token_urlsafe(32)
+        redirect_uri = request.build_absolute_uri("/vault/oauth/dropbox/callback/")
+        request.session["dropbox_oauth_pending"] = {
+            "name": serializer.validated_data["name"],
+            "state": state,
+            "scope": _default_scope_from_request(request),
+            "redirect_uri": redirect_uri,
+        }
+
+        import dropbox as dbx_sdk
+        csrf_session = {}
+        flow = dbx_sdk.DropboxOAuth2Flow(
+            consumer_key=app_key,
+            redirect_uri=redirect_uri,
+            session=csrf_session,
+            csrf_token_session_key="csrf_token",
+            consumer_secret=app_secret,
+            token_access_type="offline",
+            scope=["account_info.read", "files.content.read", "files.content.write",
+                   "files.metadata.read", "files.metadata.write"],
+        )
+        auth_url = flow.start()
+        request.session["dropbox_oauth_pending"]["csrf_token"] = csrf_session.get("csrf_token")
         return Response({"auth_url": auth_url})
 
     @action(detail=True, methods=["post"])

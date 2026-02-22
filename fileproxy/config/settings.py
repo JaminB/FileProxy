@@ -35,6 +35,9 @@ VAULT_MASTER_KEY = env_bytes_b64url(
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET")
 
+DROPBOX_APP_KEY = env("DROPBOX_APP_KEY", default="")
+DROPBOX_APP_SECRET = env("DROPBOX_APP_SECRET", default="")
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 

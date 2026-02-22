@@ -78,5 +78,60 @@ def vault_oauth_gdrive_callback(request):
 
 
 @login_required
+def vault_new_dropbox_credentials(request):
+    dropbox_enabled = bool(
+        django_settings.DROPBOX_APP_KEY and django_settings.DROPBOX_APP_SECRET
+    )
+    return render(request, "vault_ui/new_dropbox.html", {"dropbox_enabled": dropbox_enabled})
+
+
+@login_required
+def vault_oauth_dropbox_callback(request):
+    pending = request.session.get("dropbox_oauth_pending")
+    error = request.GET.get("error")
+
+    if error or not pending:
+        return redirect("/vault/new/dropbox/?error=access_denied")
+
+    app_key = django_settings.DROPBOX_APP_KEY
+    app_secret = django_settings.DROPBOX_APP_SECRET
+    redirect_uri = pending.get("redirect_uri") or request.build_absolute_uri(
+        "/vault/oauth/dropbox/callback/"
+    )
+
+    try:
+        import dropbox as dbx_sdk
+
+        csrf_session = {"csrf_token": pending.get("csrf_token")}
+        flow = dbx_sdk.DropboxOAuth2Flow(
+            consumer_key=app_key,
+            redirect_uri=redirect_uri,
+            session=csrf_session,
+            csrf_token_session_key="csrf_token",
+            consumer_secret=app_secret,
+            token_access_type="offline",
+        )
+        result = flow.finish(request.GET)
+        refresh_token = result.refresh_token
+    except Exception:
+        return redirect("/vault/new/dropbox/?error=token_exchange_failed")
+    finally:
+        request.session.pop("dropbox_oauth_pending", None)
+
+    from vault.service import create_dropbox_oauth2_credentials
+
+    item = create_dropbox_oauth2_credentials(
+        scope=pending["scope"],
+        name=pending["name"],
+        secrets_obj={
+            "app_key": app_key,
+            "app_secret": app_secret,
+            "refresh_token": refresh_token,
+        },
+    )
+    return redirect(f"/vault/item/{item.id}/")
+
+
+@login_required
 def vault_item_page(request, item_id: int):
     return render(request, "vault_ui/item.html", {"item_id": item_id})
