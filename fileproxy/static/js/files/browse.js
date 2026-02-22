@@ -1,5 +1,6 @@
 import { qs as qsMaybe, setFlash } from "../utils/dom.js";
-import { apiJson, apiMultipart } from "../utils/api.js";
+import { apiJson } from "../utils/api.js";
+import { getCsrfToken } from "../utils/cookies.js";
 /* ----------------------------- DOM helpers ----------------------------- */
 function mustGet(selector, root = document) {
     const el = qsMaybe(selector, root);
@@ -21,6 +22,8 @@ const el = {
     uploadBtn: () => mustGet("#upload"),
     uploadHint: () => mustGet("#upload-hint"),
     uploadStatus: () => mustGet("#upload-status"),
+    uploadProgress: () => mustGet("#upload-progress"),
+    uploadProgressBar: () => mustGet("#upload-progress-bar"),
 };
 /* ----------------------------- State ----------------------------- */
 const state = { vault: null, prefix: "" };
@@ -263,6 +266,37 @@ async function refresh() {
     el.up().disabled = state.prefix === "";
     updateUploadButtonState();
 }
+function uploadWithProgress(url, formData, onProgress) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const csrf = getCsrfToken();
+        xhr.open("POST", url);
+        if (csrf)
+            xhr.setRequestHeader("X-CSRFToken", csrf);
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable)
+                onProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+            }
+            else {
+                let detail = `Request failed (${xhr.status})`;
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data?.detail)
+                        detail = String(data.detail);
+                }
+                catch { /* ignore parse errors */ }
+                reject(new Error(detail));
+            }
+        };
+        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.send(formData);
+    });
+}
 async function doUpload() {
     if (!state.vault)
         return;
@@ -277,11 +311,18 @@ async function doUpload() {
     const path = `${state.prefix}${name}`;
     el.uploadStatus().textContent = "Uploading…";
     el.uploadBtn().disabled = true;
+    const progressEl = el.uploadProgress();
+    const progressBar = el.uploadProgressBar();
+    progressEl.style.display = "block";
+    progressBar.style.width = "0%";
     try {
         const form = new FormData();
         form.append("path", path);
         form.append("file", file);
-        await apiMultipart(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form);
+        await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form, (pct) => {
+            progressBar.style.width = `${pct}%`;
+            progressBar.setAttribute("aria-valuenow", String(pct));
+        });
         el.uploadStatus().textContent = "Uploaded.";
         setFlash("Upload complete.", "success");
         el.uploadFile().value = "";
@@ -293,6 +334,7 @@ async function doUpload() {
         setFlash(e instanceof Error ? e.message : "Upload failed.", "error");
     }
     finally {
+        progressEl.style.display = "none";
         updateUploadButtonState();
     }
 }

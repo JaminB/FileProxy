@@ -106,3 +106,13 @@
   position: relative;
   z-index: 0;
 }
+
+/* Fixed width for the name input column */
+.files-upload-name {
+  min-width: 160px;
+}
+
+/* Smooth progress bar fill */
+#upload-progress-bar {
+  transition: width 0.15s ease;
+}
