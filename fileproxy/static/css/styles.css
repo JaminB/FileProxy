@@ -129,3 +129,11 @@
 .files-pane {
   padding: 0.25rem;
 }
+
+/* Vault form panels — fallback if still used */
+.form-panel {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}

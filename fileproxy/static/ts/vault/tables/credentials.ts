@@ -1,6 +1,12 @@
 import { qs, setFlash } from "../../utils/dom.js";
 import { getCsrfToken } from "../../utils/cookies.js";
 
+const KIND_META: Record<string, { label: string; src: string }> = {
+  aws_s3:         { label: "Amazon S3",    src: "/static/images/logos/s3.svg" },
+  gdrive_oauth2:  { label: "Google Drive", src: "/static/images/logos/gdrive.svg" },
+  dropbox_oauth2: { label: "Dropbox",      src: "/static/images/logos/dropbox.png" },
+};
+
 async function deleteVaultItem(id: string | number): Promise<Response> {
   const csrf = getCsrfToken();
   return fetch(`/api/v1/vault-items/${id}/`, {
@@ -98,7 +104,17 @@ function renderItems(tbody: HTMLTableSectionElement, items: VaultItem[]): void {
     nameTd.textContent = item.name ?? "—";
 
     const kindTd = document.createElement("td");
-    kindTd.textContent = item.kind ?? "—";
+    const km = KIND_META[item.kind ?? ""];
+    if (km) {
+      const img = document.createElement("img");
+      img.src = km.src; img.alt = ""; img.width = 14; img.height = 14;
+      img.className = "me-1 opacity-75";
+      img.setAttribute("aria-hidden", "true");
+      kindTd.appendChild(img);
+      kindTd.appendChild(document.createTextNode(km.label));
+    } else {
+      kindTd.textContent = item.kind ?? "—";
+    }
 
     const updatedTd = document.createElement("td");
     updatedTd.textContent = fmtDate(item.updated);

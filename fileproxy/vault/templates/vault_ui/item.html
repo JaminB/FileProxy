@@ -14,41 +14,29 @@
   </nav>
 
   <!-- Header -->
-  <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
-    <div class="d-flex align-items-center gap-2">
-      <svg width="20" height="20" aria-hidden="true" class="text-secondary">
-        <use href="#i-vault"></use>
-      </svg>
-
-      <div>
-        <h1 class="h3 mb-1" id="item-title">Vault item</h1>
-        <p class="text-secondary mb-0" id="item-subtitle">Loading metadata…</p>
-      </div>
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <div class="fw-semibold small">
+      <i class="bi bi-shield-lock me-1 opacity-75"></i>
+      <span id="item-title">Vault item</span>
     </div>
-
-    <div class="d-flex gap-2 flex-wrap">
-      <button id="btn-test" class="btn btn-outline-secondary" type="button">Test</button>
-      <button id="btn-edit" class="btn btn-primary" type="button">Edit</button>
-      <button id="btn-delete" class="btn btn-outline-danger" type="button">Delete</button>
+    <div class="d-flex gap-2">
+      <button id="btn-test" class="btn btn-sm btn-outline-secondary" type="button">Test</button>
+      <button id="btn-edit" class="btn btn-sm btn-primary" type="button">Edit</button>
+      <button id="btn-delete" class="btn btn-sm btn-outline-danger" type="button">Delete</button>
     </div>
   </div>
 
   <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
 
   <!-- Metadata -->
-  <div class="card mb-3">
+  <div class="card ab-card files-card mb-3">
     <div class="card-body">
-      <h2 class="h5 mb-3">Metadata</h2>
-
       <dl class="row mb-0">
         <dt class="col-sm-3 text-secondary">Name</dt>
         <dd class="col-sm-9" id="meta-name"><span class="text-secondary">Loading…</span></dd>
 
         <dt class="col-sm-3 text-secondary">Kind</dt>
         <dd class="col-sm-9" id="meta-kind"><span class="text-secondary">Loading…</span></dd>
-
-        <dt class="col-sm-3 text-secondary">Bucket</dt>
-        <dd class="col-sm-9" id="meta-bucket"><span class="text-secondary">Loading…</span></dd>
 
         <dt class="col-sm-3 text-secondary">Created</dt>
         <dd class="col-sm-9" id="meta-created"><span class="text-secondary">Loading…</span></dd>
@@ -66,7 +54,7 @@
   </div>
 
   <!-- Edit panel (inline rename) -->
-  <div class="card" id="edit-panel" style="display:none;">
+  <div class="card ab-card files-card" id="edit-panel" style="display:none;">
     <div class="card-body">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <h2 class="h5 mb-0">Edit</h2>
@@ -78,8 +66,8 @@
       </div>
 
       <div class="d-flex justify-content-end gap-2">
-        <button id="btn-cancel-edit" class="btn btn-outline-secondary" type="button">Cancel</button>
-        <button id="btn-save" class="btn btn-primary" type="button">Save</button>
+        <button id="btn-cancel-edit" class="btn btn-sm btn-outline-secondary" type="button">Cancel</button>
+        <button id="btn-save" class="btn btn-sm btn-primary" type="button">Save</button>
       </div>
     </div>
   </div>

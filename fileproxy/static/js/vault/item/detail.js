@@ -1,4 +1,9 @@
 import { setFlash } from "../../utils/dom.js";
+const KIND_META = {
+    aws_s3: { label: "Amazon S3", src: "/static/images/logos/s3.svg" },
+    gdrive_oauth2: { label: "Google Drive", src: "/static/images/logos/gdrive.svg" },
+    dropbox_oauth2: { label: "Dropbox", src: "/static/images/logos/dropbox.png" },
+};
 function qs(selector, root = document) {
     const el = root.querySelector(selector);
     if (!el)
@@ -58,10 +63,24 @@ function fmtDate(iso) {
 }
 function render(item) {
     qs("#item-title").textContent = item.name;
-    qs("#item-subtitle").textContent = "Credential metadata and actions.";
     qs("#meta-name").textContent = item.name;
-    qs("#meta-kind").textContent = item.kind;
-    qs("#meta-bucket").textContent = item.bucket ?? "—";
+    const kindEl = qs("#meta-kind");
+    const km = KIND_META[item.kind ?? ""];
+    if (km) {
+        const img = document.createElement("img");
+        img.src = km.src;
+        img.alt = "";
+        img.width = 14;
+        img.height = 14;
+        img.className = "me-1 opacity-75";
+        img.setAttribute("aria-hidden", "true");
+        kindEl.innerHTML = "";
+        kindEl.appendChild(img);
+        kindEl.appendChild(document.createTextNode(km.label));
+    }
+    else {
+        kindEl.textContent = item.kind;
+    }
     qs("#meta-created").textContent = fmtDate(item.created_at);
     qs("#meta-updated").textContent = fmtDate(item.updated_at);
     qs("#meta-rotated").textContent = fmtDate(item.rotated_at);
