@@ -3,6 +3,7 @@ from __future__ import annotations
 import secrets as secrets_mod
 
 from django.conf import settings as django_settings
+from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -41,11 +42,11 @@ class VaultItemViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """GET /api/v1/vault-items/{id}/ (metadata only)."""
-        item = self.get_queryset().get(pk=kwargs["pk"])
+        item = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
         return Response(VaultItemListSerializer(item).data)
 
     def destroy(self, request, *args, **kwargs):
-        item = self.get_queryset().get(pk=kwargs["pk"])
+        item = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -138,13 +139,13 @@ class VaultItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def rotate(self, request, pk=None):
-        item = self.get_queryset().get(pk=pk)
+        item = get_object_or_404(self.get_queryset(), pk=pk)
         item.rotate()
         return Response(VaultItemListSerializer(item).data)
 
     @action(detail=True, methods=["post"])
     def rename(self, request, pk=None):
-        item = self.get_queryset().get(pk=pk)
+        item = get_object_or_404(self.get_queryset(), pk=pk)
         serializer = VaultItemRenameSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         item.name = serializer.validated_data["name"]
@@ -154,7 +155,7 @@ class VaultItemViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def test(self, request, pk=None):
         """POST /api/v1/vault-items/{id}/test/"""
-        item = self.get_queryset().get(pk=pk)
+        item = get_object_or_404(self.get_queryset(), pk=pk)
 
         backend = backend_from_config(item.to_backend_config())
         try:

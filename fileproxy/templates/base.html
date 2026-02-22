@@ -39,6 +39,16 @@
 
         <div class="d-flex align-items-center gap-2">
           {% block header %}{% endblock %}
+          {% if user.is_authenticated %}
+            <span class="text-muted small">{{ user.username }}</span>
+            <form method="post" action="/accounts/logout/" class="d-inline m-0">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-secondary">Logout</button>
+            </form>
+          {% else %}
+            <a href="/accounts/login/" class="btn btn-sm btn-outline-secondary">Login</a>
+            <a href="/accounts/register/" class="btn btn-sm btn-primary">Register</a>
+          {% endif %}
         </div>
       </div>
     </nav>

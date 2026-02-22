@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import uuid
 from typing import Any, Dict, Mapping, Tuple, cast
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -61,6 +62,7 @@ class VaultItemKind(models.TextChoices):
 class VaultItem(models.Model):
     """Encrypted record scoped to a tenant identifier."""
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     scope = models.CharField(max_length=120)
     name = models.CharField(max_length=120)
     kind = models.CharField(max_length=32, choices=VaultItemKind.choices)

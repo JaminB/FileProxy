@@ -7,7 +7,7 @@ const KIND_META: Record<string, { label: string; src: string }> = {
 };
 
 type VaultItemDetail = {
-  id: number;
+  id: string;
   name: string;
   kind: string;
   created_at: string;
@@ -21,12 +21,12 @@ function qs<T extends Element>(selector: string, root: ParentNode = document): T
   return el as T;
 }
 
-function getItemId(): number {
+function getItemId(): string {
   const el = document.getElementById("vault-item-id");
   if (!el) throw new Error("Missing vault-item-id script tag");
-  const n = JSON.parse(el.textContent || "0");
-  if (!Number.isFinite(n)) throw new Error("Invalid item id");
-  return n;
+  const s = JSON.parse(el.textContent || '""');
+  if (typeof s !== "string" || !s) throw new Error("Invalid item id");
+  return s;
 }
 
 function getCSRFToken(): string | null {
