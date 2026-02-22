@@ -22,8 +22,6 @@ const el = {
     uploadBtn: () => mustGet("#upload"),
     uploadHint: () => mustGet("#upload-hint"),
     uploadStatus: () => mustGet("#upload-status"),
-    uploadProgress: () => mustGet("#upload-progress"),
-    uploadProgressBar: () => mustGet("#upload-progress-bar"),
 };
 /* ----------------------------- State ----------------------------- */
 const state = { vault: null, prefix: "" };
@@ -266,7 +264,7 @@ async function refresh() {
     el.up().disabled = state.prefix === "";
     updateUploadButtonState();
 }
-function uploadWithProgress(url, formData, onProgress) {
+function uploadWithProgress(url, formData) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         const csrf = getCsrfToken();
@@ -274,10 +272,6 @@ function uploadWithProgress(url, formData, onProgress) {
         if (csrf)
             xhr.setRequestHeader("X-CSRFToken", csrf);
         xhr.withCredentials = true;
-        xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable)
-                onProgress(Math.round((e.loaded / e.total) * 100));
-        };
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 resolve();
@@ -311,18 +305,11 @@ async function doUpload() {
     const path = `${state.prefix}${name}`;
     el.uploadStatus().textContent = "Uploading…";
     el.uploadBtn().disabled = true;
-    const progressEl = el.uploadProgress();
-    const progressBar = el.uploadProgressBar();
-    progressEl.style.display = "block";
-    progressBar.style.width = "0%";
     try {
         const form = new FormData();
         form.append("path", path);
         form.append("file", file);
-        await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form, (pct) => {
-            progressBar.style.width = `${pct}%`;
-            progressBar.setAttribute("aria-valuenow", String(pct));
-        });
+        await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form);
         el.uploadStatus().textContent = "Uploaded.";
         setFlash("Upload complete.", "success");
         el.uploadFile().value = "";
@@ -334,7 +321,6 @@ async function doUpload() {
         setFlash(e instanceof Error ? e.message : "Upload failed.", "error");
     }
     finally {
-        progressEl.style.display = "none";
         updateUploadButtonState();
     }
 }

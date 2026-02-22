@@ -112,7 +112,3 @@
   min-width: 160px;
 }
 
-/* Smooth progress bar fill */
-#upload-progress-bar {
-  transition: width 0.15s ease;
-}

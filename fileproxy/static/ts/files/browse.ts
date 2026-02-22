@@ -46,8 +46,6 @@ const el = {
   uploadBtn: () => mustGet<HTMLButtonElement>("#upload"),
   uploadHint: () => mustGet<HTMLElement>("#upload-hint"),
   uploadStatus: () => mustGet<HTMLElement>("#upload-status"),
-  uploadProgress: () => mustGet<HTMLElement>("#upload-progress"),
-  uploadProgressBar: () => mustGet<HTMLElement>("#upload-progress-bar"),
 };
 
 /* ----------------------------- State ----------------------------- */
@@ -343,8 +341,7 @@ async function refresh(): Promise<void> {
 
 function uploadWithProgress(
   url: string,
-  formData: FormData,
-  onProgress: (pct: number) => void
+  formData: FormData
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -352,9 +349,6 @@ function uploadWithProgress(
     xhr.open("POST", url);
     if (csrf) xhr.setRequestHeader("X-CSRFToken", csrf);
     xhr.withCredentials = true;
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
@@ -389,22 +383,13 @@ async function doUpload(): Promise<void> {
   el.uploadStatus().textContent = "Uploading…";
   el.uploadBtn().disabled = true;
 
-  const progressEl = el.uploadProgress();
-  const progressBar = el.uploadProgressBar();
-  progressEl.style.display = "block";
-  progressBar.style.width = "0%";
-
   try {
     const form = new FormData();
     form.append("path", path);
     form.append("file", file);
     await uploadWithProgress(
       `/api/v1/files/${encodeURIComponent(state.vault)}/write/`,
-      form,
-      (pct) => {
-        progressBar.style.width = `${pct}%`;
-        progressBar.setAttribute("aria-valuenow", String(pct));
-      }
+      form
     );
 
     el.uploadStatus().textContent = "Uploaded.";
@@ -418,7 +403,6 @@ async function doUpload(): Promise<void> {
     el.uploadStatus().textContent = "";
     setFlash(e instanceof Error ? e.message : "Upload failed.", "error");
   } finally {
-    progressEl.style.display = "none";
     updateUploadButtonState();
   }
 }
