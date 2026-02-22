@@ -12,6 +12,8 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="swagger-ui",
     ),
+    path("accounts/", include("django.contrib.auth.urls")),
+    path("accounts/", include("accounts.urls")),
     path("admin/", admin.site.urls),
     path("files/", include("files.ui.urls")),
     path("vault/", include("vault.ui.urls")),
