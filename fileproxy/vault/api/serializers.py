@@ -97,5 +97,10 @@ class S3CredentialsCreateSerializer(serializers.Serializer):
         )
 
 
+class GDriveInitiateSerializer(serializers.Serializer):
+    """Validates the pre-OAuth form fields."""
+    name = serializers.CharField(max_length=120)
+
+
 class VaultItemRenameSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)

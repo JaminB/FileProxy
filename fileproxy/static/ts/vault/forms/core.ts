@@ -14,6 +14,7 @@ export type SubmitOptions<TPayload extends Record<string, unknown>> = {
   buildPayload: (form: HTMLFormElement) => TPayload;
   successMessage?: string;           // default "Saved."
   successRedirect?: string;          // optional; can be overridden by data-success-redirect
+  onSuccess?: (data: unknown) => void; // optional; called with parsed JSON on success
 };
 
 function setSubmitting(form: HTMLFormElement, submitting: boolean): void {
@@ -82,6 +83,11 @@ export function initProviderForm<TPayload extends Record<string, unknown>>(
       const resp = await apiPostJson(opts.endpoint, payload);
 
       if (resp.ok) {
+        if (opts.onSuccess) {
+          const data = await resp.json().catch(() => null);
+          opts.onSuccess(data);
+          return;
+        }
         const redirect = form.dataset.successRedirect ?? opts.successRedirect;
         if (redirect) {
           window.location.assign(redirect);

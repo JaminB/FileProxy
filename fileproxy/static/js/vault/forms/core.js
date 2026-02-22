@@ -57,6 +57,11 @@ export function initProviderForm(opts) {
             const payload = opts.buildPayload(form);
             const resp = await apiPostJson(opts.endpoint, payload);
             if (resp.ok) {
+                if (opts.onSuccess) {
+                    const data = await resp.json().catch(() => null);
+                    opts.onSuccess(data);
+                    return;
+                }
                 const redirect = form.dataset.successRedirect ?? opts.successRedirect;
                 if (redirect) {
                     window.location.assign(redirect);
