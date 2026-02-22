@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, BinaryIO, Iterable, Iterator, Optional
+from typing import Any, BinaryIO, Iterator, Optional
 
 import boto3
 from boto3.exceptions import S3UploadFailedError
@@ -9,7 +9,7 @@ from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 from .base import (Backend, BackendConfig, BackendDeleteError,
                    BackendEnumerateError, BackendError, BackendReadError,
-                   BackendTestError, BackendWriteError)
+                   BackendTestError, BackendWriteError, EnumeratePage)
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,34 +161,44 @@ class S3Backend(Backend):
                         f"S3 test cleanup failed: bucket={self._bucket} key={test_key}"
                     ) from e
 
-    def enumerate(self, *, prefix: str | None = None) -> Iterable[S3Object]:
-        """List objects in the bucket."""
-        paginator = self._client.get_paginator("list_objects_v2")
-        kwargs: dict[str, Any] = {"Bucket": self._bucket}
+    def enumerate_page(
+        self,
+        *,
+        prefix: str | None = None,
+        cursor: str | None = None,
+        page_size: int = 1000,
+    ) -> EnumeratePage:
+        """Return one page of S3 objects."""
+        kwargs: dict[str, Any] = {"Bucket": self._bucket, "MaxKeys": page_size}
         if prefix:
             kwargs["Prefix"] = prefix
+        if cursor:
+            kwargs["ContinuationToken"] = cursor
 
         try:
-            for page in paginator.paginate(**kwargs):
-                for obj in page.get("Contents", []) or []:
-                    key = obj.get("Key") or ""
-                    size = obj.get("Size")
-                    yield S3Object(
-                        name=key.rsplit("/", 1)[-1],
-                        path=key,
-                        size=int(size) if size is not None else None,
-                    )
+            resp = self._client.list_objects_v2(**kwargs)
         except NoCredentialsError as e:
-            raise BackendEnumerateError(
-                "S3 enumerate failed: missing AWS credentials"
-            ) from e
+            raise BackendEnumerateError("S3 enumerate failed: missing AWS credentials") from e
         except ClientError as e:
             code = (e.response.get("Error") or {}).get("Code")
             raise BackendEnumerateError(f"S3 enumerate failed (code={code})") from e
         except BotoCoreError as e:
-            raise BackendEnumerateError(
-                "S3 enumerate failed: connectivity error"
-            ) from e
+            raise BackendEnumerateError("S3 enumerate failed: connectivity error") from e
+
+        objects: list[S3Object] = []
+        for obj in resp.get("Contents", []) or []:
+            key = obj.get("Key") or ""
+            size = obj.get("Size")
+            objects.append(S3Object(
+                name=key.rsplit("/", 1)[-1],
+                path=key,
+                size=int(size) if size is not None else None,
+            ))
+
+        return EnumeratePage(
+            objects=objects,
+            next_cursor=resp.get("NextContinuationToken") or None,
+        )
 
     def read(self, path: str) -> bytes:
         """Read an object from S3."""

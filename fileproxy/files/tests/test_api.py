@@ -102,6 +102,30 @@ class _FakeS3Client:
             raise self._client_error("404", "NoSuchBucket")
         self._buckets[bucket][key] = fileobj.read()
 
+    def list_objects_v2(self, *, Bucket, Prefix="", MaxKeys=1000, ContinuationToken=None):
+        if Bucket not in self._buckets:
+            raise self._client_error("NoSuchBucket", "The bucket does not exist")
+        prefix = Prefix or ""
+        all_keys = sorted(k for k in self._buckets[Bucket] if k.startswith(prefix))
+        start = 0
+        if ContinuationToken:
+            try:
+                start = all_keys.index(ContinuationToken) + 1
+            except ValueError:
+                start = 0
+        page_keys = all_keys[start: start + MaxKeys]
+        result = {}
+        if page_keys:
+            result["Contents"] = [
+                {"Key": k, "Size": len(self._buckets[Bucket][k])} for k in page_keys
+            ]
+        if start + MaxKeys < len(all_keys):
+            result["NextContinuationToken"] = page_keys[-1]
+            result["IsTruncated"] = True
+        else:
+            result["IsTruncated"] = False
+        return result
+
     def get_paginator(self, operation_name: str):
         if operation_name != "list_objects_v2":
             raise ValueError(f"Unsupported paginator op: {operation_name}")
@@ -202,7 +226,7 @@ class FilesApiS3Tests(APITestCase):
         # objects (no prefix)
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
         self.assertEqual(resp.status_code, 200, resp.text)
-        paths = {o["path"] for o in resp.data}
+        paths = {o["path"] for o in resp.data["objects"]}
         self.assertIn(path, paths)
 
         # objects (prefix filters)
@@ -210,7 +234,7 @@ class FilesApiS3Tests(APITestCase):
             f"/api/v1/files/{self.vault_item_name}/objects/", {"prefix": "folder/"}
         )
         self.assertEqual(resp.status_code, 200, resp.text)
-        self.assertEqual({o["path"] for o in resp.data}, {path})
+        self.assertEqual({o["path"] for o in resp.data["objects"]}, {path})
 
         # delete
         resp = self.client.delete(
@@ -221,7 +245,7 @@ class FilesApiS3Tests(APITestCase):
         # objects after delete
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
         self.assertEqual(resp.status_code, 200, resp.text)
-        self.assertNotIn(path, {o["path"] for o in resp.data})
+        self.assertNotIn(path, {o["path"] for o in resp.data["objects"]})
 
     def test_test_endpoint_runs_backend_healthcheck(self):
         resp = self.client.post(
@@ -352,7 +376,7 @@ class FilesObjectsTests(_BaseFilesTest):
 
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
         self.assertEqual(resp.status_code, 200, resp.text)
-        paths = {o["path"] for o in resp.data}
+        paths = {o["path"] for o in resp.data["objects"]}
         self.assertIn("a/one.txt", paths)
         self.assertIn("b/two.txt", paths)
 
@@ -364,7 +388,7 @@ class FilesObjectsTests(_BaseFilesTest):
             f"/api/v1/files/{self.vault_item_name}/objects/", {"prefix": "a/"}
         )
         self.assertEqual(resp.status_code, 200, resp.text)
-        paths = {o["path"] for o in resp.data}
+        paths = {o["path"] for o in resp.data["objects"]}
         self.assertIn("a/one.txt", paths)
         self.assertNotIn("b/two.txt", paths)
 
@@ -423,7 +447,7 @@ class FilesWriteTests(_BaseFilesTest):
         # Confirm object is enumerable
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
         self.assertEqual(resp.status_code, 200)
-        paths = {o["path"] for o in resp.data}
+        paths = {o["path"] for o in resp.data["objects"]}
         self.assertIn(path, paths)
 
     def test_write_missing_path_returns_400(self):
@@ -467,7 +491,7 @@ class FilesWriteMultipartTests(_BaseFilesTest):
 
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn(path, {o["path"] for o in resp.data})
+        self.assertIn(path, {o["path"] for o in resp.data["objects"]})
 
     def test_write_multipart_missing_path_returns_400(self):
         resp = self.client.post(
@@ -501,7 +525,7 @@ class FilesWriteOctetStreamTests(_BaseFilesTest):
 
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn(path, {o["path"] for o in resp.data})
+        self.assertIn(path, {o["path"] for o in resp.data["objects"]})
 
     def test_write_octet_stream_missing_path_returns_400(self):
         resp = self.client.post(
@@ -519,7 +543,7 @@ class FilesDeleteTests(_BaseFilesTest):
 
         # Confirm it exists
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
-        self.assertIn(path, {o["path"] for o in resp.data})
+        self.assertIn(path, {o["path"] for o in resp.data["objects"]})
 
         # Delete
         resp = self.client.delete(
@@ -529,7 +553,7 @@ class FilesDeleteTests(_BaseFilesTest):
 
         # Confirm it is gone
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
-        self.assertNotIn(path, {o["path"] for o in resp.data})
+        self.assertNotIn(path, {o["path"] for o in resp.data["objects"]})
 
     def test_delete_missing_path_returns_400(self):
         resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/object/")
@@ -607,6 +631,62 @@ class FilesDownloadTests(_BaseFilesTest):
         )
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
+
+
+class FilesObjectsPaginationTests(_BaseFilesTest):
+    def test_page_size_limits_results(self):
+        for i in range(5):
+            self._write(f"file{i:02d}.txt", b"x")
+
+        resp = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 2}
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertIn("objects", resp.data)
+        self.assertIn("next_cursor", resp.data)
+        self.assertEqual(len(resp.data["objects"]), 2)
+        self.assertIsNotNone(resp.data["next_cursor"])
+
+    def test_cursor_advances_page(self):
+        for i in range(4):
+            self._write(f"pg{i:02d}.txt", b"x")
+
+        resp1 = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 2}
+        )
+        self.assertEqual(resp1.status_code, 200)
+        cursor = resp1.data["next_cursor"]
+        self.assertIsNotNone(cursor)
+
+        resp2 = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/objects/",
+            {"page_size": 2, "cursor": cursor},
+        )
+        self.assertEqual(resp2.status_code, 200)
+        paths1 = {o["path"] for o in resp1.data["objects"]}
+        paths2 = {o["path"] for o in resp2.data["objects"]}
+        self.assertFalse(paths1 & paths2, "Pages should not overlap")
+
+    def test_last_page_has_null_next_cursor(self):
+        self._write("only.txt", b"x")
+
+        resp = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 1000}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.data["next_cursor"])
+
+    def test_invalid_page_size_returns_400(self):
+        resp = self.client.get(
+            f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 0}
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_response_always_has_both_keys(self):
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("objects", resp.data)
+        self.assertIn("next_cursor", resp.data)
 
 
 class FilesWriteStreamTests(_BaseFilesTest):

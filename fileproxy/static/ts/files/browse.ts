@@ -15,6 +15,8 @@ type VaultItemMeta = {
 
 type BackendObject = { name: string; path: string; size: number | null };
 
+type ObjectPage = { objects: BackendObject[]; next_cursor: string | null };
+
 type Entry =
   | { kind: "folder"; name: string; path: string }
   | { kind: "file"; name: string; path: string; size: number | null };
@@ -329,12 +331,21 @@ async function refresh(): Promise<void> {
     return;
   }
 
-  const qsPart = state.prefix ? `?prefix=${encodeURIComponent(state.prefix)}` : "";
-  const objects = await apiJson<BackendObject[]>(
-    `/api/v1/files/${encodeURIComponent(state.vault)}/objects/${qsPart}`
-  );
+  const allObjects: BackendObject[] = [];
+  let cursor: string | null = null;
+  do {
+    const params = new URLSearchParams();
+    if (state.prefix) params.set("prefix", state.prefix);
+    if (cursor) params.set("cursor", cursor);
+    const qsPart = params.size ? `?${params.toString()}` : "";
+    const page = await apiJson<ObjectPage>(
+      `/api/v1/files/${encodeURIComponent(state.vault!)}/objects/${qsPart}`
+    );
+    allObjects.push(...page.objects);
+    cursor = page.next_cursor;
+  } while (cursor !== null);
 
-  render(toEntries(objects, state.prefix));
+  render(toEntries(allObjects, state.prefix));
   el.up().disabled = state.prefix === "";
   updateUploadButtonState();
 }

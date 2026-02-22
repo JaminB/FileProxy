@@ -51,6 +51,14 @@ class BackendObject(Protocol):
     size: int | None
 
 
+@dataclass(frozen=True, slots=True)
+class EnumeratePage:
+    """One page of results from enumerate_page()."""
+
+    objects: list[BackendObject]
+    next_cursor: str | None
+
+
 class Backend(ABC):
     """Base interface for external storage backends."""
 
@@ -72,19 +80,25 @@ class Backend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def enumerate(self, *, prefix: str | None = None) -> Iterable[BackendObject]:
-        """List objects in the backend.
-
-        Args:
-            prefix: Optional backend-specific path or prefix filter.
-
-        Returns:
-            Iterable of backend objects.
-
-        Raises:
-            BackendEnumerateError: If listing fails.
-        """
+    def enumerate_page(
+        self,
+        *,
+        prefix: str | None = None,
+        cursor: str | None = None,
+        page_size: int = 1000,
+    ) -> EnumeratePage:
+        """Return one page of objects. cursor=None starts from the beginning."""
         raise NotImplementedError
+
+    def enumerate(self, *, prefix: str | None = None) -> Iterable[BackendObject]:
+        """Full scan — loops enumerate_page for backwards compatibility."""
+        cursor: str | None = None
+        while True:
+            page = self.enumerate_page(prefix=prefix, cursor=cursor, page_size=1000)
+            yield from page.objects
+            if page.next_cursor is None:
+                break
+            cursor = page.next_cursor
 
     @abstractmethod
     def read(self, path: str) -> bytes:
