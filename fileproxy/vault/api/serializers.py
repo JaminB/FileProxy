@@ -97,12 +97,12 @@ class S3CredentialsCreateSerializer(serializers.Serializer):
         )
 
 
-class GDriveInitiateSerializer(serializers.Serializer):
+class GDriveCreateSerializer(serializers.Serializer):
     """Validates the pre-OAuth form fields."""
     name = serializers.CharField(max_length=120)
 
 
-class DropboxInitiateSerializer(serializers.Serializer):
+class DropboxCreateSerializer(serializers.Serializer):
     """Validates the pre-OAuth form fields for Dropbox."""
     name = serializers.CharField(max_length=120)
 

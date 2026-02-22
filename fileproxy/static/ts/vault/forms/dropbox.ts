@@ -3,7 +3,7 @@ import { initProviderForm } from "./core.js";
 document.addEventListener("DOMContentLoaded", () => {
   initProviderForm({
     formSelector: "#credential-form",
-    endpoint: "/api/v1/vault-items/dropbox/initiate/",
+    endpoint: "/api/v1/vault-items/dropbox/",
     buildPayload: (form) => ({
       name: (form.querySelector<HTMLInputElement>('[name="name"]')!).value.trim(),
     }),
