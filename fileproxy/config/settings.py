@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "files.apps.FilesConfig",
     "api.apps.ApiConfig",
     "accounts.apps.AccountsConfig",
+    "usage.apps.UsageConfig",
 ]
 
 MIDDLEWARE = [
