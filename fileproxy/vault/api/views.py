@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import secrets as secrets_mod
+
+from django.conf import settings as django_settings
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,7 +11,7 @@ from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
 from ..models import VaultItem
-from .serializers import (S3CredentialsCreateSerializer,
+from .serializers import (GDriveInitiateSerializer, S3CredentialsCreateSerializer,
                           VaultItemListSerializer, VaultItemRenameSerializer)
 
 
@@ -55,6 +58,44 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         return Response(
             VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED
         )
+
+    @action(detail=False, methods=["post"], url_path="gdrive/initiate")
+    def gdrive_initiate(self, request):
+        client_id = django_settings.GOOGLE_CLIENT_ID
+        client_secret = django_settings.GOOGLE_CLIENT_SECRET
+        if not client_id or not client_secret:
+            return Response(
+                {"detail": "Google Drive is not configured on this server."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        serializer = GDriveInitiateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        state = secrets_mod.token_urlsafe(32)
+        request.session["gdrive_oauth_pending"] = {
+            "name": serializer.validated_data["name"],
+            "state": state,
+            "scope": _default_scope_from_request(request),
+        }
+
+        from google_auth_oauthlib.flow import Flow
+        flow = Flow.from_client_config(
+            {"web": {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }},
+            scopes=["https://www.googleapis.com/auth/drive"],
+        )
+        flow.redirect_uri = request.build_absolute_uri("/vault/oauth/gdrive/callback/")
+        auth_url, _ = flow.authorization_url(
+            access_type="offline",
+            prompt="consent",
+            state=state,
+        )
+        return Response({"auth_url": auth_url})
 
     @action(detail=True, methods=["post"])
     def rotate(self, request, pk=None):

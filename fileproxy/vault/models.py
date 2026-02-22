@@ -54,8 +54,7 @@ def _aesgcm_decrypt(key: bytes, nonce: bytes, ciphertext: bytes, aad: bytes) -> 
 
 class VaultItemKind(models.TextChoices):
     AWS_S3 = "aws_s3", "AWS S3 Credentials"
-    # Future:
-    # GDRIVE = "gdrive_oauth", "Google Drive OAuth"
+    GDRIVE_OAUTH2 = "gdrive_oauth2", "Google Drive (OAuth 2.0)"
 
 
 class VaultItem(models.Model):

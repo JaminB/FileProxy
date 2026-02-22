@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from .base import Backend, BackendConfig, BackendError
+from .gdrive import GDriveBackend
 from .s3 import S3Backend
 
 _KIND_TO_BACKEND: dict[str, type[Backend]] = {
     "aws_s3": S3Backend,
+    "gdrive_oauth2": GDriveBackend,
 }
 
 
