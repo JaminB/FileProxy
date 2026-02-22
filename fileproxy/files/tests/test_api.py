@@ -430,6 +430,66 @@ class FilesWriteTests(_BaseFilesTest):
         self.assertIn("detail", resp.data)
 
 
+class FilesWriteMultipartTests(_BaseFilesTest):
+    def test_write_multipart_creates_object(self):
+        path = "upload/multi.txt"
+        data = b"multipart content"
+
+        resp = self.client.post(
+            f"/api/v1/files/{self.vault_item_name}/write/",
+            {"path": path, "file": io.BytesIO(data)},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertEqual(resp.data["path"], path)
+
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(path, {o["path"] for o in resp.data})
+
+    def test_write_multipart_missing_path_returns_400(self):
+        resp = self.client.post(
+            f"/api/v1/files/{self.vault_item_name}/write/",
+            {"file": io.BytesIO(b"data")},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_write_multipart_missing_file_returns_400(self):
+        resp = self.client.post(
+            f"/api/v1/files/{self.vault_item_name}/write/",
+            {"path": "some/path.txt"},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+
+class FilesWriteOctetStreamTests(_BaseFilesTest):
+    def test_write_octet_stream_creates_object(self):
+        path = "upload/binary.bin"
+        data = b"\x00\x01\x02\x03binary data"
+
+        resp = self.client.post(
+            f"/api/v1/files/{self.vault_item_name}/write/?path={path}",
+            data=data,
+            content_type="application/octet-stream",
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertEqual(resp.data["path"], path)
+
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(path, {o["path"] for o in resp.data})
+
+    def test_write_octet_stream_missing_path_returns_400(self):
+        resp = self.client.post(
+            f"/api/v1/files/{self.vault_item_name}/write/",
+            data=b"some data",
+            content_type="application/octet-stream",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+
 class FilesDeleteTests(_BaseFilesTest):
     def test_delete_removes_object(self):
         path = "to/delete.txt"

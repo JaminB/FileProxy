@@ -5,8 +5,11 @@ import base64
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+from .parsers import OctetStreamParser
 
 from core.backends.base import (BackendConnectionError, BackendDeleteError,
                                 BackendEnumerateError, BackendReadError,
@@ -111,16 +114,33 @@ class FilesViewSet(viewsets.ViewSet):
         except Exception as e:  # noqa: BLE001
             return self._error(e)
 
-    @action(detail=True, methods=["post"], url_path="write")
+    @action(detail=True, methods=["post"], url_path="write",
+            parser_classes=[JSONParser, MultiPartParser, OctetStreamParser])
     def write(self, request, vault_item_name: str = ""):
         try:
             backend = self._backend(request, vault_item_name)
+            content_type = request.content_type or ""
 
-            s = WriteFileSerializer(data=request.data)
-            s.is_valid(raise_exception=True)
+            if "multipart/form-data" in content_type:
+                path = (request.data.get("path") or "").strip()
+                file_obj = request.FILES.get("file")
+                if not path:
+                    raise ValidationError({"path": "This field is required."})
+                if not file_obj:
+                    raise ValidationError({"file": "This field is required."})
+                raw = file_obj.read()
 
-            path = s.validated_data["path"]
-            raw = base64.b64decode(s.validated_data["data_base64"])
+            elif "application/octet-stream" in content_type:
+                path = (request.query_params.get("path") or "").strip()
+                if not path:
+                    raise ValidationError({"path": "This query parameter is required."})
+                raw = request.data  # bytes from OctetStreamParser
+
+            else:  # application/json (default)
+                s = WriteFileSerializer(data=request.data)
+                s.is_valid(raise_exception=True)
+                path = s.validated_data["path"]
+                raw = base64.b64decode(s.validated_data["data_base64"])
 
             backend.write(path, raw)
             return Response({"detail": "OK", "path": path})

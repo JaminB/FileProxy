@@ -1,5 +1,5 @@
 import { qs as qsMaybe, setFlash } from "../utils/dom.js";
-import { apiJson } from "../utils/api.js";
+import { apiJson, apiMultipart } from "../utils/api.js";
 
 /* ----------------------------- Types ----------------------------- */
 
@@ -387,11 +387,10 @@ async function doUpload(): Promise<void> {
   el.uploadBtn().disabled = true;
 
   try {
-    const buf = new Uint8Array(await file.arrayBuffer());
-    await apiJson(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, {
-      method: "POST",
-      body: { path, data_base64: bytesToB64(buf) },
-    });
+    const form = new FormData();
+    form.append("path", path);
+    form.append("file", file);
+    await apiMultipart(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form);
 
     el.uploadStatus().textContent = "Uploaded.";
     setFlash("Upload complete.", "success");
