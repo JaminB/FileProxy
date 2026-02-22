@@ -1,6 +1,6 @@
 from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 
 @login_required
@@ -133,5 +133,8 @@ def vault_oauth_dropbox_callback(request):
 
 
 @login_required
-def vault_item_page(request, item_id: int):
-    return render(request, "vault_ui/item.html", {"item_id": item_id})
+def vault_item_page(request, item_id):
+    from files.services import user_scope
+    from vault.models import VaultItem
+    get_object_or_404(VaultItem, pk=item_id, scope=user_scope(request.user))
+    return render(request, "vault_ui/item.html", {"item_id": str(item_id)})

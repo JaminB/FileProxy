@@ -14,10 +14,10 @@ function getItemId() {
     const el = document.getElementById("vault-item-id");
     if (!el)
         throw new Error("Missing vault-item-id script tag");
-    const n = JSON.parse(el.textContent || "0");
-    if (!Number.isFinite(n))
+    const s = JSON.parse(el.textContent || '""');
+    if (typeof s !== "string" || !s)
         throw new Error("Invalid item id");
-    return n;
+    return s;
 }
 function getCSRFToken() {
     const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
