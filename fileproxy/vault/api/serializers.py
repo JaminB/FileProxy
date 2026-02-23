@@ -131,6 +131,17 @@ class AzureBlobCreateSerializer(serializers.Serializer):
     client_id = serializers.CharField(max_length=256, trim_whitespace=True)
     client_secret = serializers.CharField(max_length=512, trim_whitespace=True)
 
+    def validate_account_name(self, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Account name cannot be empty.")
+        return value
+
+    def validate_container_name(self, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Container name cannot be empty.")
+        return value
     def create(self, validated_data):
         request = self.context["request"]
         scope = f"user:{request.user.id}"
