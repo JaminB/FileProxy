@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Amazon S3 setup guide{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/vault/">Vault</a></li>
+      <li class="breadcrumb-item"><a href="/vault/new/">New credentials</a></li>
+      <li class="breadcrumb-item"><a href="/vault/new/s3/">Amazon S3</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Setup guide</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-2 mb-1">
+    <img src="{% static 'images/logos/s3.svg' %}" width="16" height="16"
+         class="opacity-75" aria-hidden="true" alt="" />
+    <span class="fw-semibold small">Amazon S3 — Setup guide</span>
+  </div>
+
+  <p class="text-secondary small mb-4">
+    To connect FileProxy to S3 you'll need two things: an S3 bucket to store your files, and an
+    AWS access key that has permission to use it. This guide walks you through setting both up
+    from scratch — it takes about ten minutes.
+  </p>
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+
+      <ol class="ps-3" style="list-style: none;">
+
+        <!-- Step 1 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">1</span>
+            Sign in to AWS
+          </h3>
+          <p class="small mb-0">
+            Head to <a href="https://console.aws.amazon.com" target="_blank" rel="noopener noreferrer">console.aws.amazon.com</a>
+            and sign in. If you don't have an AWS account yet you'll need to create one first.
+          </p>
+        </li>
+
+        <!-- Step 2 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">2</span>
+            Create an S3 bucket
+          </h3>
+          <p class="small mb-2">
+            Use the search bar at the top to find <strong>S3</strong>, then click the orange
+            <strong>Create bucket</strong> button. A few things to fill in:
+          </p>
+          <ul class="small mb-2 ps-3">
+            <li>
+              <strong>Bucket name</strong> — pick something unique across all of AWS
+              (lowercase letters, numbers, and hyphens, 3–63 characters). Jot it down,
+              you'll paste it into FileProxy later.
+            </li>
+            <li><strong>AWS Region</strong> — pick wherever you're based.</li>
+            <li>Leave <strong>Block all public access</strong> on. It's on by default and should stay that way.</li>
+          </ul>
+          <p class="small mb-0">Scroll to the bottom and hit <strong>Create bucket</strong>.</p>
+        </li>
+
+        <!-- Step 3 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">3</span>
+            Create an IAM user
+          </h3>
+          <p class="small mb-2">
+            Now you need a user whose credentials FileProxy will use. Search for <strong>IAM</strong>
+            in the top bar, then go to <strong>Users → Create user</strong>.
+          </p>
+          <ul class="small mb-0 ps-3">
+            <li>Give it a name like <code>fileproxy</code> and click <strong>Next</strong>.</li>
+            <li>Choose <strong>Attach policies directly</strong>, search for <code>AmazonS3FullAccess</code>, and tick it.</li>
+            <li>Click through to <strong>Create user</strong>.</li>
+          </ul>
+        </li>
+
+        <!-- Step 4 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">4</span>
+            Generate an access key
+          </h3>
+          <p class="small mb-2">
+            Click your new user's name in the list, then open the <strong>Security credentials</strong>
+            tab. Scroll down to <strong>Access keys</strong> and click <strong>Create access key</strong>.
+            When AWS asks what you're building, choose <strong>Application running outside AWS</strong>
+            and click through to finish.
+          </p>
+          <p class="small mb-2">
+            You'll land on a page showing your <strong>Access key ID</strong> and
+            <strong>Secret access key</strong> side by side.
+          </p>
+          <div class="alert alert-warning small py-2 mb-0">
+            Copy both values now — AWS won't show the secret access key again after you leave this page.
+          </div>
+        </li>
+
+        <!-- Step 5 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">5</span>
+            Paste everything into FileProxy
+          </h3>
+          <p class="small mb-2">
+            Head back to the <a href="/vault/new/s3/">S3 credentials form</a> and fill in the four fields:
+          </p>
+          <ul class="small mb-2 ps-3">
+            <li><strong>Name</strong> — a label for your own reference, like <code>prod-backups</code></li>
+            <li><strong>Bucket name</strong> — what you chose in step 2</li>
+            <li><strong>Access key ID</strong> — from step 4</li>
+            <li><strong>Secret access key</strong> — from step 4</li>
+          </ul>
+          <p class="small mb-0">
+            Hit <strong>Save</strong> and FileProxy will encrypt your credentials and store them locally.
+            Nothing is sent to any third party.
+          </p>
+        </li>
+
+      </ol>
+
+      <!-- Tip: minimal permissions -->
+      <div class="alert alert-info small mt-2">
+        <strong>Want tighter permissions?</strong><br>
+        <code>AmazonS3FullAccess</code> is the easiest option, but it grants access to all your
+        buckets. If you'd rather limit things to just the one bucket, attach a custom policy
+        instead — paste in the JSON below and swap <code>YOUR-BUCKET-NAME</code> for your actual
+        bucket name:
+        <pre class="bg-light p-2 rounded small mt-2 mb-0">{% filter force_escape %}{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
+    }
+  ]
+}{% endfilter %}</pre>
+      </div>
+
+      <div class="mt-3">
+        <a href="/vault/new/s3/" class="btn btn-primary btn-sm">Go to S3 credentials form</a>
+      </div>
+
+    </div>
+  </div>
+{% endblock %}
