@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from rest_framework import serializers
 
 from ..models import VaultItem
@@ -125,7 +127,7 @@ class AzureBlobCreateSerializer(serializers.Serializer):
     """Create Azure Blob Storage credentials without returning secrets."""
 
     name = serializers.CharField(max_length=120)
-    account_name = serializers.CharField(max_length=256, trim_whitespace=True)
+    account_name = serializers.CharField(max_length=24, trim_whitespace=True)
     container_name = serializers.CharField(max_length=63, trim_whitespace=True)
     tenant_id = serializers.CharField(max_length=256, trim_whitespace=True)
     client_id = serializers.CharField(max_length=256, trim_whitespace=True)
@@ -135,6 +137,10 @@ class AzureBlobCreateSerializer(serializers.Serializer):
         value = value.strip()
         if not value:
             raise serializers.ValidationError("Account name cannot be empty.")
+        if not re.fullmatch(r"[a-z0-9]{3,24}", value):
+            raise serializers.ValidationError(
+                "Account name must be 3–24 characters and may only contain lowercase letters and numbers."
+            )
         return value
 
     def validate_container_name(self, value: str) -> str:
