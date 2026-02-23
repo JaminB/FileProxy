@@ -4,11 +4,13 @@ from rest_framework import serializers
 
 from ..models import VaultItem
 from ..schemas import S3StaticCredentials
-from ..service import create_s3_credentials
+from ..service import create_azure_blob_credentials, create_s3_credentials
 
 
 class VaultItemListSerializer(serializers.ModelSerializer):
     bucket = serializers.SerializerMethodField()
+    account_name = serializers.SerializerMethodField()
+    container_name = serializers.SerializerMethodField()
 
     class Meta:
         model = VaultItem
@@ -17,6 +19,8 @@ class VaultItemListSerializer(serializers.ModelSerializer):
             "name",
             "kind",
             "bucket",
+            "account_name",
+            "container_name",
             "created_at",
             "updated_at",
             "rotated_at",
@@ -26,6 +30,16 @@ class VaultItemListSerializer(serializers.ModelSerializer):
         payload = obj.get_payload()
         settings = payload.get("settings", {})
         return settings.get("bucket")
+
+    def get_account_name(self, obj: VaultItem) -> str | None:
+        payload = obj.get_payload()
+        settings = payload.get("settings", {})
+        return settings.get("account_name")
+
+    def get_container_name(self, obj: VaultItem) -> str | None:
+        payload = obj.get_payload()
+        settings = payload.get("settings", {})
+        return settings.get("container_name")
 
 
 class S3CredentialsCreateSerializer(serializers.Serializer):
@@ -105,6 +119,38 @@ class GDriveCreateSerializer(serializers.Serializer):
 class DropboxCreateSerializer(serializers.Serializer):
     """Validates the pre-OAuth form fields for Dropbox."""
     name = serializers.CharField(max_length=120)
+
+
+class AzureBlobCreateSerializer(serializers.Serializer):
+    """Create Azure Blob Storage credentials without returning secrets."""
+
+    name = serializers.CharField(max_length=120)
+    account_name = serializers.CharField(max_length=256, trim_whitespace=True)
+    container_name = serializers.CharField(max_length=63, trim_whitespace=True)
+    tenant_id = serializers.CharField(max_length=256, trim_whitespace=True)
+    client_id = serializers.CharField(max_length=256, trim_whitespace=True)
+    client_secret = serializers.CharField(max_length=512, trim_whitespace=True)
+
+    def create(self, validated_data):
+        request = self.context["request"]
+        scope = f"user:{request.user.id}"
+
+        settings_obj = {
+            "account_name": validated_data["account_name"],
+            "container_name": validated_data["container_name"],
+        }
+        secrets_obj = {
+            "tenant_id": validated_data["tenant_id"],
+            "client_id": validated_data["client_id"],
+            "client_secret": validated_data["client_secret"],
+        }
+
+        return create_azure_blob_credentials(
+            scope=scope,
+            name=validated_data["name"],
+            settings_obj=settings_obj,
+            secrets_obj=secrets_obj,
+        )
 
 
 class VaultItemRenameSerializer(serializers.Serializer):

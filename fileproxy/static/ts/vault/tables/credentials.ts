@@ -2,9 +2,10 @@ import { qs, setFlash } from "../../utils/dom.js";
 import { getCsrfToken } from "../../utils/cookies.js";
 
 const KIND_META: Record<string, { label: string; src: string }> = {
-  aws_s3:         { label: "Amazon S3",    src: "/static/images/logos/s3.svg" },
-  gdrive_oauth2:  { label: "Google Drive", src: "/static/images/logos/gdrive.svg" },
-  dropbox_oauth2: { label: "Dropbox",      src: "/static/images/logos/dropbox.png" },
+  aws_s3:         { label: "Amazon S3",           src: "/static/images/logos/s3.svg" },
+  gdrive_oauth2:  { label: "Google Drive",        src: "/static/images/logos/gdrive.svg" },
+  dropbox_oauth2: { label: "Dropbox",             src: "/static/images/logos/dropbox.png" },
+  azure_blob:     { label: "Azure Blob Storage",  src: "/static/images/logos/azure.svg" },
 };
 
 async function deleteVaultItem(id: string | number): Promise<Response> {

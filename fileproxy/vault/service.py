@@ -5,7 +5,7 @@ from typing import Any, Dict, Mapping, cast
 from django.db import transaction
 
 from .models import VaultItem, VaultItemKind
-from .schemas import DropboxOAuth2Credentials, GoogleDriveOAuth2Credentials, S3StaticCredentials
+from .schemas import AzureBlobCredentials, DropboxOAuth2Credentials, GoogleDriveOAuth2Credentials, S3StaticCredentials
 
 
 @transaction.atomic
@@ -76,6 +76,31 @@ def load_dropbox_oauth2_credentials(*, item: VaultItem) -> DropboxOAuth2Credenti
     if not isinstance(secrets, Mapping):
         raise ValueError("VaultItem secrets payload is invalid")
     return DropboxOAuth2Credentials.from_payload(cast(Dict[str, Any], secrets))
+
+
+@transaction.atomic
+def create_azure_blob_credentials(
+    *,
+    scope: str,
+    name: str,
+    settings_obj: Mapping[str, Any],
+    secrets_obj: Mapping[str, Any],
+) -> VaultItem:
+    item = VaultItem(scope=scope, name=name, kind=VaultItemKind.AZURE_BLOB)
+    item.save(force_insert=True)
+    item.set_payload(settings_obj=settings_obj, secrets_obj=secrets_obj)
+    item.save()
+    return item
+
+
+def load_azure_blob_credentials(*, item: VaultItem) -> AzureBlobCredentials:
+    if item.kind != VaultItemKind.AZURE_BLOB:
+        raise ValueError("VaultItem is not Azure Blob credentials")
+    payload = item.get_payload()
+    secrets = payload.get("secrets", {})
+    if not isinstance(secrets, Mapping):
+        raise ValueError("VaultItem secrets payload is invalid")
+    return AzureBlobCredentials.from_payload(cast(Dict[str, Any], secrets))
 
 
 def load_gdrive_oauth2_credentials(*, item: VaultItem) -> GoogleDriveOAuth2Credentials:

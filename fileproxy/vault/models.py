@@ -57,6 +57,7 @@ class VaultItemKind(models.TextChoices):
     AWS_S3 = "aws_s3", "AWS S3 Credentials"
     GDRIVE_OAUTH2 = "gdrive_oauth2", "Google Drive (OAuth 2.0)"
     DROPBOX_OAUTH2 = "dropbox_oauth2", "Dropbox (OAuth 2.0)"
+    AZURE_BLOB = "azure_blob", "Azure Blob Storage"
 
 
 class VaultItem(models.Model):

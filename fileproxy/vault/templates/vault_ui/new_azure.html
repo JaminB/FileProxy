@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}New Azure Blob credentials{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/vault/">Vault</a></li>
+      <li class="breadcrumb-item"><a href="/vault/new/">New credentials</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Azure Blob Storage</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <img src="{% static 'images/logos/azure.svg' %}" width="16" height="16"
+         class="opacity-75" aria-hidden="true" alt="" />
+    <span class="fw-semibold small">Azure Blob Storage</span>
+  </div>
+
+  <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
+
+  <!-- Form -->
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8 col-xl-6">
+      <div class="card ab-card files-card"><div class="card-body">
+        <form id="credential-form" class="needs-validation" novalidate>
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label" for="name">Name</label>
+            <input
+              class="form-control"
+              id="name"
+              name="name"
+              type="text"
+              placeholder="e.g. prod-storage"
+              required
+            />
+            <div class="invalid-feedback">Name is required.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="account_name">Storage account name</label>
+            <input
+              class="form-control"
+              id="account_name"
+              name="account_name"
+              type="text"
+              placeholder="e.g. mystorageaccount"
+              required
+              autocomplete="off"
+            />
+            <div class="form-text">
+              The Azure Storage account that contains the container.
+            </div>
+            <div class="invalid-feedback">Storage account name is required.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="container_name">Container name</label>
+            <input
+              class="form-control"
+              id="container_name"
+              name="container_name"
+              type="text"
+              placeholder="e.g. my-container"
+              required
+              autocomplete="off"
+            />
+            <div class="invalid-feedback">Container name is required.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="tenant_id">Tenant ID</label>
+            <input
+              class="form-control"
+              id="tenant_id"
+              name="tenant_id"
+              type="text"
+              autocomplete="off"
+              required
+            />
+            <div class="form-text">
+              Azure Active Directory tenant (directory) ID.
+            </div>
+            <div class="invalid-feedback">Tenant ID is required.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="client_id">Client ID</label>
+            <input
+              class="form-control"
+              id="client_id"
+              name="client_id"
+              type="text"
+              autocomplete="off"
+              required
+            />
+            <div class="form-text">
+              Application (client) ID of the service principal.
+            </div>
+            <div class="invalid-feedback">Client ID is required.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="client_secret">Client secret</label>
+            <input
+              class="form-control"
+              id="client_secret"
+              name="client_secret"
+              type="password"
+              autocomplete="off"
+              required
+            />
+            <div class="invalid-feedback">Client secret is required.</div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <a class="btn btn-outline-secondary" href="/vault/">Cancel</a>
+            <button class="btn btn-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </div></div>
+
+      <p class="text-secondary small mt-3 mb-0">
+        Your client secret is stored encrypted and will not be shown again.
+      </p>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/vault/forms/azure.js' %}"></script>
+{% endblock %}

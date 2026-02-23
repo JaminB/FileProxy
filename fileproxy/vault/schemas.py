@@ -47,6 +47,28 @@ class GoogleDriveOAuth2Credentials:
 
 
 @dataclass(frozen=True)
+class AzureBlobCredentials:
+    tenant_id: str
+    client_id: str
+    client_secret: str
+
+    def to_payload(self) -> Dict[str, Any]:
+        return {
+            "tenant_id": self.tenant_id,
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+        }
+
+    @staticmethod
+    def from_payload(p: Dict[str, Any]) -> "AzureBlobCredentials":
+        return AzureBlobCredentials(
+            tenant_id=p["tenant_id"],
+            client_id=p["client_id"],
+            client_secret=p["client_secret"],
+        )
+
+
+@dataclass(frozen=True)
 class DropboxOAuth2Credentials:
     app_key: str
     app_secret: str
