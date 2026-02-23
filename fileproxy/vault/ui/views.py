@@ -138,6 +138,16 @@ def vault_new_azure_credentials(request):
 
 
 @login_required
+def vault_guide_s3(request):
+    return render(request, "vault_ui/guide_s3.html")
+
+
+@login_required
+def vault_guide_azure(request):
+    return render(request, "vault_ui/guide_azure.html")
+
+
+@login_required
 def vault_item_page(request, item_id):
     from files.services import user_scope
     from vault.models import VaultItem
