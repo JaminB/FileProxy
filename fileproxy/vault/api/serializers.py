@@ -147,6 +147,7 @@ class AzureBlobCreateSerializer(serializers.Serializer):
         scope = f"user:{request.user.id}"
 
         settings_obj = {
+            "user_id": request.user.id,
             "account_name": validated_data["account_name"],
             "container_name": validated_data["container_name"],
         }
