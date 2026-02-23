@@ -12,9 +12,9 @@ from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
 from ..models import VaultItem
-from .serializers import (DropboxCreateSerializer, GDriveCreateSerializer,
-                          S3CredentialsCreateSerializer, VaultItemListSerializer,
-                          VaultItemRenameSerializer)
+from .serializers import (AzureBlobCreateSerializer, DropboxCreateSerializer,
+                          GDriveCreateSerializer, S3CredentialsCreateSerializer,
+                          VaultItemListSerializer, VaultItemRenameSerializer)
 
 
 def _default_scope_from_request(request) -> str:
@@ -136,6 +136,17 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         auth_url = flow.start()
         request.session["dropbox_oauth_pending"]["csrf_token"] = csrf_session.get("csrf_token")
         return Response({"auth_url": auth_url})
+
+    @action(detail=False, methods=["post"], url_path="azure")
+    def create_azure(self, request):
+        serializer = AzureBlobCreateSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        item = serializer.save()
+        return Response(
+            VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED
+        )
 
     @action(detail=True, methods=["post"])
     def rotate(self, request, pk=None):

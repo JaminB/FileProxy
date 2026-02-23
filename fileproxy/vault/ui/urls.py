@@ -12,5 +12,6 @@ urlpatterns = [
     path("oauth/gdrive/callback/", views.vault_oauth_gdrive_callback, name="oauth_gdrive_callback"),
     path("new/dropbox/", views.vault_new_dropbox_credentials, name="new_dropbox"),
     path("oauth/dropbox/callback/", views.vault_oauth_dropbox_callback, name="oauth_dropbox_callback"),
+    path("new/azure/", views.vault_new_azure_credentials, name="new_azure"),
     path("item/<uuid:item_id>/", views.vault_item_page, name="vault_item_page"),
 ]

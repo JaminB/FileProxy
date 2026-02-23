@@ -133,6 +133,11 @@ def vault_oauth_dropbox_callback(request):
 
 
 @login_required
+def vault_new_azure_credentials(request):
+    return render(request, "vault_ui/new_azure.html")
+
+
+@login_required
 def vault_item_page(request, item_id):
     from files.services import user_scope
     from vault.models import VaultItem

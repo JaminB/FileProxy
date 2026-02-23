@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .azure_blob import AzureBlobBackend
 from .base import Backend, BackendConfig, BackendError
 from .dropbox import DropboxBackend
 from .gdrive import GDriveBackend
@@ -9,6 +10,7 @@ _KIND_TO_BACKEND: dict[str, type[Backend]] = {
     "aws_s3": S3Backend,
     "gdrive_oauth2": GDriveBackend,
     "dropbox_oauth2": DropboxBackend,
+    "azure_blob": AzureBlobBackend,
 }
 
 
