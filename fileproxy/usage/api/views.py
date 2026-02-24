@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -86,23 +86,25 @@ class UsageViewSet(ViewSet):
         since = timezone.now() - timedelta(days=days)
         qs = UsageEvent.objects.filter(scope=scope, occurred_at__gte=since)
 
-        pairs = (
+        non_test_ops = [op for op in OperationKind.values if op != "test"]
+        annotations = {op: Count("id", filter=Q(operation=op)) for op in non_test_ops}
+        rows = (
             qs.values("vault_item_name", "vault_item_kind")
-            .distinct()
+            .annotate(**annotations)
             .order_by("vault_item_name")
         )
 
         result = []
-        for pair in pairs:
-            name = pair["vault_item_name"]
-            kind = pair["vault_item_kind"]
-            item_qs = qs.filter(vault_item_name=name)
-            ops = {
-                op: item_qs.filter(operation=op).count()
-                for op in OperationKind.values
-                if op != "test"
-            }
-            result.append({"name": name, "kind": kind, "total": sum(ops.values()), **ops})
+        for row in rows:
+            ops = {op: row[op] for op in non_test_ops}
+            result.append(
+                {
+                    "name": row["vault_item_name"],
+                    "kind": row["vault_item_kind"],
+                    "total": sum(ops.values()),
+                    **ops,
+                }
+            )
 
         result.sort(key=lambda x: x["total"], reverse=True)
         return Response(result)
@@ -141,7 +143,12 @@ class UsageViewSet(ViewSet):
             days = 30
 
         scope = _user_scope(request)
-        since = timezone.now() - timedelta(days=days)
+        today = timezone.localdate()
+        # days=7 → start_date = today-6, giving exactly 7 dates: [today-6 .. today]
+        start_date = today - timedelta(days=days - 1)
+        since = timezone.make_aware(
+            timezone.datetime.combine(start_date, timezone.datetime.min.time())
+        )
 
         rows = (
             UsageEvent.objects.filter(
@@ -153,12 +160,7 @@ class UsageViewSet(ViewSet):
             .order_by("date")
         )
 
-        today = timezone.now().date()
-        date_list = []
-        d = since.date()
-        while d <= today:
-            date_list.append(str(d))
-            d += timedelta(days=1)
+        date_list = [str(start_date + timedelta(days=i)) for i in range(days)]
 
         ops = ["enumerate", "read", "write", "delete"]
         series: dict[str, list[int]] = {op: [0] * len(date_list) for op in ops}
