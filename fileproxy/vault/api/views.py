@@ -12,9 +12,14 @@ from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
 from ..models import VaultItem
-from .serializers import (AzureBlobCreateSerializer, DropboxCreateSerializer,
-                          GDriveCreateSerializer, S3CredentialsCreateSerializer,
-                          VaultItemListSerializer, VaultItemRenameSerializer)
+from .serializers import (
+    AzureBlobCreateSerializer,
+    DropboxCreateSerializer,
+    GDriveCreateSerializer,
+    S3CredentialsCreateSerializer,
+    VaultItemListSerializer,
+    VaultItemRenameSerializer,
+)
 
 
 def _default_scope_from_request(request) -> str:
@@ -52,14 +57,10 @@ class VaultItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="s3")
     def create_s3(self, request):
-        serializer = S3CredentialsCreateSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = S3CredentialsCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         item = serializer.save()
-        return Response(
-            VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED
-        )
+        return Response(VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["post"], url_path="gdrive")
     def gdrive_create(self, request):
@@ -82,13 +83,16 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         }
 
         from google_auth_oauthlib.flow import Flow
+
         flow = Flow.from_client_config(
-            {"web": {
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }},
+            {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+            },
             scopes=["https://www.googleapis.com/auth/drive"],
         )
         flow.redirect_uri = request.build_absolute_uri("/vault/oauth/gdrive/callback/")
@@ -122,6 +126,7 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         }
 
         import dropbox as dbx_sdk
+
         csrf_session = {}
         flow = dbx_sdk.DropboxOAuth2Flow(
             consumer_key=app_key,
@@ -130,8 +135,13 @@ class VaultItemViewSet(viewsets.ModelViewSet):
             csrf_token_session_key="csrf_token",
             consumer_secret=app_secret,
             token_access_type="offline",
-            scope=["account_info.read", "files.content.read", "files.content.write",
-                   "files.metadata.read", "files.metadata.write"],
+            scope=[
+                "account_info.read",
+                "files.content.read",
+                "files.content.write",
+                "files.metadata.read",
+                "files.metadata.write",
+            ],
         )
         auth_url = flow.start()
         request.session["dropbox_oauth_pending"]["csrf_token"] = csrf_session.get("csrf_token")
@@ -139,14 +149,10 @@ class VaultItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="azure")
     def create_azure(self, request):
-        serializer = AzureBlobCreateSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = AzureBlobCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         item = serializer.save()
-        return Response(
-            VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED
-        )
+        return Response(VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def rotate(self, request, pk=None):
@@ -172,8 +178,6 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         try:
             backend.test()
         except BackendConnectionError as e:
-            return Response(
-                {"detail": str(e), "ok": False}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": str(e), "ok": False}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"detail": "Connection OK.", "ok": True})

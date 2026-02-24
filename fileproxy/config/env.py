@@ -32,8 +32,6 @@ def env_bytes_b64url(
         raise RuntimeError(f"Invalid urlsafe base64 for {name}") from exc
 
     if expected_len is not None and len(decoded) != expected_len:
-        raise RuntimeError(
-            f"{name} must decode to {expected_len} bytes (got {len(decoded)})"
-        )
+        raise RuntimeError(f"{name} must decode to {expected_len} bytes (got {len(decoded)})")
 
     return decoded

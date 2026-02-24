@@ -7,30 +7,35 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from .parsers import OctetStreamParser
-
-from core.backends.base import (BackendConnectionError, BackendDeleteError,
-                                BackendEnumerateError, BackendReadError,
-                                BackendTestError, BackendWriteError)
+from core.backends.base import (
+    BackendConnectionError,
+    BackendDeleteError,
+    BackendEnumerateError,
+    BackendReadError,
+    BackendTestError,
+    BackendWriteError,
+)
 from vault.models import VaultItem
 
-from ..serializers import (BackendObjectSerializer, DeleteFileSerializer,
-                           EnumeratePageSerializer, EnumerateQuerySerializer,
-                           ReadFileQuerySerializer, VaultItemMetaSerializer,
-                           WriteFileSerializer)
-from ..services import (VaultItemNotFound, get_backend_for_user_vault_item,
-                        vault_items_for_user)
+from ..serializers import (
+    EnumeratePageSerializer,
+    EnumerateQuerySerializer,
+    ReadFileQuerySerializer,
+    VaultItemMetaSerializer,
+    WriteFileSerializer,
+)
+from ..services import VaultItemNotFound, get_backend_for_user_vault_item, vault_items_for_user
+from .parsers import OctetStreamParser
 
 
 class FilesViewSet(viewsets.ViewSet):
     """
     Backend-agnostic file API.
 
-    - GET  /api/v1/files/                         -> list vault items for current user (metadata only)
+    - GET  /api/v1/files/                    -> list vault items for current user (metadata only)
     - POST /api/v1/files/{vault_item_name}/test/   -> backend connectivity test
     - GET  /api/v1/files/{vault_item_name}/objects -> enumerate backend
     - GET  /api/v1/files/{vault_item_name}/read    -> read object
@@ -43,9 +48,7 @@ class FilesViewSet(viewsets.ViewSet):
     lookup_value_regex = r"[^/]+"
 
     def _backend(self, request, vault_item_name: str):
-        return get_backend_for_user_vault_item(
-            user=request.user, vault_item_name=vault_item_name
-        )
+        return get_backend_for_user_vault_item(user=request.user, vault_item_name=vault_item_name)
 
     def _record_event(
         self,
@@ -59,9 +62,7 @@ class FilesViewSet(viewsets.ViewSet):
 
         scope = f"user:{request.user.id}"
         try:
-            kind = VaultItem.objects.only("kind").get(
-                scope=scope, name=vault_item_name
-            ).kind
+            kind = VaultItem.objects.only("kind").get(scope=scope, name=vault_item_name).kind
         except Exception:  # noqa: BLE001
             kind = ""
         record_event(
@@ -156,16 +157,18 @@ class FilesViewSet(viewsets.ViewSet):
 
             data = backend.read(path)
             ok = True
-            return Response(
-                {"path": path, "data_base64": base64.b64encode(data).decode("ascii")}
-            )
+            return Response({"path": path, "data_base64": base64.b64encode(data).decode("ascii")})
         except Exception as e:  # noqa: BLE001
             return self._error(e)
         finally:
             self._record_event(request, vault_item_name, "read", object_path=path, ok=ok)
 
-    @action(detail=True, methods=["post"], url_path="write",
-            parser_classes=[JSONParser, MultiPartParser, OctetStreamParser])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="write",
+        parser_classes=[JSONParser, MultiPartParser, OctetStreamParser],
+    )
     def write(self, request, vault_item_name: str = ""):
         ok = False
         path = ""

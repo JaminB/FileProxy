@@ -60,9 +60,7 @@ class VaultTests(TestCase):
         )
 
         item_db = VaultItem.objects.get(id=item.id)
-        combined = (
-            f"{item_db.wrapped_dek}{item_db.payload_nonce}{item_db.payload_ciphertext}"
-        )
+        combined = f"{item_db.wrapped_dek}{item_db.payload_nonce}{item_db.payload_ciphertext}"
         self.assertNotIn(creds.access_key_id, combined)
         self.assertNotIn(creds.secret_access_key, combined)
 

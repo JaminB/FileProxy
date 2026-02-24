@@ -79,9 +79,7 @@ class VaultItem(models.Model):
     class Meta:
         indexes = [models.Index(fields=["scope", "kind"])]
         constraints = [
-            models.UniqueConstraint(
-                fields=["scope", "name"], name="uniq_vaultitem_scope_name"
-            ),
+            models.UniqueConstraint(fields=["scope", "name"], name="uniq_vaultitem_scope_name"),
         ]
 
     def _payload_aad(self) -> bytes:
@@ -127,9 +125,7 @@ class VaultItem(models.Model):
             "settings": dict(settings_obj),
             "secrets": dict(secrets_obj),
         }
-        plaintext = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
-            "utf-8"
-        )
+        plaintext = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
         nonce, ct = _aesgcm_encrypt(dek, plaintext, self._payload_aad())
         self.payload_nonce = _b64e(nonce)
         self.payload_ciphertext = _b64e(ct)

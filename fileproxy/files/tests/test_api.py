@@ -9,8 +9,6 @@ from botocore.exceptions import ClientError
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
-from core.backends.base import BackendTestError
-
 User = get_user_model()
 
 
@@ -65,9 +63,7 @@ class _FakeS3Client:
             self._buckets[b] = {}
 
     def _client_error(self, code: str, message: str = "error") -> ClientError:
-        return ClientError(
-            {"Error": {"Code": code, "Message": message}}, "FakeOperation"
-        )
+        return ClientError({"Error": {"Code": code, "Message": message}}, "FakeOperation")
 
     def head_bucket(self, *, Bucket: str):
         if Bucket not in self._buckets:
@@ -113,10 +109,8 @@ class _FakeS3Client:
                 start = all_keys.index(ContinuationToken) + 1
             except ValueError:
                 # Simulate S3 behavior: invalid continuation tokens result in an error
-                raise self._client_error(
-                    "InvalidArgument", "Invalid or unknown continuation token"
-                )
-        page_keys = all_keys[start: start + MaxKeys]
+                raise self._client_error("InvalidArgument", "Invalid or unknown continuation token")
+        page_keys = all_keys[start : start + MaxKeys]
         result = {}
         if page_keys:
             result["Contents"] = [
@@ -219,9 +213,7 @@ class FilesApiS3Tests(APITestCase):
         self.assertEqual(resp.data["path"], path)
 
         # read
-        resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/read/", {"path": path}
-        )
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["path"], path)
         self.assertEqual(base64.b64decode(resp.data["data_base64"]), payload)
@@ -240,9 +232,7 @@ class FilesApiS3Tests(APITestCase):
         self.assertEqual({o["path"] for o in resp.data["objects"]}, {path})
 
         # delete
-        resp = self.client.delete(
-            f"/api/v1/files/{self.vault_item_name}/object/?path={path}"
-        )
+        resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/object/?path={path}")
         self.assertEqual(resp.status_code, 204, resp.text if hasattr(resp, "text") else "")
 
         # objects after delete
@@ -251,9 +241,7 @@ class FilesApiS3Tests(APITestCase):
         self.assertNotIn(path, {o["path"] for o in resp.data["objects"]})
 
     def test_test_endpoint_runs_backend_healthcheck(self):
-        resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/test/", format="json"
-        )
+        resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/test/", format="json")
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["detail"], "Connection OK.")
 
@@ -330,7 +318,7 @@ class FilesListTests(APITestCase):
 
     def test_list_is_scoped_to_user(self):
         # Second user with their own vault item
-        user2 = User.objects.create_user(username="u2", password="pw")
+        User.objects.create_user(username="u2", password="pw")
         client2 = self.client_class()
         client2.login(username="u2", password="pw")
 
@@ -387,9 +375,7 @@ class FilesObjectsTests(_BaseFilesTest):
         self._write("a/one.txt", b"data1")
         self._write("b/two.txt", b"data2")
 
-        resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/objects/", {"prefix": "a/"}
-        )
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/", {"prefix": "a/"})
         self.assertEqual(resp.status_code, 200, resp.text)
         paths = {o["path"] for o in resp.data["objects"]}
         self.assertIn("a/one.txt", paths)
@@ -407,9 +393,7 @@ class FilesReadTests(_BaseFilesTest):
         path = "read/test.bin"
         self._write(path, payload)
 
-        resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/read/", {"path": path}
-        )
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["path"], path)
         self.assertEqual(base64.b64decode(resp.data["data_base64"]), payload)
@@ -426,9 +410,7 @@ class FilesReadTests(_BaseFilesTest):
         self.assertEqual(resp.status_code, 400)
 
     def test_read_unknown_vault_item_returns_404(self):
-        resp = self.client.get(
-            "/api/v1/files/no-such-item/read/", {"path": "anything.txt"}
-        )
+        resp = self.client.get("/api/v1/files/no-such-item/read/", {"path": "anything.txt"})
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
 
@@ -549,9 +531,7 @@ class FilesDeleteTests(_BaseFilesTest):
         self.assertIn(path, {o["path"] for o in resp.data["objects"]})
 
         # Delete
-        resp = self.client.delete(
-            f"/api/v1/files/{self.vault_item_name}/object/?path={path}"
-        )
+        resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/object/?path={path}")
         self.assertEqual(resp.status_code, 204)
 
         # Confirm it is gone
@@ -570,9 +550,7 @@ class FilesDeleteTests(_BaseFilesTest):
 
 class FilesTestEndpointTests(_BaseFilesTest):
     def test_test_success(self):
-        resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/test/", format="json"
-        )
+        resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/test/", format="json")
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["detail"], "Connection OK.")
 
@@ -588,15 +566,12 @@ class FilesTestEndpointTests(_BaseFilesTest):
 
         def _failing_head_bucket(**kwargs):
             from botocore.exceptions import ClientError
-            raise ClientError(
-                {"Error": {"Code": "403", "Message": "Access Denied"}}, "HeadBucket"
-            )
+
+            raise ClientError({"Error": {"Code": "403", "Message": "Access Denied"}}, "HeadBucket")
 
         self._fake_s3.head_bucket = _failing_head_bucket
         try:
-            resp = self.client.post(
-                f"/api/v1/files/{self.vault_item_name}/test/", format="json"
-            )
+            resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/test/", format="json")
             self.assertEqual(resp.status_code, 400)
             self.assertIn("detail", resp.data)
         finally:
@@ -609,9 +584,7 @@ class FilesDownloadTests(_BaseFilesTest):
         path = "dl/test.bin"
         self._write(path, payload)
 
-        resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/download/", {"path": path}
-        )
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/download/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
         self.assertIn("attachment", resp.get("Content-Disposition", ""))
@@ -629,9 +602,7 @@ class FilesDownloadTests(_BaseFilesTest):
         self.assertEqual(resp.status_code, 400)
 
     def test_download_unknown_vault_item_returns_404(self):
-        resp = self.client.get(
-            "/api/v1/files/no-such-item/download/", {"path": "anything.bin"}
-        )
+        resp = self.client.get("/api/v1/files/no-such-item/download/", {"path": "anything.bin"})
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
 
@@ -641,9 +612,7 @@ class FilesObjectsPaginationTests(_BaseFilesTest):
         for i in range(5):
             self._write(f"file{i:02d}.txt", b"x")
 
-        resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 2}
-        )
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 2})
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertIn("objects", resp.data)
         self.assertIn("next_cursor", resp.data)
@@ -654,9 +623,7 @@ class FilesObjectsPaginationTests(_BaseFilesTest):
         for i in range(4):
             self._write(f"pg{i:02d}.txt", b"x")
 
-        resp1 = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 2}
-        )
+        resp1 = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 2})
         self.assertEqual(resp1.status_code, 200)
         cursor = resp1.data["next_cursor"]
         self.assertIsNotNone(cursor)
@@ -680,9 +647,7 @@ class FilesObjectsPaginationTests(_BaseFilesTest):
         self.assertIsNone(resp.data["next_cursor"])
 
     def test_invalid_page_size_returns_400(self):
-        resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 0}
-        )
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/", {"page_size": 0})
         self.assertEqual(resp.status_code, 400)
 
     def test_response_always_has_both_keys(self):
@@ -708,8 +673,6 @@ class FilesWriteStreamTests(_BaseFilesTest):
         self.assertEqual(resp.data["path"], path)
 
         # Confirm it lands correctly via the read endpoint
-        resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/read/", {"path": path}
-        )
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(base64.b64decode(resp.data["data_base64"]), data)

@@ -2,15 +2,23 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Any, BinaryIO, Iterator
+from typing import BinaryIO, Iterator
 
 from azure.core.exceptions import AzureError, HttpResponseError, ResourceNotFoundError
 from azure.identity import ClientSecretCredential
 from azure.storage.blob import BlobServiceClient
 
-from .base import (Backend, BackendConfig, BackendDeleteError,
-                   BackendEnumerateError, BackendError, BackendReadError,
-                   BackendTestError, BackendWriteError, EnumeratePage)
+from .base import (
+    Backend,
+    BackendConfig,
+    BackendDeleteError,
+    BackendEnumerateError,
+    BackendError,
+    BackendReadError,
+    BackendTestError,
+    BackendWriteError,
+    EnumeratePage,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,8 +136,8 @@ class AzureBlobBackend(Backend):
                     self._container_client.delete_blob(test_key)
                 except Exception as e:  # noqa: BLE001
                     raise BackendTestError(
-                        f"Azure Blob test cleanup failed: "
-                        f"account={self._account_name} container={self._container_name} blob={test_key}"
+                        f"Azure Blob test cleanup failed: account={self._account_name}"
+                        f" container={self._container_name} blob={test_key}"
                     ) from e
 
     def enumerate_page(
@@ -148,9 +156,7 @@ class AzureBlobBackend(Backend):
         except StopIteration:
             return EnumeratePage(objects=[], next_cursor=None)
         except HttpResponseError as e:
-            raise BackendEnumerateError(
-                f"Azure Blob enumerate failed: {e.error_code or e}"
-            ) from e
+            raise BackendEnumerateError(f"Azure Blob enumerate failed: {e.error_code or e}") from e
         except AzureError as e:
             raise BackendEnumerateError(f"Azure Blob enumerate failed: {e}") from e
 
@@ -158,11 +164,13 @@ class AzureBlobBackend(Backend):
         for blob in page:
             name = blob.name or ""
             size = blob.size
-            objects.append(AzureBlobObject(
-                name=name.rsplit("/", 1)[-1],
-                path=name,
-                size=int(size) if size is not None else None,
-            ))
+            objects.append(
+                AzureBlobObject(
+                    name=name.rsplit("/", 1)[-1],
+                    path=name,
+                    size=int(size) if size is not None else None,
+                )
+            )
 
         return EnumeratePage(
             objects=objects,

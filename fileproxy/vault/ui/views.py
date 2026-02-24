@@ -20,9 +20,7 @@ def vault_new_s3_credentials(request):
 
 @login_required
 def vault_new_gdrive_credentials(request):
-    gdrive_enabled = bool(
-        django_settings.GOOGLE_CLIENT_ID and django_settings.GOOGLE_CLIENT_SECRET
-    )
+    gdrive_enabled = bool(django_settings.GOOGLE_CLIENT_ID and django_settings.GOOGLE_CLIENT_SECRET)
     return render(request, "vault_ui/new_gdrive.html", {"gdrive_enabled": gdrive_enabled})
 
 
@@ -46,13 +44,16 @@ def vault_oauth_gdrive_callback(request):
 
     try:
         from google_auth_oauthlib.flow import Flow
+
         flow = Flow.from_client_config(
-            {"web": {
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }},
+            {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+            },
             scopes=["https://www.googleapis.com/auth/drive"],
             state=pending["state"],
         )
@@ -65,6 +66,7 @@ def vault_oauth_gdrive_callback(request):
         request.session.pop("gdrive_oauth_pending", None)
 
     from vault.service import create_gdrive_oauth2_credentials
+
     item = create_gdrive_oauth2_credentials(
         scope=pending["scope"],
         name=pending["name"],
@@ -79,9 +81,7 @@ def vault_oauth_gdrive_callback(request):
 
 @login_required
 def vault_new_dropbox_credentials(request):
-    dropbox_enabled = bool(
-        django_settings.DROPBOX_APP_KEY and django_settings.DROPBOX_APP_SECRET
-    )
+    dropbox_enabled = bool(django_settings.DROPBOX_APP_KEY and django_settings.DROPBOX_APP_SECRET)
     return render(request, "vault_ui/new_dropbox.html", {"dropbox_enabled": dropbox_enabled})
 
 
@@ -151,5 +151,6 @@ def vault_guide_azure(request):
 def vault_item_page(request, item_id):
     from files.services import user_scope
     from vault.models import VaultItem
+
     get_object_or_404(VaultItem, pk=item_id, scope=user_scope(request.user))
     return render(request, "vault_ui/item.html", {"item_id": str(item_id)})

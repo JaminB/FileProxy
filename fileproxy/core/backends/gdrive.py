@@ -5,11 +5,11 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+import google.auth.exceptions
+import google.oauth2.credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaInMemoryUpload, MediaIoBaseDownload, MediaIoBaseUpload
-import google.auth.exceptions
-import google.oauth2.credentials
 
 from .base import (
     Backend,
@@ -63,11 +63,7 @@ class GDriveBackend(Backend):
         q = f"'{parent_id}' in parents and name = {_q(name)} and trashed = false"
         if mime_type:
             q += f" and mimeType = '{mime_type}'"
-        resp = (
-            self._service.files()
-            .list(q=q, fields="files(id)", pageSize=1)
-            .execute()
-        )
+        resp = self._service.files().list(q=q, fields="files(id)", pageSize=1).execute()
         files = resp.get("files", [])
         return files[0]["id"] if files else None
 
@@ -304,7 +300,9 @@ class GDriveBackend(Backend):
             try:
                 self._service.about().get(fields="user").execute()
             except google.auth.exceptions.RefreshError as e:
-                raise BackendTestError(f"GDrive test failed at auth: token refresh error: {e}") from e
+                raise BackendTestError(
+                    f"GDrive test failed at auth: token refresh error: {e}"
+                ) from e
             except HttpError as e:
                 raise BackendTestError(f"GDrive test failed at auth: {e}") from e
 
@@ -312,9 +310,9 @@ class GDriveBackend(Backend):
             try:
                 media = MediaInMemoryUpload(test_data, resumable=False)
                 meta = {"name": test_name, "parents": ["root"]}
-                result = self._service.files().create(
-                    body=meta, media_body=media, fields="id"
-                ).execute()
+                result = (
+                    self._service.files().create(body=meta, media_body=media, fields="id").execute()
+                )
                 file_id = result["id"]
             except HttpError as e:
                 raise BackendTestError(f"GDrive test failed at write: {e}") from e
@@ -345,7 +343,9 @@ class GDriveBackend(Backend):
             # 5) Verify gone (expect 404)
             try:
                 self._service.files().get(fileId=result["id"], fields="id").execute()
-                raise BackendTestError("GDrive test failed at delete_verification: file still exists")
+                raise BackendTestError(
+                    "GDrive test failed at delete_verification: file still exists"
+                )
             except HttpError as e:
                 if e.resp.status != 404:
                     raise BackendTestError(
