@@ -63,7 +63,7 @@ function renderByVault(items) {
     for (const item of items) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-      <td><a href="/usage/vault/${item.name}/" class="text-decoration-none text-reset fw-semibold">${item.name}</a></td>
+      <td><a href="/usage/vault/${encodeURIComponent(item.name)}/" class="text-decoration-none text-reset fw-semibold">${item.name}</a></td>
       <td><code class="small">${item.kind}</code></td>
       <td>${item.enumerate}</td>
       <td>${item.read}</td>
