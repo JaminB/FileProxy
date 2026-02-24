@@ -49,6 +49,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["100.68.182.56", "localhost", "127.0.0.1", "desktop-825kevv.tail00c4bf.ts.net"]
 
+X_FRAME_OPTIONS = "SAMEORIGIN"
+
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"

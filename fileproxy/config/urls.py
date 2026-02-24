@@ -6,6 +6,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     path("", login_required(TemplateView.as_view(template_name="home.html")), name="home"),
+    path("docs/", login_required(TemplateView.as_view(template_name="api_docs.html")), name="api-docs-embed"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}API Docs{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active" aria-current="page">API Docs</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="fw-semibold small">
+      <i class="bi bi-file-earmark-code me-1 opacity-75"></i>API Docs
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary"
+              onclick="document.getElementById('docs-frame').requestFullscreen()">
+        <i class="bi bi-fullscreen me-1"></i>Fullscreen
+      </button>
+      <a href="/api/docs/" target="_blank" rel="noopener"
+         class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-box-arrow-up-right me-1"></i>New tab
+      </a>
+    </div>
+  </div>
+
+  <iframe id="docs-frame"
+          src="/api/docs/"
+          style="width:100%; height:calc(100vh - 140px); border:none;"
+          allowfullscreen
+          title="API Documentation"></iframe>
+{% endblock %}
