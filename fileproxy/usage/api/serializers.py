@@ -28,5 +28,5 @@ class ByVaultItemSerializer(serializers.Serializer):
 class TimelineSerializer(serializers.Serializer):
     vault_item_name = serializers.CharField()
     days = serializers.IntegerField()
-    dates = serializers.ListField(child=serializers.DateField())
+    dates = serializers.ListField(child=serializers.CharField())
     series = serializers.DictField(child=serializers.ListField(child=serializers.IntegerField()))
