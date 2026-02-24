@@ -48,11 +48,28 @@ class UsageViewSet(ViewSet):
         ops = {kind: qs.filter(operation=kind).count() for kind in OperationKind.values}
         return Response({"days": days, "total": sum(ops.values()), "ops": ops})
 
-    @extend_schema(responses={"200": ByVaultItemSerializer(many=True)})
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "days",
+                int,
+                OpenApiParameter.QUERY,
+                description="Number of days to look back (default: 30)",
+                required=False,
+            )
+        ],
+        responses={"200": ByVaultItemSerializer(many=True)},
+    )
     def by_vault(self, request):
         """Per-vault-item operation breakdown."""
+        try:
+            days = max(1, int(request.query_params.get("days", 30)))
+        except (TypeError, ValueError):
+            days = 30
+
         scope = _user_scope(request)
-        qs = UsageEvent.objects.filter(scope=scope)
+        since = timezone.now() - timedelta(days=days)
+        qs = UsageEvent.objects.filter(scope=scope, occurred_at__gte=since)
 
         pairs = (
             qs.values("vault_item_name", "vault_item_kind")
@@ -65,7 +82,11 @@ class UsageViewSet(ViewSet):
             name = pair["vault_item_name"]
             kind = pair["vault_item_kind"]
             item_qs = qs.filter(vault_item_name=name)
-            ops = {op: item_qs.filter(operation=op).count() for op in OperationKind.values}
+            ops = {
+                op: item_qs.filter(operation=op).count()
+                for op in OperationKind.values
+                if op != "test"
+            }
             result.append({"name": name, "kind": kind, "total": sum(ops.values()), **ops})
 
         result.sort(key=lambda x: x["total"], reverse=True)

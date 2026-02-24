@@ -1,5 +1,29 @@
 import { apiJson } from "../utils/api.js";
 import { setFlash } from "../utils/dom.js";
+const PERIODS = [
+    { label: "7d", days: 7 },
+    { label: "30d", days: 30 },
+    { label: "90d", days: 90 },
+    { label: "1y", days: 365 },
+];
+const DEFAULT_DAYS = 30;
+function renderPeriodSelector(activeDays) {
+    const container = document.getElementById("period-selector");
+    if (!container)
+        return;
+    container.innerHTML = "";
+    for (const period of PERIODS) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className =
+            period.days === activeDays
+                ? "btn btn-sm btn-secondary"
+                : "btn btn-sm btn-outline-secondary";
+        btn.textContent = period.label;
+        btn.addEventListener("click", () => void load(period.days));
+        container.appendChild(btn);
+    }
+}
 function renderSummary(data) {
     const container = document.getElementById("summary-cards");
     if (!container)
@@ -7,7 +31,6 @@ function renderSummary(data) {
     container.innerHTML = "";
     const entries = [
         { label: "Total", icon: "bi-activity", value: data.total },
-        { label: "Test", icon: "bi-plug", value: data.ops["test"] ?? 0 },
         { label: "Enumerate", icon: "bi-list-ul", value: data.ops["enumerate"] ?? 0 },
         { label: "Read", icon: "bi-download", value: data.ops["read"] ?? 0 },
         { label: "Write", icon: "bi-upload", value: data.ops["write"] ?? 0 },
@@ -34,7 +57,7 @@ function renderByVault(items) {
     tbody.innerHTML = "";
     if (!items.length) {
         tbody.innerHTML =
-            '<tr><td colspan="8" class="text-secondary">No operations recorded yet.</td></tr>';
+            '<tr><td colspan="7" class="text-secondary">No operations recorded yet.</td></tr>';
         return;
     }
     for (const item of items) {
@@ -42,7 +65,6 @@ function renderByVault(items) {
         tr.innerHTML = `
       <td>${item.name}</td>
       <td><code class="small">${item.kind}</code></td>
-      <td>${item.test}</td>
       <td>${item.enumerate}</td>
       <td>${item.read}</td>
       <td>${item.write}</td>
@@ -51,11 +73,12 @@ function renderByVault(items) {
         tbody.appendChild(tr);
     }
 }
-async function load() {
+async function load(days = DEFAULT_DAYS) {
+    renderPeriodSelector(days);
     try {
         const [summary, byVault] = await Promise.all([
-            apiJson("/api/v1/usage/summary/"),
-            apiJson("/api/v1/usage/by-vault/"),
+            apiJson(`/api/v1/usage/summary/?days=${days}`),
+            apiJson(`/api/v1/usage/by-vault/?days=${days}`),
         ]);
         renderSummary(summary);
         renderByVault(byVault);

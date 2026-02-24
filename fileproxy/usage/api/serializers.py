@@ -18,7 +18,6 @@ class SummarySerializer(serializers.Serializer):
 class ByVaultItemSerializer(serializers.Serializer):
     name = serializers.CharField()
     kind = serializers.CharField()
-    test = serializers.IntegerField()
     enumerate = serializers.IntegerField()
     read = serializers.IntegerField()
     write = serializers.IntegerField()
