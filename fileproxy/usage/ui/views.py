@@ -8,5 +8,5 @@ def overview(request):
 
 
 @login_required
-def vault_metrics(request):
-    return render(request, "usage_ui/vault_metrics.html")
+def vault_detail(request, name):
+    return render(request, "usage_ui/vault_detail.html", {"vault_name": name})

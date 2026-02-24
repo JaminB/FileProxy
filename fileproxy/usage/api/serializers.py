@@ -18,7 +18,6 @@ class SummarySerializer(serializers.Serializer):
 class ByVaultItemSerializer(serializers.Serializer):
     name = serializers.CharField()
     kind = serializers.CharField()
-    test = serializers.IntegerField()
     enumerate = serializers.IntegerField()
     read = serializers.IntegerField()
     write = serializers.IntegerField()
@@ -26,13 +25,8 @@ class ByVaultItemSerializer(serializers.Serializer):
     total = serializers.IntegerField()
 
 
-class RecentVaultItemSerializer(serializers.Serializer):
-    name = serializers.CharField()
-    kind = serializers.CharField()
-    created_at = serializers.DateTimeField()
-
-
-class VaultMetricsSerializer(serializers.Serializer):
-    total = serializers.IntegerField()
-    by_kind = serializers.DictField(child=serializers.IntegerField())
-    recent = RecentVaultItemSerializer(many=True)
+class TimelineSerializer(serializers.Serializer):
+    vault_item_name = serializers.CharField()
+    days = serializers.IntegerField()
+    dates = serializers.ListField(child=serializers.CharField())
+    series = serializers.DictField(child=serializers.ListField(child=serializers.IntegerField()))

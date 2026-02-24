@@ -73,6 +73,16 @@ class FilesViewSet(viewsets.ViewSet):
             ok=ok,
         )
 
+    def _tracked_stream(self, request, vault_item_name: str, chunks, path: str):
+        """Wrap a chunk iterator so the read event is recorded after streaming completes."""
+        ok = False
+        try:
+            for chunk in chunks:
+                yield chunk
+            ok = True
+        finally:
+            self._record_event(request, vault_item_name, "read", object_path=path, ok=ok)
+
     def _error(self, e: Exception) -> Response:
         if isinstance(e, ValidationError):
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -107,16 +117,12 @@ class FilesViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["post"])
     def test(self, request, vault_item_name: str = ""):
-        ok = False
         try:
             backend = self._backend(request, vault_item_name)
             backend.test()
-            ok = True
             return Response({"detail": "Connection OK."})
         except Exception as e:  # noqa: BLE001
             return self._error(e)
-        finally:
-            self._record_event(request, vault_item_name, "test", ok=ok)
 
     @action(detail=True, methods=["get"], url_path="objects")
     def objects(self, request, vault_item_name: str = ""):
@@ -221,6 +227,7 @@ class FilesViewSet(viewsets.ViewSet):
     @action(detail=True, methods=["get"], url_path="download")
     def download(self, request, vault_item_name: str = ""):
         """GET /api/v1/files/{vault_item_name}/download/?path=... — binary streaming download."""
+        path = ""
         try:
             backend = self._backend(request, vault_item_name)
             q = ReadFileQuerySerializer(data=request.query_params)
@@ -229,8 +236,12 @@ class FilesViewSet(viewsets.ViewSet):
             filename = path.rsplit("/", 1)[-1] or "download"
 
             chunks = backend.read_stream(path)
-            resp = StreamingHttpResponse(chunks, content_type="application/octet-stream")
+            resp = StreamingHttpResponse(
+                self._tracked_stream(request, vault_item_name, chunks, path),
+                content_type="application/octet-stream",
+            )
             resp["Content-Disposition"] = f'attachment; filename="{filename}"'
             return resp
         except Exception as e:  # noqa: BLE001
+            self._record_event(request, vault_item_name, "read", object_path=path, ok=False)
             return self._error(e)

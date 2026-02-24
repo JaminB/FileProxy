@@ -14,8 +14,8 @@ urlpatterns = [
         name="usage-by-vault",
     ),
     path(
-        "usage/vault-metrics/",
-        UsageViewSet.as_view({"get": "vault_metrics"}),
-        name="usage-vault-metrics",
+        "usage/timeline/",
+        UsageViewSet.as_view({"get": "timeline"}),
+        name="usage-timeline",
     ),
 ]
