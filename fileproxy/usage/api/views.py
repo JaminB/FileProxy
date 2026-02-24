@@ -56,7 +56,11 @@ class UsageViewSet(ViewSet):
         if vault:
             qs = qs.filter(vault_item_name=vault)
 
-        ops = {kind: qs.filter(operation=kind).count() for kind in OperationKind.values}
+        ops = {
+            kind: qs.filter(operation=kind).count()
+            for kind in OperationKind.values
+            if kind != "test"
+        }
         return Response({"days": days, "total": sum(ops.values()), "ops": ops})
 
     @extend_schema(
