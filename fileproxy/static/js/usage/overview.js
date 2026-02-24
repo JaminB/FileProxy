@@ -61,15 +61,18 @@ function renderByVault(items) {
         return;
     }
     for (const item of items) {
+        const url = `/usage/vault/${encodeURIComponent(item.name)}/`;
         const tr = document.createElement("tr");
+        tr.style.cursor = "pointer";
         tr.innerHTML = `
-      <td><a href="/usage/vault/${encodeURIComponent(item.name)}/" class="text-decoration-none text-reset fw-semibold">${item.name}</a></td>
+      <td class="fw-semibold">${item.name}</td>
       <td><code class="small">${item.kind}</code></td>
       <td>${item.enumerate}</td>
       <td>${item.read}</td>
       <td>${item.write}</td>
       <td>${item.delete}</td>
       <td><strong>${item.total}</strong></td>`;
+        tr.addEventListener("click", () => { window.location.href = url; });
         tbody.appendChild(tr);
     }
 }

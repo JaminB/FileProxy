@@ -165,21 +165,21 @@ class UsageTimelineApiTests(APITestCase):
     def test_timeline_last_date_is_today(self):
         resp = self.client.get("/api/v1/usage/timeline/?vault=my-vault&days=7")
         self.assertEqual(resp.status_code, 200)
-        today_str = str(date.today())
+        today_str = str(timezone.now().date())
         self.assertEqual(resp.data["dates"][-1], today_str)
 
     def test_timeline_first_date_is_days_minus_1_ago(self):
         days = 7
         resp = self.client.get(f"/api/v1/usage/timeline/?vault=my-vault&days={days}")
         self.assertEqual(resp.status_code, 200)
-        expected_start = str(date.today() - timedelta(days=days - 1))
+        expected_start = str(timezone.now().date() - timedelta(days=days - 1))
         self.assertEqual(resp.data["dates"][0], expected_start)
 
     def test_timeline_event_counted_on_correct_date(self):
         _make_event(self.scope, "my-vault", "s3", "read", days_ago=2)
         resp = self.client.get("/api/v1/usage/timeline/?vault=my-vault&days=7")
         self.assertEqual(resp.status_code, 200)
-        expected_date = str(date.today() - timedelta(days=2))
+        expected_date = str(timezone.now().date() - timedelta(days=2))
         idx = resp.data["dates"].index(expected_date)
         self.assertEqual(resp.data["series"]["read"][idx], 1)
 

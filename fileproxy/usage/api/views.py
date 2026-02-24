@@ -143,7 +143,7 @@ class UsageViewSet(ViewSet):
             days = 30
 
         scope = _user_scope(request)
-        today = timezone.localdate()
+        today = timezone.now().date()
         # days=7 → start_date = today-6, giving exactly 7 dates: [today-6 .. today]
         start_date = today - timedelta(days=days - 1)
         since = timezone.make_aware(
