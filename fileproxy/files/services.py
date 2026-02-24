@@ -25,9 +25,7 @@ def vault_items_for_user(user: AbstractBaseUser) -> QuerySet[VaultItem]:
     return VaultItem.objects.filter(scope=user_scope(user)).order_by("name")
 
 
-def get_backend_for_user_vault_item(
-    *, user: AbstractBaseUser, vault_item_name: str
-) -> Backend:
+def get_backend_for_user_vault_item(*, user: AbstractBaseUser, vault_item_name: str) -> Backend:
     name = (vault_item_name or "").strip()
     if not name:
         raise VaultItemNotFound("Missing vault item name")

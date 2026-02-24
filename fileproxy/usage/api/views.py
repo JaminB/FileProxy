@@ -151,9 +151,7 @@ class UsageViewSet(ViewSet):
         )
 
         rows = (
-            UsageEvent.objects.filter(
-                scope=scope, vault_item_name=vault, occurred_at__gte=since
-            )
+            UsageEvent.objects.filter(scope=scope, vault_item_name=vault, occurred_at__gte=since)
             .annotate(date=TruncDate("occurred_at"))
             .values("date", "operation")
             .annotate(count=Count("id"))

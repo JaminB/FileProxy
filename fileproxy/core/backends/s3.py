@@ -7,9 +7,17 @@ import boto3
 from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
-from .base import (Backend, BackendConfig, BackendDeleteError,
-                   BackendEnumerateError, BackendError, BackendReadError,
-                   BackendTestError, BackendWriteError, EnumeratePage)
+from .base import (
+    Backend,
+    BackendConfig,
+    BackendDeleteError,
+    BackendEnumerateError,
+    BackendError,
+    BackendReadError,
+    BackendTestError,
+    BackendWriteError,
+    EnumeratePage,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,9 +88,7 @@ class S3Backend(Backend):
 
             # 2) Write
             try:
-                self._client.put_object(
-                    Bucket=self._bucket, Key=test_key, Body=test_bytes
-                )
+                self._client.put_object(Bucket=self._bucket, Key=test_key, Body=test_bytes)
                 wrote = True
             except NoCredentialsError as e:
                 raise _err("write", extra="missing AWS credentials") from e
@@ -189,11 +195,13 @@ class S3Backend(Backend):
         for obj in resp.get("Contents", []) or []:
             key = obj.get("Key") or ""
             size = obj.get("Size")
-            objects.append(S3Object(
-                name=key.rsplit("/", 1)[-1],
-                path=key,
-                size=int(size) if size is not None else None,
-            ))
+            objects.append(
+                S3Object(
+                    name=key.rsplit("/", 1)[-1],
+                    path=key,
+                    size=int(size) if size is not None else None,
+                )
+            )
 
         return EnumeratePage(
             objects=objects,
@@ -206,16 +214,12 @@ class S3Backend(Backend):
             resp = self._client.get_object(Bucket=self._bucket, Key=path)
             return resp["Body"].read()
         except NoCredentialsError as e:
-            raise BackendReadError(
-                f"S3 read failed (path={path}): missing AWS credentials"
-            ) from e
+            raise BackendReadError(f"S3 read failed (path={path}): missing AWS credentials") from e
         except ClientError as e:
             code = (e.response.get("Error") or {}).get("Code")
             raise BackendReadError(f"S3 read failed (path={path}) (code={code})") from e
         except BotoCoreError as e:
-            raise BackendReadError(
-                f"S3 read failed (path={path}): connectivity error"
-            ) from e
+            raise BackendReadError(f"S3 read failed (path={path}): connectivity error") from e
 
     def write(self, path: str, data: bytes) -> None:
         """Write an object to S3."""
@@ -227,13 +231,9 @@ class S3Backend(Backend):
             ) from e
         except ClientError as e:
             code = (e.response.get("Error") or {}).get("Code")
-            raise BackendWriteError(
-                f"S3 write failed (path={path}) (code={code})"
-            ) from e
+            raise BackendWriteError(f"S3 write failed (path={path}) (code={code})") from e
         except BotoCoreError as e:
-            raise BackendWriteError(
-                f"S3 write failed (path={path}): connectivity error"
-            ) from e
+            raise BackendWriteError(f"S3 write failed (path={path}): connectivity error") from e
 
     def delete(self, path: str) -> None:
         """Delete an object from S3."""
@@ -245,13 +245,9 @@ class S3Backend(Backend):
             ) from e
         except ClientError as e:
             code = (e.response.get("Error") or {}).get("Code")
-            raise BackendDeleteError(
-                f"S3 delete failed (path={path}) (code={code})"
-            ) from e
+            raise BackendDeleteError(f"S3 delete failed (path={path}) (code={code})") from e
         except BotoCoreError as e:
-            raise BackendDeleteError(
-                f"S3 delete failed (path={path}): connectivity error"
-            ) from e
+            raise BackendDeleteError(f"S3 delete failed (path={path}): connectivity error") from e
 
     def read_stream(self, path: str) -> Iterator[bytes]:
         """Stream object bytes from S3 in 8 MB chunks."""
@@ -269,6 +265,7 @@ class S3Backend(Backend):
     def write_stream(self, path: str, stream: BinaryIO) -> None:
         """Upload a file-like object to S3 using multipart for files >= 8 MB."""
         from boto3.s3.transfer import TransferConfig
+
         config = TransferConfig(
             multipart_threshold=8 * 1024 * 1024,
             multipart_chunksize=8 * 1024 * 1024,
@@ -281,7 +278,9 @@ class S3Backend(Backend):
             code = (e.response.get("Error") or {}).get("Code")
             raise BackendWriteError(f"S3 write_stream failed (path={path}) (code={code})") from e
         except BotoCoreError as e:
-            raise BackendWriteError(f"S3 write_stream failed (path={path}): connectivity error") from e
+            raise BackendWriteError(
+                f"S3 write_stream failed (path={path}): connectivity error"
+            ) from e
 
     def _require_setting_str(self, key: str) -> str:
         val = self.config.settings.get(key)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Mapping
+from typing import Any, Dict, Optional
 
 
 @dataclass(frozen=True)

@@ -182,9 +182,7 @@ class DropboxBackend(Backend):
 
             while True:
                 chunk = stream.read(chunk_size)
-                cursor = dropbox.files.UploadSessionCursor(
-                    session_id=session_id, offset=offset
-                )
+                cursor = dropbox.files.UploadSessionCursor(session_id=session_id, offset=offset)
                 if len(chunk) < chunk_size:
                     # Last chunk (possibly empty)
                     commit = dropbox.files.CommitInfo(

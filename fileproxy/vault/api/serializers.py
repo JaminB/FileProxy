@@ -115,11 +115,13 @@ class S3CredentialsCreateSerializer(serializers.Serializer):
 
 class GDriveCreateSerializer(serializers.Serializer):
     """Validates the pre-OAuth form fields."""
+
     name = serializers.CharField(max_length=120)
 
 
 class DropboxCreateSerializer(serializers.Serializer):
     """Validates the pre-OAuth form fields for Dropbox."""
+
     name = serializers.CharField(max_length=120)
 
 
@@ -139,7 +141,8 @@ class AzureBlobCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Account name cannot be empty.")
         if not re.fullmatch(r"[a-z0-9]{3,24}", value):
             raise serializers.ValidationError(
-                "Account name must be 3–24 characters and may only contain lowercase letters and numbers."
+                "Account name must be 3–24 characters and may only contain"
+                " lowercase letters and numbers."
             )
         return value
 
@@ -148,6 +151,7 @@ class AzureBlobCreateSerializer(serializers.Serializer):
         if not value:
             raise serializers.ValidationError("Container name cannot be empty.")
         return value
+
     def create(self, validated_data):
         request = self.context["request"]
         scope = f"user:{request.user.id}"

@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = []
@@ -26,9 +25,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=120)),
                 (
                     "kind",
-                    models.CharField(
-                        choices=[("aws_s3", "AWS S3 Credentials")], max_length=32
-                    ),
+                    models.CharField(choices=[("aws_s3", "AWS S3 Credentials")], max_length=32),
                 ),
                 ("wrapped_dek", models.TextField()),
                 ("payload_nonce", models.CharField(max_length=32)),
@@ -39,9 +36,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 "indexes": [
-                    models.Index(
-                        fields=["scope", "kind"], name="vault_vault_scope_1d65bb_idx"
-                    )
+                    models.Index(fields=["scope", "kind"], name="vault_vault_scope_1d65bb_idx")
                 ],
                 "constraints": [
                     models.UniqueConstraint(
