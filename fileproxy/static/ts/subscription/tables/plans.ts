@@ -1,5 +1,5 @@
-import { getCsrfToken } from "../../utils/cookies.js";
-import { qs, setFlash } from "../../utils/dom.js";
+import { getCsrfToken } from '../../utils/cookies.js';
+import { qs, setFlash } from '../../utils/dom.js';
 
 type Plan = {
   id: string;
@@ -15,24 +15,24 @@ type Plan = {
 };
 
 function fmtLimit(val: number | null): string {
-  return val === null ? "∞" : String(val);
+  return val === null ? '∞' : String(val);
 }
 
 function esc(str: string): string {
   return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 async function deletePlan(id: string): Promise<void> {
   const csrf = getCsrfToken();
   const resp = await fetch(`/api/v1/subscription/plans/${id}/`, {
-    method: "DELETE",
-    headers: { Accept: "application/json", ...(csrf ? { "X-CSRFToken": csrf } : {}) },
-    credentials: "same-origin",
+    method: 'DELETE',
+    headers: { Accept: 'application/json', ...(csrf ? { 'X-CSRFToken': csrf } : {}) },
+    credentials: 'same-origin',
   });
   if (!resp.ok) throw new Error(`Delete failed (${resp.status})`);
 }
@@ -40,39 +40,39 @@ async function deletePlan(id: string): Promise<void> {
 async function setDefault(id: string): Promise<void> {
   const csrf = getCsrfToken();
   const resp = await fetch(`/api/v1/subscription/plans/${id}/set-default/`, {
-    method: "POST",
-    headers: { Accept: "application/json", ...(csrf ? { "X-CSRFToken": csrf } : {}) },
-    credentials: "same-origin",
+    method: 'POST',
+    headers: { Accept: 'application/json', ...(csrf ? { 'X-CSRFToken': csrf } : {}) },
+    credentials: 'same-origin',
   });
   if (!resp.ok) throw new Error(`Set default failed (${resp.status})`);
 }
 
 function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: boolean): void {
-  tbody.innerHTML = "";
+  tbody.innerHTML = '';
 
-  const warningEl = qs<HTMLElement>("#no-default-warning");
+  const warningEl = qs<HTMLElement>('#no-default-warning');
   if (warningEl) {
     const hasDefault = plans.some((p) => p.is_default && !p.expires_at);
-    warningEl.classList.toggle("d-none", hasDefault);
+    warningEl.classList.toggle('d-none', hasDefault);
   }
 
   if (!plans.length) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
     td.colSpan = staffMode ? 7 : 6;
-    td.className = "text-secondary";
-    td.textContent = "No plans defined.";
+    td.className = 'text-secondary';
+    td.textContent = 'No plans defined.';
     tr.appendChild(td);
     tbody.appendChild(tr);
     return;
   }
 
   for (const plan of plans) {
-    const tr = document.createElement("tr");
+    const tr = document.createElement('tr');
 
-    const nameTd = document.createElement("td");
+    const nameTd = document.createElement('td');
     if (staffMode) {
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = `/subscription/plans/${plan.id}/`;
       a.textContent = plan.name;
       nameTd.appendChild(a);
@@ -80,26 +80,26 @@ function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: b
       nameTd.textContent = plan.name;
     }
 
-    const defaultTd = document.createElement("td");
+    const defaultTd = document.createElement('td');
     if (plan.is_default) {
-      const badge = document.createElement("span");
-      badge.className = "badge bg-success";
-      badge.textContent = "Default";
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-success';
+      badge.textContent = 'Default';
       defaultTd.appendChild(badge);
     } else {
-      defaultTd.textContent = "—";
+      defaultTd.textContent = '—';
     }
 
-    const enumTd = document.createElement("td");
+    const enumTd = document.createElement('td');
     enumTd.textContent = fmtLimit(plan.enumerate_limit);
 
-    const readTd = document.createElement("td");
+    const readTd = document.createElement('td');
     readTd.textContent = fmtLimit(plan.read_limit);
 
-    const writeTd = document.createElement("td");
+    const writeTd = document.createElement('td');
     writeTd.textContent = fmtLimit(plan.write_limit);
 
-    const deleteTd = document.createElement("td");
+    const deleteTd = document.createElement('td');
     deleteTd.textContent = fmtLimit(plan.delete_limit);
 
     tr.appendChild(nameTd);
@@ -110,44 +110,44 @@ function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: b
     tr.appendChild(deleteTd);
 
     if (staffMode) {
-      const actionsTd = document.createElement("td");
-      actionsTd.className = "text-end";
+      const actionsTd = document.createElement('td');
+      actionsTd.className = 'text-end';
 
-      const group = document.createElement("div");
-      group.className = "btn-group btn-group-sm";
+      const group = document.createElement('div');
+      group.className = 'btn-group btn-group-sm';
 
       if (!plan.is_default) {
-        const defaultBtn = document.createElement("button");
-        defaultBtn.type = "button";
-        defaultBtn.className = "btn btn-outline-secondary";
-        defaultBtn.textContent = "Set Default";
-        defaultBtn.addEventListener("click", async () => {
+        const defaultBtn = document.createElement('button');
+        defaultBtn.type = 'button';
+        defaultBtn.className = 'btn btn-outline-secondary';
+        defaultBtn.textContent = 'Set Default';
+        defaultBtn.addEventListener('click', async () => {
           try {
             defaultBtn.disabled = true;
             await setDefault(plan.id);
-            setFlash("Default plan updated.", "info");
+            setFlash('Default plan updated.', 'info');
             await loadPlans();
           } catch (err) {
-            setFlash(String(err), "error");
+            setFlash(String(err), 'error');
             defaultBtn.disabled = false;
           }
         });
         group.appendChild(defaultBtn);
       }
 
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "btn btn-outline-danger";
-      deleteBtn.textContent = "Delete";
-      deleteBtn.addEventListener("click", async () => {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'btn btn-outline-danger';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', async () => {
         if (!confirm(`Delete plan "${esc(plan.name)}"?`)) return;
         try {
           deleteBtn.disabled = true;
           await deletePlan(plan.id);
-          setFlash("Plan deleted.", "info");
+          setFlash('Plan deleted.', 'info');
           tr.remove();
         } catch (err) {
-          setFlash(String(err), "error");
+          setFlash(String(err), 'error');
           deleteBtn.disabled = false;
         }
       });
@@ -162,29 +162,29 @@ function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: b
 }
 
 async function loadPlans(): Promise<void> {
-  const tbody = qs<HTMLTableSectionElement>("#plans-rows");
+  const tbody = qs<HTMLTableSectionElement>('#plans-rows');
   if (!tbody) return;
-  const isStaff = tbody.dataset.isStaff === "true";
+  const isStaff = tbody.dataset.isStaff === 'true';
 
   try {
-    const resp = await fetch("/api/v1/subscription/plans/", {
-      headers: { Accept: "application/json" },
-      credentials: "same-origin",
+    const resp = await fetch('/api/v1/subscription/plans/', {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
     });
 
     if (!resp.ok) {
-      setFlash(`Failed to load plans (${resp.status}).`, "error");
+      setFlash(`Failed to load plans (${resp.status}).`, 'error');
       return;
     }
 
     const data = (await resp.json()) as Plan[] | { results: Plan[] };
-    const plans = Array.isArray(data) ? data : (data as { results: Plan[] }).results ?? [];
+    const plans = Array.isArray(data) ? data : ((data as { results: Plan[] }).results ?? []);
     renderPlans(tbody, plans, isStaff);
   } catch (err) {
-    setFlash(`Network error: ${String(err)}`, "error");
+    setFlash(`Network error: ${String(err)}`, 'error');
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   void loadPlans();
 });

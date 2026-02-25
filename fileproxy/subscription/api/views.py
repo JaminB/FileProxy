@@ -89,7 +89,7 @@ class SubscriptionPlanViewSet(viewsets.GenericViewSet):
         except (TypeError, ValueError):
             offset = 0
 
-        subs = subs_qs[offset:offset + limit]
+        subs = subs_qs[offset : offset + limit]
         return Response(UserSubscriptionSerializer(subs, many=True).data)
 
 

@@ -51,7 +51,11 @@ class UserSubscription(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="subscription")
     plan = models.ForeignKey(
-        SubscriptionPlan, null=True, blank=True, on_delete=models.SET_NULL, related_name="subscribers"
+        SubscriptionPlan,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="subscribers",
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     cycle_started_at = models.DateTimeField()

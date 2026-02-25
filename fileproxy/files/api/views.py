@@ -172,7 +172,11 @@ class FilesViewSet(viewsets.ViewSet):
             return self._error(e)
         finally:
             self._record_event(
-                request, vault_item_name, "read", object_path=path, ok=ok,
+                request,
+                vault_item_name,
+                "read",
+                object_path=path,
+                ok=ok,
                 bytes_transferred=bytes_read,
             )
 
@@ -224,7 +228,11 @@ class FilesViewSet(viewsets.ViewSet):
             return self._error(e)
         finally:
             self._record_event(
-                request, vault_item_name, "write", object_path=path, ok=ok,
+                request,
+                vault_item_name,
+                "write",
+                object_path=path,
+                ok=ok,
                 bytes_transferred=bytes_written,
             )
 
