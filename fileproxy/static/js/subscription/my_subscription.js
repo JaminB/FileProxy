@@ -1,5 +1,13 @@
 import { getCsrfToken } from "../utils/cookies.js";
 import { qs, setFlash } from "../utils/dom.js";
+function esc(str) {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 function fmtDate(val) {
     if (!val)
         return "—";
@@ -41,7 +49,7 @@ function renderSubInfo(sub, subInfoEl) {
     subInfoEl.innerHTML = `
     <div class="d-flex justify-content-between align-items-start mb-3">
       <div>
-        <div class="fw-semibold">${planName}</div>
+        <div class="fw-semibold">${esc(planName)}</div>
         <div class="small text-secondary mt-1">
           Cycle: ${fmtDate(sub.cycle_started_at)} – ${fmtDate(sub.cycle_ends_at)}
           ${sub.cancels_at ? `<br><span class="text-warning">Cancels: ${fmtDate(sub.cancels_at)}</span>` : ""}
@@ -110,13 +118,23 @@ async function loadAvailablePlans(plansListEl) {
         for (const plan of plans) {
             const li = document.createElement("li");
             li.className = "list-group-item d-flex justify-content-between align-items-center";
-            li.innerHTML = `
-        <div>
-          <span class="fw-semibold small">${plan.name}</span>
-          ${plan.is_default ? '<span class="badge bg-success ms-1">Default</span>' : ""}
-        </div>
-        <button class="btn btn-sm btn-outline-primary switch-btn" data-plan-id="${plan.id}">Select</button>
-      `;
+            const leftDiv = document.createElement("div");
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "fw-semibold small";
+            nameSpan.textContent = plan.name;
+            leftDiv.appendChild(nameSpan);
+            if (plan.is_default) {
+                const defaultBadge = document.createElement("span");
+                defaultBadge.className = "badge bg-success ms-1";
+                defaultBadge.textContent = "Default";
+                leftDiv.appendChild(defaultBadge);
+            }
+            const button = document.createElement("button");
+            button.className = "btn btn-sm btn-outline-primary switch-btn";
+            button.textContent = "Select";
+            button.dataset.planId = plan.id;
+            li.appendChild(leftDiv);
+            li.appendChild(button);
             ul.appendChild(li);
         }
         plansListEl.innerHTML = "";

@@ -24,6 +24,9 @@ class SubscriptionPlan(models.Model):
 
     class Meta:
         ordering = ["name"]
+        indexes = [
+            models.Index(fields=["is_default", "expires_at"], name="sub_plan_default_exp_idx"),
+        ]
 
     def __str__(self) -> str:
         return self.name

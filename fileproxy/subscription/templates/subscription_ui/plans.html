@@ -47,7 +47,7 @@
               {% if user.is_staff %}<th class="text-end">Actions</th>{% endif %}
             </tr>
           </thead>
-          <tbody id="plans-rows">
+          <tbody id="plans-rows" data-is-staff="{{ user.is_staff|lower }}">
             <tr>
               <td colspan="{% if user.is_staff %}7{% else %}6{% endif %}" class="text-secondary">Loading…</td>
             </tr>
