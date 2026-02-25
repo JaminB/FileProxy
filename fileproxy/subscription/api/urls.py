@@ -14,7 +14,11 @@ router.register("subscription/plans", SubscriptionPlanViewSet, basename="subscri
 
 urlpatterns = router.urls + [
     path("subscription/my/", MySubscriptionView.as_view(), name="my-subscription"),
-    path("subscription/my/switch/", MySubscriptionSwitchView.as_view(), name="my-subscription-switch"),
-    path("subscription/my/cancel/", MySubscriptionCancelView.as_view(), name="my-subscription-cancel"),
+    path(
+        "subscription/my/switch/", MySubscriptionSwitchView.as_view(), name="my-subscription-switch"
+    ),
+    path(
+        "subscription/my/cancel/", MySubscriptionCancelView.as_view(), name="my-subscription-cancel"
+    ),
     path("subscription/my/usage/", MySubscriptionUsageView.as_view(), name="my-subscription-usage"),
 ]

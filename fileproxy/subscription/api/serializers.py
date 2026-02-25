@@ -31,8 +31,12 @@ class SubscriptionPlanCreateSerializer(serializers.Serializer):
     read_limit = serializers.IntegerField(min_value=0, allow_null=True, required=False)
     write_limit = serializers.IntegerField(min_value=0, allow_null=True, required=False)
     delete_limit = serializers.IntegerField(min_value=0, allow_null=True, required=False)
-    read_transfer_limit_bytes = serializers.IntegerField(min_value=0, allow_null=True, required=False)
-    write_transfer_limit_bytes = serializers.IntegerField(min_value=0, allow_null=True, required=False)
+    read_transfer_limit_bytes = serializers.IntegerField(
+        min_value=0, allow_null=True, required=False
+    )
+    write_transfer_limit_bytes = serializers.IntegerField(
+        min_value=0, allow_null=True, required=False
+    )
 
 
 class UserSubscriptionSerializer(serializers.ModelSerializer):
