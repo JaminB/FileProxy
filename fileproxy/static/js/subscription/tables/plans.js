@@ -1,8 +1,15 @@
 import { getCsrfToken } from "../../utils/cookies.js";
 import { qs, setFlash } from "../../utils/dom.js";
-const isStaff = document.querySelector("#plans-rows") !== null && document.querySelector("a[href='/subscription/plans/new/']") !== null;
 function fmtLimit(val) {
     return val === null ? "∞" : String(val);
+}
+function esc(str) {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 async function deletePlan(id) {
     const csrf = getCsrfToken();
@@ -106,7 +113,7 @@ function renderPlans(tbody, plans, staffMode) {
             deleteBtn.className = "btn btn-outline-danger";
             deleteBtn.textContent = "Delete";
             deleteBtn.addEventListener("click", async () => {
-                if (!confirm(`Delete plan "${plan.name}"?`))
+                if (!confirm(`Delete plan "${esc(plan.name)}"?`))
                     return;
                 try {
                     deleteBtn.disabled = true;
@@ -130,6 +137,7 @@ async function loadPlans() {
     const tbody = qs("#plans-rows");
     if (!tbody)
         return;
+    const isStaff = tbody.dataset.isStaff === "true";
     try {
         const resp = await fetch("/api/v1/subscription/plans/", {
             headers: { Accept: "application/json" },

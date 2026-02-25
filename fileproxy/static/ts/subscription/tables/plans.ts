@@ -14,10 +14,17 @@ type Plan = {
   expires_at: string | null;
 };
 
-const isStaff = document.querySelector("#plans-rows") !== null && document.querySelector<HTMLAnchorElement>("a[href='/subscription/plans/new/']") !== null;
-
 function fmtLimit(val: number | null): string {
   return val === null ? "∞" : String(val);
+}
+
+function esc(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 async function deletePlan(id: string): Promise<void> {
@@ -133,8 +140,7 @@ function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: b
       deleteBtn.className = "btn btn-outline-danger";
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", async () => {
-        const safePlanName = plan.name.replace(/[<>"'`&]/g, "");
-        if (!confirm(`Delete plan "${safePlanName}"?`)) return;
+        if (!confirm(`Delete plan "${esc(plan.name)}"?`)) return;
         try {
           deleteBtn.disabled = true;
           await deletePlan(plan.id);
@@ -158,6 +164,7 @@ function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: b
 async function loadPlans(): Promise<void> {
   const tbody = qs<HTMLTableSectionElement>("#plans-rows");
   if (!tbody) return;
+  const isStaff = tbody.dataset.isStaff === "true";
 
   try {
     const resp = await fetch("/api/v1/subscription/plans/", {

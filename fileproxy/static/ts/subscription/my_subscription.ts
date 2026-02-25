@@ -33,6 +33,15 @@ type Usage = {
   plan: Plan | null;
 };
 
+function esc(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function fmtDate(val: string | null): string {
   if (!val) return "—";
   const d = new Date(val);
@@ -77,7 +86,7 @@ function renderSubInfo(sub: Sub, subInfoEl: HTMLElement): void {
   subInfoEl.innerHTML = `
     <div class="d-flex justify-content-between align-items-start mb-3">
       <div>
-        <div class="fw-semibold">${planName}</div>
+        <div class="fw-semibold">${esc(planName)}</div>
         <div class="small text-secondary mt-1">
           Cycle: ${fmtDate(sub.cycle_started_at)} – ${fmtDate(sub.cycle_ends_at)}
           ${sub.cancels_at ? `<br><span class="text-warning">Cancels: ${fmtDate(sub.cancels_at)}</span>` : ""}

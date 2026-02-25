@@ -1,5 +1,13 @@
 import { getCsrfToken } from "../utils/cookies.js";
 import { qs, setFlash } from "../utils/dom.js";
+function esc(str) {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 function fmtLimit(val) {
     return val === null ? "Unlimited" : String(val);
 }
@@ -33,7 +41,7 @@ async function loadPlanDetail() {
         // Render plan info
         infoEl.innerHTML = `
       <div class="d-flex align-items-center justify-content-between mb-3">
-        <h6 class="mb-0 fw-semibold">${plan.name}</h6>
+        <h6 class="mb-0 fw-semibold">${esc(plan.name)}</h6>
         <div class="d-flex gap-2">
           ${plan.is_default ? '<span class="badge bg-success">Default</span>' : ""}
           ${plan.expires_at ? '<span class="badge bg-warning text-dark">Expiring</span>' : ""}
@@ -108,12 +116,21 @@ async function loadPlanDetail() {
         }
         for (const sub of subList) {
             const tr = document.createElement("tr");
-            tr.innerHTML = `
-        <td>${sub.username}</td>
-        <td>${sub.email}</td>
-        <td><span class="badge ${sub.status === "active" ? "bg-success" : "bg-secondary"}">${sub.status}</span></td>
-        <td>${fmtDate(sub.cycle_ends_at)}</td>
-      `;
+            const tdUsername = document.createElement("td");
+            tdUsername.textContent = sub.username;
+            tr.appendChild(tdUsername);
+            const tdEmail = document.createElement("td");
+            tdEmail.textContent = sub.email;
+            tr.appendChild(tdEmail);
+            const tdStatus = document.createElement("td");
+            const statusSpan = document.createElement("span");
+            statusSpan.className = "badge " + (sub.status === "active" ? "bg-success" : "bg-secondary");
+            statusSpan.textContent = sub.status;
+            tdStatus.appendChild(statusSpan);
+            tr.appendChild(tdStatus);
+            const tdCycleEndsAt = document.createElement("td");
+            tdCycleEndsAt.textContent = fmtDate(sub.cycle_ends_at);
+            tr.appendChild(tdCycleEndsAt);
             tbody.appendChild(tr);
         }
     }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+import calendar
 
 from django.db import transaction
 from django.utils import timezone
@@ -14,14 +14,13 @@ class SubscriptionLimitExceeded(Exception):
 
 
 def _add_one_month(dt):
-    """Add approximately one month to a datetime."""
+    """Add approximately one month to a datetime, preserving tzinfo."""
     month = dt.month + 1
     year = dt.year
     if month > 12:
         month = 1
         year += 1
     # Handle end-of-month edge cases
-    import calendar
     day = min(dt.day, calendar.monthrange(year, month)[1])
     return dt.replace(year=year, month=month, day=day)
 
@@ -185,6 +184,7 @@ def create_plan(
     )
 
 
+@transaction.atomic
 def delete_plan(plan) -> None:
     from .models import UserSubscription
 
@@ -204,6 +204,7 @@ def set_default_plan(plan) -> None:
     plan.save(update_fields=["is_default"])
 
 
+@transaction.atomic
 def switch_plan(user, plan) -> object:
     from .models import UserSubscription
 
@@ -218,6 +219,7 @@ def switch_plan(user, plan) -> object:
     return sub
 
 
+@transaction.atomic
 def cancel_subscription(user) -> object:
     sub = get_or_create_subscription(user)
     sub.status = sub.STATUS_CANCELED

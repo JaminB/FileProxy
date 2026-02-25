@@ -78,7 +78,18 @@ class SubscriptionPlanViewSet(viewsets.GenericViewSet):
     def subscribers(self, request, pk=None):
         """GET /api/v1/subscription/plans/{id}/subscribers/"""
         plan = get_object_or_404(self.get_queryset(), pk=pk)
-        subs = UserSubscription.objects.filter(plan=plan).select_related("user")
+        subs_qs = UserSubscription.objects.filter(plan=plan).select_related("user")
+
+        try:
+            limit = max(1, min(1000, int(request.query_params.get("limit", 100))))
+        except (TypeError, ValueError):
+            limit = 100
+        try:
+            offset = max(0, int(request.query_params.get("offset", 0)))
+        except (TypeError, ValueError):
+            offset = 0
+
+        subs = subs_qs[offset:offset + limit]
         return Response(UserSubscriptionSerializer(subs, many=True).data)
 
 
