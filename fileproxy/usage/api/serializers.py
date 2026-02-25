@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 
 class OperationCountsSerializer(serializers.Serializer):
-    test = serializers.IntegerField()
     enumerate = serializers.IntegerField()
     read = serializers.IntegerField()
     write = serializers.IntegerField()
