@@ -148,13 +148,27 @@ async function loadAvailablePlans(plansListEl: HTMLElement): Promise<void> {
     for (const plan of plans) {
       const li = document.createElement("li");
       li.className = "list-group-item d-flex justify-content-between align-items-center";
-      li.innerHTML = `
-        <div>
-          <span class="fw-semibold small">${plan.name}</span>
-          ${plan.is_default ? '<span class="badge bg-success ms-1">Default</span>' : ""}
-        </div>
-        <button class="btn btn-sm btn-outline-primary switch-btn" data-plan-id="${plan.id}">Select</button>
-      `;
+
+      const leftDiv = document.createElement("div");
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "fw-semibold small";
+      nameSpan.textContent = plan.name;
+      leftDiv.appendChild(nameSpan);
+
+      if (plan.is_default) {
+        const defaultBadge = document.createElement("span");
+        defaultBadge.className = "badge bg-success ms-1";
+        defaultBadge.textContent = "Default";
+        leftDiv.appendChild(defaultBadge);
+      }
+
+      const button = document.createElement("button");
+      button.className = "btn btn-sm btn-outline-primary switch-btn";
+      button.textContent = "Select";
+      button.dataset.planId = plan.id;
+
+      li.appendChild(leftDiv);
+      li.appendChild(button);
       ul.appendChild(li);
     }
     plansListEl.innerHTML = "";
