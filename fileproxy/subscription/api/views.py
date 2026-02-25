@@ -12,6 +12,8 @@ def _get_or_404(queryset_or_model, **kwargs):
         return get_object_or_404(queryset_or_model, **kwargs)
     except (DjangoValidationError, ValueError, TypeError):
         raise Http404
+
+
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response

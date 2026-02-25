@@ -78,7 +78,11 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         item = serializer.save()
         return Response(VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED)
 
-    @extend_schema(responses={200: inline_serializer("OAuthInitiate", fields={"auth_url": drf_serializers.URLField()})})
+    @extend_schema(
+        responses={
+            200: inline_serializer("OAuthInitiate", fields={"auth_url": drf_serializers.URLField()})
+        }
+    )
     @action(detail=False, methods=["post"], url_path="gdrive")
     def gdrive_create(self, request):
         client_id = django_settings.GOOGLE_CLIENT_ID
@@ -120,7 +124,13 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         )
         return Response({"auth_url": auth_url})
 
-    @extend_schema(responses={200: inline_serializer("OAuthInitiateDropbox", fields={"auth_url": drf_serializers.URLField()})})
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                "OAuthInitiateDropbox", fields={"auth_url": drf_serializers.URLField()}
+            )
+        }
+    )
     @action(detail=False, methods=["post"], url_path="dropbox")
     def dropbox_create(self, request):
         app_key = django_settings.DROPBOX_APP_KEY
