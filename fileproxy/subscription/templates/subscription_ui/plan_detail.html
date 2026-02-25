@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Plan Detail{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/subscription/plans/">Plans</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Plan Detail</li>
+    </ol>
+  </nav>
+
+  <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
+
+  <!-- Plan info card -->
+  <div class="card ab-card mb-3" style="max-width: 640px;">
+    <div class="card-body">
+      <div id="plan-info">
+        <div class="text-secondary small">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscribers table -->
+  <div class="fw-semibold small mb-2">
+    <i class="bi bi-people me-1 opacity-75"></i>Subscribers
+  </div>
+  <div class="card ab-card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Cycle ends</th>
+            </tr>
+          </thead>
+          <tbody id="subscribers-rows">
+            <tr>
+              <td colspan="4" class="text-secondary">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    window.PLAN_ID = "{{ plan_id }}";
+  </script>
+  <script type="module" src="{% static 'js/subscription/plan_detail.js' %}"></script>
+{% endblock %}

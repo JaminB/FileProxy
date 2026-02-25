@@ -23,5 +23,6 @@ urlpatterns = [
     path("files/", include("files.ui.urls")),
     path("vault/", include("vault.ui.urls")),
     path("usage/", include("usage.ui.urls")),
+    path("subscription/", include("subscription.ui.urls")),
     path("api/v1/", include("api.urls")),
 ]

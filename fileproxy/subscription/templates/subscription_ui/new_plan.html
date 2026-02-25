@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}New Subscription Plan{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/subscription/plans/">Plans</a></li>
+      <li class="breadcrumb-item active" aria-current="page">New plan</li>
+    </ol>
+  </nav>
+
+  <div class="fw-semibold small mb-3">
+    <i class="bi bi-plus-circle me-1 opacity-75"></i>New Subscription Plan
+  </div>
+
+  <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
+
+  <div class="card ab-card" style="max-width: 640px;">
+    <div class="card-body">
+      <form id="plan-form" novalidate>
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label for="name" class="form-label fw-semibold small">Plan name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="name" name="name" required placeholder="e.g. Basic, Pro, Enterprise">
+        </div>
+
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="is_default" name="is_default">
+          <label class="form-check-label small" for="is_default">Set as default plan</label>
+          <div class="form-text">New users without an explicit plan will use this plan.</div>
+        </div>
+
+        <hr class="my-3">
+        <p class="small text-secondary mb-2">Request limits per billing cycle (leave blank for unlimited):</p>
+
+        <div class="row g-2 mb-3">
+          <div class="col-sm-6">
+            <label for="enumerate_limit" class="form-label small">Enumerate limit</label>
+            <input type="number" class="form-control form-control-sm" id="enumerate_limit" name="enumerate_limit" min="0" placeholder="Unlimited">
+          </div>
+          <div class="col-sm-6">
+            <label for="read_limit" class="form-label small">Read limit</label>
+            <input type="number" class="form-control form-control-sm" id="read_limit" name="read_limit" min="0" placeholder="Unlimited">
+          </div>
+          <div class="col-sm-6">
+            <label for="write_limit" class="form-label small">Write limit</label>
+            <input type="number" class="form-control form-control-sm" id="write_limit" name="write_limit" min="0" placeholder="Unlimited">
+          </div>
+          <div class="col-sm-6">
+            <label for="delete_limit" class="form-label small">Delete limit</label>
+            <input type="number" class="form-control form-control-sm" id="delete_limit" name="delete_limit" min="0" placeholder="Unlimited">
+          </div>
+        </div>
+
+        <hr class="my-3">
+        <p class="small text-secondary mb-2">Data transfer limits per billing cycle in bytes (leave blank for unlimited):</p>
+
+        <div class="row g-2 mb-4">
+          <div class="col-sm-6">
+            <label for="read_transfer_limit_bytes" class="form-label small">Read transfer limit (bytes)</label>
+            <input type="number" class="form-control form-control-sm" id="read_transfer_limit_bytes" name="read_transfer_limit_bytes" min="0" placeholder="Unlimited">
+          </div>
+          <div class="col-sm-6">
+            <label for="write_transfer_limit_bytes" class="form-label small">Write transfer limit (bytes)</label>
+            <input type="number" class="form-control form-control-sm" id="write_transfer_limit_bytes" name="write_transfer_limit_bytes" min="0" placeholder="Unlimited">
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-sm btn-primary">Create plan</button>
+        <a href="/subscription/plans/" class="btn btn-sm btn-outline-secondary ms-2">Cancel</a>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/subscription/forms/new_plan.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Subscription Plans{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Subscription Plans</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <div class="fw-semibold small">
+      <i class="bi bi-layers me-1 opacity-75"></i>Subscription Plans
+    </div>
+    {% if user.is_staff %}
+      <a href="/subscription/plans/new/" class="btn btn-sm btn-primary">New plan</a>
+    {% endif %}
+  </div>
+
+  <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
+
+  {% if user.is_staff %}
+    <div id="no-default-warning" class="alert alert-warning d-none" role="alert">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      No default subscription plan is set. All users are currently on unlimited access.
+    </div>
+  {% endif %}
+
+  <!-- Plans table -->
+  <div class="card ab-card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Default</th>
+              <th>Enumerate</th>
+              <th>Read</th>
+              <th>Write</th>
+              <th>Delete</th>
+              {% if user.is_staff %}<th class="text-end">Actions</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody id="plans-rows">
+            <tr>
+              <td colspan="{% if user.is_staff %}7{% else %}6{% endif %}" class="text-secondary">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/subscription/tables/plans.js' %}"></script>
+{% endblock %}
