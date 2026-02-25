@@ -136,3 +136,12 @@ class MySubscriptionUsageView(APIView):
         plan = sub.get_effective_plan()
         data = {**usage, "plan": plan}
         return Response(CycleUsageSerializer(data).data)
+
+
+class MyAvailablePlansView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """GET /api/v1/subscription/my/plans/"""
+        plans = SubscriptionPlan.objects.filter(expires_at__isnull=True).order_by("name")
+        return Response(SubscriptionPlanSerializer(plans, many=True).data)

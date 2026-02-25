@@ -145,7 +145,7 @@ function renderUsageBars(usage: Usage, usageBarsEl: HTMLElement): void {
 
 async function loadAvailablePlans(plansListEl: HTMLElement): Promise<void> {
   try {
-    const resp = await fetch('/api/v1/subscription/plans/', {
+    const resp = await fetch('/api/v1/subscription/my/plans/', {
       headers: { Accept: 'application/json' },
       credentials: 'same-origin',
     });
