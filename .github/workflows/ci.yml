@@ -88,3 +88,85 @@ jobs:
         run: npm --prefix fileproxy install
       - name: TypeScript security scan (ESLint)
         run: npm --prefix fileproxy run lint:security
+
+  fuzz:
+    runs-on: ubuntu-latest
+    needs: [test]
+    env:
+      DJANGO_SUPERUSER_USERNAME: fuzzuser
+      DJANGO_SUPERUSER_PASSWORD: fuzz-ci-password-123
+      DJANGO_SUPERUSER_EMAIL: fuzz@ci.local
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        working-directory: fileproxy
+        run: poetry install --no-root
+
+      - name: Generate vault master key
+        run: |
+          echo "FILEPROXY_VAULT_MASTER_KEY=$(python3 -c \
+            'import os,base64; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" \
+            >> "$GITHUB_ENV"
+
+      - name: Apply migrations
+        working-directory: fileproxy
+        run: poetry run python manage.py migrate
+
+      - name: Create superuser
+        working-directory: fileproxy
+        run: poetry run python manage.py createsuperuser --noinput
+
+      - name: Start dev server
+        working-directory: fileproxy
+        run: |
+          poetry run python manage.py runserver 127.0.0.1:8001 --noreload &
+          echo $! > /tmp/django_server.pid
+
+      - name: Wait for server to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf -u "fuzzuser:fuzz-ci-password-123" \
+                http://127.0.0.1:8001/api/schema/ -o /dev/null; then
+              echo "Server is ready"
+              exit 0
+            fi
+            echo "Waiting... attempt $i"
+            sleep 1
+          done
+          echo "Server did not start in time"
+          kill "$(cat /tmp/django_server.pid)" 2>/dev/null || true
+          exit 1
+
+      - name: Run Schemathesis
+        working-directory: fileproxy
+        run: |
+          poetry run schemathesis run \
+            http://127.0.0.1:8001/api/schema/ \
+            --auth "fuzzuser:fuzz-ci-password-123" \
+            --auth-type basic \
+            --checks not_a_server_error,response_schema_conformance \
+            --max-examples 30 \
+            --hypothesis-seed 0 \
+            --stateful links \
+            --report /tmp/schemathesis-report.txt \
+            --exitcode-on-empty-test-suite 0
+
+      - name: Stop dev server
+        if: always()
+        run: kill "$(cat /tmp/django_server.pid)" 2>/dev/null || true
+
+      - name: Upload fuzz report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schemathesis-report
+          path: /tmp/schemathesis-report.txt
+          if-no-files-found: ignore
