@@ -18,6 +18,7 @@ from core.backends.base import (
     BackendTestError,
     BackendWriteError,
 )
+from subscription.service import SubscriptionLimitExceeded, check_limit
 from vault.models import VaultItem
 
 from ..serializers import (
@@ -57,6 +58,7 @@ class FilesViewSet(viewsets.ViewSet):
         operation: str,
         object_path: str = "",
         ok: bool = True,
+        bytes_transferred: int = 0,
     ) -> None:
         from usage.service import record_event
 
@@ -72,6 +74,7 @@ class FilesViewSet(viewsets.ViewSet):
             operation=operation,
             object_path=object_path,
             ok=ok,
+            bytes_transferred=bytes_transferred,
         )
 
     def _tracked_stream(self, request, vault_item_name: str, chunks, path: str):
@@ -90,6 +93,9 @@ class FilesViewSet(viewsets.ViewSet):
 
         if isinstance(e, VaultItemNotFound):
             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        if isinstance(e, SubscriptionLimitExceeded):
+            return Response({"detail": str(e)}, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         if isinstance(e, (BackendTestError, BackendConnectionError)):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -129,6 +135,7 @@ class FilesViewSet(viewsets.ViewSet):
     def objects(self, request, vault_item_name: str = ""):
         ok = False
         try:
+            check_limit(request.user, "enumerate")
             backend = self._backend(request, vault_item_name)
             q = EnumerateQuerySerializer(data=request.query_params)
             q.is_valid(raise_exception=True)
@@ -148,7 +155,9 @@ class FilesViewSet(viewsets.ViewSet):
     def read(self, request, vault_item_name: str = ""):
         ok = False
         path = ""
+        bytes_read = 0
         try:
+            check_limit(request.user, "read")
             backend = self._backend(request, vault_item_name)
 
             q = ReadFileQuerySerializer(data=request.query_params)
@@ -156,12 +165,20 @@ class FilesViewSet(viewsets.ViewSet):
             path = q.validated_data["path"]
 
             data = backend.read(path)
+            bytes_read = len(data)
             ok = True
             return Response({"path": path, "data_base64": base64.b64encode(data).decode("ascii")})
         except Exception as e:  # noqa: BLE001
             return self._error(e)
         finally:
-            self._record_event(request, vault_item_name, "read", object_path=path, ok=ok)
+            self._record_event(
+                request,
+                vault_item_name,
+                "read",
+                object_path=path,
+                ok=ok,
+                bytes_transferred=bytes_read,
+            )
 
     @action(
         detail=True,
@@ -172,6 +189,7 @@ class FilesViewSet(viewsets.ViewSet):
     def write(self, request, vault_item_name: str = ""):
         ok = False
         path = ""
+        bytes_written = 0
         try:
             backend = self._backend(request, vault_item_name)
             content_type = request.content_type or ""
@@ -183,6 +201,8 @@ class FilesViewSet(viewsets.ViewSet):
                     raise ValidationError({"path": "This field is required."})
                 if not file_obj:
                     raise ValidationError({"file": "This field is required."})
+                bytes_written = file_obj.size or 0
+                check_limit(request.user, "write", bytes_count=bytes_written)
                 backend.write_stream(path, file_obj)
                 ok = True
                 return Response({"detail": "OK", "path": path})
@@ -199,13 +219,22 @@ class FilesViewSet(viewsets.ViewSet):
                 path = s.validated_data["path"]
                 raw = base64.b64decode(s.validated_data["data_base64"])
 
+            bytes_written = len(raw)
+            check_limit(request.user, "write", bytes_count=bytes_written)
             backend.write(path, raw)
             ok = True
             return Response({"detail": "OK", "path": path})
         except Exception as e:  # noqa: BLE001
             return self._error(e)
         finally:
-            self._record_event(request, vault_item_name, "write", object_path=path, ok=ok)
+            self._record_event(
+                request,
+                vault_item_name,
+                "write",
+                object_path=path,
+                ok=ok,
+                bytes_transferred=bytes_written,
+            )
 
     @action(detail=True, methods=["delete"], url_path="object")
     def delete_object(self, request: Request, vault_item_name: str = ""):
@@ -213,6 +242,7 @@ class FilesViewSet(viewsets.ViewSet):
         ok = False
         path = ""
         try:
+            check_limit(request.user, "delete")
             backend = self._backend(request, vault_item_name)
 
             q = ReadFileQuerySerializer(data=request.query_params)

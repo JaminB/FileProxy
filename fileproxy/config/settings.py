@@ -14,9 +14,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from .env import env, env_bytes_b64url
+from .env import env, env_bool, env_bytes_b64url
 
 DEBUG = env("DEBUG", "false").lower() == "true"
+
+SUBSCRIPTIONS_ENABLED: bool = env_bool("FILEPROXY_SUBSCRIPTIONS_ENABLED", default=False)
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -70,6 +72,7 @@ INSTALLED_APPS = [
     "api.apps.ApiConfig",
     "accounts.apps.AccountsConfig",
     "usage.apps.UsageConfig",
+    "subscription.apps.SubscriptionConfig",
 ]
 
 MIDDLEWARE = [
@@ -114,6 +117,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "config.context_processors.subscription_settings",
             ],
         },
     },

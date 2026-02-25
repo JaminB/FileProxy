@@ -17,6 +17,7 @@ class UsageEvent(models.Model):
     occurred_at = models.DateTimeField(auto_now_add=True, db_index=True)
     object_path = models.CharField(max_length=1000, blank=True, default="")
     ok = models.BooleanField(default=True)
+    bytes_transferred = models.BigIntegerField(default=0)
 
     class Meta:
         indexes = [models.Index(fields=["scope", "occurred_at"])]

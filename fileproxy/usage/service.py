@@ -8,6 +8,7 @@ def record_event(
     operation: str,
     object_path: str = "",
     ok: bool = True,
+    bytes_transferred: int = 0,
 ) -> None:
     try:
         from .models import UsageEvent
@@ -19,6 +20,7 @@ def record_event(
             operation=operation,
             object_path=object_path,
             ok=ok,
+            bytes_transferred=bytes_transferred,
         )
     except Exception:  # noqa: BLE001
         pass

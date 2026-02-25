@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Subscription{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active" aria-current="page">My Subscription</li>
+    </ol>
+  </nav>
+
+  <div class="fw-semibold small mb-3">
+    <i class="bi bi-person-badge me-1 opacity-75"></i>My Subscription
+  </div>
+
+  <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
+
+  <!-- Subscription summary -->
+  <div class="card ab-card mb-3" style="max-width: 640px;">
+    <div class="card-body">
+      <div id="sub-info">
+        <div class="text-secondary small">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Usage progress bars -->
+  <div class="fw-semibold small mb-2">
+    <i class="bi bi-bar-chart me-1 opacity-75"></i>Usage This Cycle
+  </div>
+  <div class="card ab-card mb-3" style="max-width: 640px;">
+    <div class="card-body">
+      <div id="usage-bars">
+        <div class="text-secondary small">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Switch plan modal -->
+  <div class="modal fade" id="switchPlanModal" tabindex="-1" aria-labelledby="switchPlanModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="switchPlanModalLabel">Switch Plan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="available-plans-list">
+            <div class="text-secondary small">Loading plans…</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/subscription/my_subscription.js' %}"></script>
+{% endblock %}

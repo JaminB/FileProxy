@@ -66,5 +66,29 @@
         </div>
       </a>
     </div>
+
+    {% if SUBSCRIPTIONS_ENABLED %}
+    <div class="col-md-4">
+      {% if user.is_staff %}
+      <a href="/subscription/plans/" class="text-decoration-none">
+      {% else %}
+      <a href="/subscription/my/" class="text-decoration-none">
+      {% endif %}
+        <div class="card ab-card h-100">
+          <div class="card-body">
+            <div class="mb-2">
+              <i class="bi bi-layers fs-3 text-secondary"></i>
+            </div>
+            <h6 class="card-title fw-semibold mb-1">Subscription</h6>
+            {% if user.is_staff %}
+            <p class="card-text text-secondary small mb-0">Manage subscription plans and limits.</p>
+            {% else %}
+            <p class="card-text text-secondary small mb-0">View your plan, usage, and billing cycle.</p>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endif %}
   </div>
 {% endblock %}
