@@ -1,20 +1,20 @@
-import { qs, setFlash } from "../../utils/dom.js";
-import { getCsrfToken } from "../../utils/cookies.js";
+import { qs, setFlash } from '../../utils/dom.js';
+import { getCsrfToken } from '../../utils/cookies.js';
 const KIND_META = {
-    aws_s3: { label: "Amazon S3", src: "/static/images/logos/s3.svg" },
-    gdrive_oauth2: { label: "Google Drive", src: "/static/images/logos/gdrive.svg" },
-    dropbox_oauth2: { label: "Dropbox", src: "/static/images/logos/dropbox.png" },
-    azure_blob: { label: "Azure Blob Storage", src: "/static/images/logos/azure.svg" },
+    aws_s3: { label: 'Amazon S3', src: '/static/images/logos/s3.svg' },
+    gdrive_oauth2: { label: 'Google Drive', src: '/static/images/logos/gdrive.svg' },
+    dropbox_oauth2: { label: 'Dropbox', src: '/static/images/logos/dropbox.png' },
+    azure_blob: { label: 'Azure Blob Storage', src: '/static/images/logos/azure.svg' },
 };
 async function deleteVaultItem(id) {
     const csrf = getCsrfToken();
     return fetch(`/api/v1/vault-items/${id}/`, {
-        method: "DELETE",
+        method: 'DELETE',
         headers: {
-            Accept: "application/json",
-            ...(csrf ? { "X-CSRFToken": csrf } : {}),
+            Accept: 'application/json',
+            ...(csrf ? { 'X-CSRFToken': csrf } : {}),
         },
-        credentials: "same-origin",
+        credentials: 'same-origin',
     });
 }
 function toItems(payload) {
@@ -25,112 +25,112 @@ function toItems(payload) {
 }
 function fmtDate(value) {
     if (!value)
-        return "—";
+        return '—';
     const d = new Date(value);
     if (Number.isNaN(d.getTime()))
         return value;
     return d.toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
     });
 }
 function clear(tbody) {
-    tbody.innerHTML = "";
+    tbody.innerHTML = '';
 }
 function messageRow(tbody, text) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
     td.colSpan = 5;
-    td.className = "text-secondary";
+    td.className = 'text-secondary';
     td.textContent = text;
     tr.appendChild(td);
     tbody.appendChild(tr);
 }
 function bsIcon(className) {
-    const i = document.createElement("i");
+    const i = document.createElement('i');
     i.className = className;
-    i.setAttribute("aria-hidden", "true");
+    i.setAttribute('aria-hidden', 'true');
     return i;
 }
 function actionButton(label, btnClasses, iconClasses, onClick) {
-    const btn = document.createElement("button");
-    btn.type = "button";
+    const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = `btn ${btnClasses}`;
     btn.title = label;
-    btn.setAttribute("aria-label", label);
+    btn.setAttribute('aria-label', label);
     btn.appendChild(bsIcon(`${iconClasses} me-1`));
     btn.appendChild(document.createTextNode(label));
-    btn.addEventListener("click", onClick);
+    btn.addEventListener('click', onClick);
     return btn;
 }
 function renderItems(tbody, items) {
     clear(tbody);
     if (!items.length) {
-        messageRow(tbody, "No credentials yet.");
+        messageRow(tbody, 'No credentials yet.');
         return;
     }
     for (const item of items) {
-        const tr = document.createElement("tr");
-        const nameTd = document.createElement("td");
-        nameTd.textContent = item.name ?? "—";
-        const kindTd = document.createElement("td");
-        const km = KIND_META[item.kind ?? ""];
+        const tr = document.createElement('tr');
+        const nameTd = document.createElement('td');
+        nameTd.textContent = item.name ?? '—';
+        const kindTd = document.createElement('td');
+        const km = KIND_META[item.kind ?? ''];
         if (km) {
-            const img = document.createElement("img");
+            const img = document.createElement('img');
             img.src = km.src;
-            img.alt = "";
+            img.alt = '';
             img.width = 14;
             img.height = 14;
-            img.className = "me-1 opacity-75";
-            img.setAttribute("aria-hidden", "true");
+            img.className = 'me-1 opacity-75';
+            img.setAttribute('aria-hidden', 'true');
             kindTd.appendChild(img);
             kindTd.appendChild(document.createTextNode(km.label));
         }
         else {
-            kindTd.textContent = item.kind ?? "—";
+            kindTd.textContent = item.kind ?? '—';
         }
-        const updatedTd = document.createElement("td");
+        const updatedTd = document.createElement('td');
         updatedTd.textContent = fmtDate(item.updated);
-        const rotatedTd = document.createElement("td");
+        const rotatedTd = document.createElement('td');
         rotatedTd.textContent = fmtDate(item.rotated);
-        const actionsTd = document.createElement("td");
-        actionsTd.className = "text-end";
-        const group = document.createElement("div");
-        group.className = "btn-group btn-group-sm";
-        group.setAttribute("role", "group");
-        group.setAttribute("aria-label", "Vault item actions");
+        const actionsTd = document.createElement('td');
+        actionsTd.className = 'text-end';
+        const group = document.createElement('div');
+        group.className = 'btn-group btn-group-sm';
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', 'Vault item actions');
         const id = item.id;
-        const viewBtn = actionButton("View", "btn-outline-secondary", "bi bi-eye", () => {
+        const viewBtn = actionButton('View', 'btn-outline-secondary', 'bi bi-eye', () => {
             if (id != null) {
                 window.location.href = `/vault/item/${id}/`;
             }
         });
-        const deleteBtn = actionButton("Delete", "btn-outline-danger", "bi bi-trash", async () => {
+        const deleteBtn = actionButton('Delete', 'btn-outline-danger', 'bi bi-trash', async () => {
             if (id == null)
                 return;
-            if (!confirm("Delete this credential? This cannot be undone."))
+            if (!confirm('Delete this credential? This cannot be undone.'))
                 return;
             try {
                 deleteBtn.disabled = true;
                 const resp = await deleteVaultItem(id);
                 if (!resp.ok) {
                     const msg = `Delete failed (${resp.status}).`;
-                    setFlash(msg, "error");
+                    setFlash(msg, 'error');
                     deleteBtn.disabled = false;
                     return;
                 }
                 tr.remove();
-                setFlash("Deleted.", "info");
+                setFlash('Deleted.', 'info');
                 // If we removed the last row, show empty state
-                if (tbody.querySelectorAll("tr").length === 0) {
-                    messageRow(tbody, "No credentials yet.");
+                if (tbody.querySelectorAll('tr').length === 0) {
+                    messageRow(tbody, 'No credentials yet.');
                 }
             }
             catch (err) {
-                setFlash(`Delete failed: ${String(err)}`, "error");
+                setFlash(`Delete failed: ${String(err)}`, 'error');
                 deleteBtn.disabled = false;
             }
         });
@@ -146,17 +146,17 @@ function renderItems(tbody, items) {
     }
 }
 export async function loadVaultCredentialsTable() {
-    const tbody = qs("#vault-rows");
+    const tbody = qs('#vault-rows');
     if (!tbody)
         return;
     try {
-        const resp = await fetch("/api/v1/vault-items/", {
-            headers: { Accept: "application/json" },
-            credentials: "same-origin",
+        const resp = await fetch('/api/v1/vault-items/', {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
         });
         if (!resp.ok) {
             const msg = `Failed to load vault items (${resp.status}).`;
-            setFlash(msg, "error");
+            setFlash(msg, 'error');
             messageRow(tbody, msg);
             return;
         }
@@ -165,11 +165,11 @@ export async function loadVaultCredentialsTable() {
     }
     catch (err) {
         const msg = `Network error loading vault items: ${String(err)}`;
-        setFlash(msg, "error");
+        setFlash(msg, 'error');
         messageRow(tbody, msg);
     }
 }
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
     void loadVaultCredentialsTable();
 });
 //# sourceMappingURL=credentials.js.map

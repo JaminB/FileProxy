@@ -1,10 +1,10 @@
-import { initProviderForm } from "./core.js";
-document.addEventListener("DOMContentLoaded", () => {
+import { initProviderForm } from './core.js';
+document.addEventListener('DOMContentLoaded', () => {
     initProviderForm({
-        formSelector: "#credential-form",
-        endpoint: "/api/v1/vault-items/dropbox/",
+        formSelector: '#credential-form',
+        endpoint: '/api/v1/vault-items/dropbox/',
         buildPayload: (form) => ({
-            name: (form.querySelector('[name="name"]')).value.trim(),
+            name: form.querySelector('[name="name"]').value.trim(),
         }),
         onSuccess: (data) => {
             const url = data.auth_url;
