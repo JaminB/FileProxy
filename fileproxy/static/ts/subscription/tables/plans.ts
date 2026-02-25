@@ -133,7 +133,8 @@ function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: b
       deleteBtn.className = "btn btn-outline-danger";
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", async () => {
-        if (!confirm(`Delete plan "${plan.name}"?`)) return;
+        const safePlanName = plan.name.replace(/[<>"'`&]/g, "");
+        if (!confirm(`Delete plan "${safePlanName}"?`)) return;
         try {
           deleteBtn.disabled = true;
           await deletePlan(plan.id);
