@@ -45,7 +45,6 @@ def get_or_create_subscription(user):
 
 
 def advance_cycle_if_needed(sub) -> None:
-    from .models import SubscriptionPlan
 
     now = timezone.now()
     if now <= sub.cycle_ends_at:
@@ -134,7 +133,8 @@ def check_limit(user, operation: str, bytes_count: int = 0) -> None:
             and usage["read_bytes"] + bytes_count > plan.read_transfer_limit_bytes
         ):
             raise SubscriptionLimitExceeded(
-                f"Read data transfer limit of {plan.read_transfer_limit_bytes} bytes/cycle exceeded."
+                f"Read data transfer limit of {plan.read_transfer_limit_bytes}"
+                " bytes/cycle exceeded."
             )
     elif operation == "write":
         if plan.write_limit is not None and usage["write"] >= plan.write_limit:
@@ -146,7 +146,8 @@ def check_limit(user, operation: str, bytes_count: int = 0) -> None:
             and usage["write_bytes"] + bytes_count > plan.write_transfer_limit_bytes
         ):
             raise SubscriptionLimitExceeded(
-                f"Write data transfer limit of {plan.write_transfer_limit_bytes} bytes/cycle exceeded."
+                f"Write data transfer limit of {plan.write_transfer_limit_bytes}"
+                " bytes/cycle exceeded."
             )
     elif operation == "delete":
         if plan.delete_limit is not None and usage["delete"] >= plan.delete_limit:

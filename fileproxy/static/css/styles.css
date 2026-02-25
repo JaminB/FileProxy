@@ -137,3 +137,34 @@
   border-radius: 0.5rem;
   padding: 1rem;
 }
+
+/* ================================
+   Dark mode overrides
+   ================================ */
+[data-bs-theme="dark"] #vault-list .list-group-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] #vault-list .list-group-item .fw-semibold {
+  color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] #vault-list .list-group-item .text-muted {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+[data-bs-theme="dark"] #vault-list .list-group-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-bs-theme="dark"] #vault-list .list-group-item.active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] #vault-list .list-group-item.active .text-muted {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+[data-bs-theme="dark"] .form-panel {
+  background: var(--bs-body-bg);
+  border-color: var(--bs-border-color);
+}
+
