@@ -32,19 +32,19 @@ class UsageViewSet(ViewSet):
                 required=False,
             ),
             OpenApiParameter(
-                "vault",
+                "connection",
                 str,
                 OpenApiParameter.QUERY,
-                description="Filter by vault item name",
+                description="Filter by connection name",
                 required=False,
             ),
         ],
         responses=SummarySerializer,
     )
     def summary(self, request):
-        """Total file operation counts by kind, with optional ?days= and ?vault= filters."""
+        """Total file operation counts by kind, with optional ?days= and ?connection= filters."""
         try:
-            days = max(1, int(request.query_params.get("days", 30)))
+            days = max(1, min(3650, int(request.query_params.get("days", 30))))
         except (TypeError, ValueError):
             days = 30
 
@@ -52,7 +52,7 @@ class UsageViewSet(ViewSet):
         since = timezone.now() - timedelta(days=days)
         qs = UsageEvent.objects.filter(scope=scope, occurred_at__gte=since)
 
-        vault = request.query_params.get("vault", "").strip()
+        vault = request.query_params.get("connection", "").strip()
         if vault:
             qs = qs.filter(vault_item_name=vault)
 
@@ -78,7 +78,7 @@ class UsageViewSet(ViewSet):
     def by_vault(self, request):
         """Per-vault-item operation breakdown."""
         try:
-            days = max(1, int(request.query_params.get("days", 30)))
+            days = max(1, min(3650, int(request.query_params.get("days", 30))))
         except (TypeError, ValueError):
             days = 30
 
@@ -112,10 +112,10 @@ class UsageViewSet(ViewSet):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "vault",
+                "connection",
                 str,
                 OpenApiParameter.QUERY,
-                description="Vault item name (required)",
+                description="Connection name (required)",
                 required=True,
             ),
             OpenApiParameter(
@@ -129,16 +129,16 @@ class UsageViewSet(ViewSet):
         responses=TimelineSerializer,
     )
     def timeline(self, request):
-        """Time-series event counts per operation for a vault item."""
-        vault = request.query_params.get("vault", "").strip()
+        """Time-series event counts per operation for a connection."""
+        vault = request.query_params.get("connection", "").strip()
         if not vault:
             return Response(
-                {"detail": "vault parameter is required."},
+                {"detail": "connection parameter is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            days = max(1, int(request.query_params.get("days", 30)))
+            days = max(1, min(3650, int(request.query_params.get("days", 30))))
         except (TypeError, ValueError):
             days = 30
 

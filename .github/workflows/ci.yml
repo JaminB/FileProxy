@@ -153,11 +153,11 @@ jobs:
             --auth "fuzzuser:fuzz-ci-password-123" \
             --auth-type basic \
             --checks not_a_server_error,response_schema_conformance \
-            --max-examples 30 \
+            --hypothesis-max-examples 30 \
             --hypothesis-seed 0 \
+            --hypothesis-database none \
             --stateful links \
-            --report /tmp/schemathesis-report.txt \
-            --exitcode-on-empty-test-suite 0
+            --report /tmp/schemathesis-report.txt
 
       - name: Stop dev server
         if: always()

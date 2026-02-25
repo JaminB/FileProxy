@@ -3,7 +3,11 @@ from __future__ import annotations
 import secrets as secrets_mod
 
 from django.conf import settings as django_settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import Http404
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers as drf_serializers
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -20,6 +24,14 @@ from .serializers import (
     VaultItemListSerializer,
     VaultItemRenameSerializer,
 )
+
+
+def _get_or_404(queryset, **kwargs):
+    """Like get_object_or_404 but also catches ValidationError for invalid PK types (e.g. non-UUID)."""
+    try:
+        return get_object_or_404(queryset, **kwargs)
+    except (DjangoValidationError, ValueError, TypeError):
+        raise Http404
 
 
 def _default_scope_from_request(request) -> str:
@@ -40,18 +52,22 @@ class VaultItemViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         return VaultItemListSerializer
 
+    def create(self, request, *args, **kwargs):
+        """Direct POST to the list endpoint is not supported; use /s3/, /gdrive/, etc."""
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()
         serializer = VaultItemListSerializer(qs, many=True)
         return Response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
-        """GET /api/v1/vault-items/{id}/ (metadata only)."""
-        item = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
+        """GET /api/v1/connections/{id}/ (metadata only)."""
+        item = _get_or_404(self.get_queryset(), pk=kwargs["pk"])
         return Response(VaultItemListSerializer(item).data)
 
     def destroy(self, request, *args, **kwargs):
-        item = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
+        item = _get_or_404(self.get_queryset(), pk=kwargs["pk"])
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -62,6 +78,7 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         item = serializer.save()
         return Response(VaultItemListSerializer(item).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(responses={200: inline_serializer("OAuthInitiate", fields={"auth_url": drf_serializers.URLField()})})
     @action(detail=False, methods=["post"], url_path="gdrive")
     def gdrive_create(self, request):
         client_id = django_settings.GOOGLE_CLIENT_ID
@@ -95,7 +112,7 @@ class VaultItemViewSet(viewsets.ModelViewSet):
             },
             scopes=["https://www.googleapis.com/auth/drive"],
         )
-        flow.redirect_uri = request.build_absolute_uri("/vault/oauth/gdrive/callback/")
+        flow.redirect_uri = request.build_absolute_uri("/connections/oauth/gdrive/callback/")
         auth_url, _ = flow.authorization_url(
             access_type="offline",
             prompt="consent",
@@ -103,6 +120,7 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         )
         return Response({"auth_url": auth_url})
 
+    @extend_schema(responses={200: inline_serializer("OAuthInitiateDropbox", fields={"auth_url": drf_serializers.URLField()})})
     @action(detail=False, methods=["post"], url_path="dropbox")
     def dropbox_create(self, request):
         app_key = django_settings.DROPBOX_APP_KEY
@@ -117,7 +135,7 @@ class VaultItemViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         state = secrets_mod.token_urlsafe(32)
-        redirect_uri = request.build_absolute_uri("/vault/oauth/dropbox/callback/")
+        redirect_uri = request.build_absolute_uri("/connections/oauth/dropbox/callback/")
         request.session["dropbox_oauth_pending"] = {
             "name": serializer.validated_data["name"],
             "state": state,
@@ -156,13 +174,13 @@ class VaultItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def rotate(self, request, pk=None):
-        item = get_object_or_404(self.get_queryset(), pk=pk)
+        item = _get_or_404(self.get_queryset(), pk=pk)
         item.rotate()
         return Response(VaultItemListSerializer(item).data)
 
     @action(detail=True, methods=["post"])
     def rename(self, request, pk=None):
-        item = get_object_or_404(self.get_queryset(), pk=pk)
+        item = _get_or_404(self.get_queryset(), pk=pk)
         serializer = VaultItemRenameSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         item.name = serializer.validated_data["name"]
@@ -171,8 +189,8 @@ class VaultItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def test(self, request, pk=None):
-        """POST /api/v1/vault-items/{id}/test/"""
-        item = get_object_or_404(self.get_queryset(), pk=pk)
+        """POST /api/v1/connections/{id}/test/"""
+        item = _get_or_404(self.get_queryset(), pk=pk)
 
         backend = backend_from_config(item.to_backend_config())
         try:

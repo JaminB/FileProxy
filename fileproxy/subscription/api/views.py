@@ -1,7 +1,17 @@
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
+
+
+def _get_or_404(queryset_or_model, **kwargs):
+    """Like get_object_or_404 but also catches ValidationError for invalid PK types (e.g. non-UUID)."""
+    try:
+        return get_object_or_404(queryset_or_model, **kwargs)
+    except (DjangoValidationError, ValueError, TypeError):
+        raise Http404
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -58,26 +68,26 @@ class SubscriptionPlanViewSet(viewsets.GenericViewSet):
 
     def retrieve(self, request, pk=None):
         """GET /api/v1/subscription/plans/{id}/"""
-        plan = get_object_or_404(self.get_queryset(), pk=pk)
+        plan = _get_or_404(self.get_queryset(), pk=pk)
         return Response(SubscriptionPlanSerializer(plan).data)
 
     def destroy(self, request, pk=None):
         """DELETE /api/v1/subscription/plans/{id}/"""
-        plan = get_object_or_404(self.get_queryset(), pk=pk)
+        plan = _get_or_404(self.get_queryset(), pk=pk)
         delete_plan(plan)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="set-default")
     def set_default(self, request, pk=None):
         """POST /api/v1/subscription/plans/{id}/set-default/"""
-        plan = get_object_or_404(self.get_queryset(), pk=pk)
+        plan = _get_or_404(self.get_queryset(), pk=pk)
         set_default_plan(plan)
         return Response(SubscriptionPlanSerializer(plan).data)
 
     @action(detail=True, methods=["get"])
     def subscribers(self, request, pk=None):
         """GET /api/v1/subscription/plans/{id}/subscribers/"""
-        plan = get_object_or_404(self.get_queryset(), pk=pk)
+        plan = _get_or_404(self.get_queryset(), pk=pk)
         subs_qs = UserSubscription.objects.filter(plan=plan).select_related("user")
 
         try:
@@ -112,7 +122,7 @@ class MySubscriptionSwitchView(APIView):
         plan_id = request.data.get("plan_id")
         if not plan_id:
             return Response({"detail": "plan_id is required."}, status=status.HTTP_400_BAD_REQUEST)
-        plan = get_object_or_404(SubscriptionPlan, pk=plan_id, expires_at__isnull=True)
+        plan = _get_or_404(SubscriptionPlan, pk=plan_id, expires_at__isnull=True)
         sub = switch_plan(request.user, plan)
         return Response(UserSubscriptionSerializer(sub).data)
 
