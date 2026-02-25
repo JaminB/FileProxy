@@ -1,5 +1,5 @@
-import { apiJson } from "../utils/api.js";
-import { setFlash } from "../utils/dom.js";
+import { apiJson } from '../utils/api.js';
+import { setFlash } from '../utils/dom.js';
 
 type SummaryOps = Record<string, number>;
 
@@ -20,47 +20,45 @@ type ByVaultItem = {
 };
 
 const PERIODS = [
-  { label: "7d", days: 7 },
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
-  { label: "1y", days: 365 },
+  { label: '7d', days: 7 },
+  { label: '30d', days: 30 },
+  { label: '90d', days: 90 },
+  { label: '1y', days: 365 },
 ];
 const DEFAULT_DAYS = 30;
 
 function renderPeriodSelector(activeDays: number): void {
-  const container = document.getElementById("period-selector");
+  const container = document.getElementById('period-selector');
   if (!container) return;
-  container.innerHTML = "";
+  container.innerHTML = '';
 
   for (const period of PERIODS) {
-    const btn = document.createElement("button");
-    btn.type = "button";
+    const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className =
-      period.days === activeDays
-        ? "btn btn-sm btn-secondary"
-        : "btn btn-sm btn-outline-secondary";
+      period.days === activeDays ? 'btn btn-sm btn-secondary' : 'btn btn-sm btn-outline-secondary';
     btn.textContent = period.label;
-    btn.addEventListener("click", () => void load(period.days));
+    btn.addEventListener('click', () => void load(period.days));
     container.appendChild(btn);
   }
 }
 
 function renderSummary(data: Summary): void {
-  const container = document.getElementById("summary-cards");
+  const container = document.getElementById('summary-cards');
   if (!container) return;
-  container.innerHTML = "";
+  container.innerHTML = '';
 
   const entries: Array<{ label: string; icon: string; value: number }> = [
-    { label: "Total", icon: "bi-activity", value: data.total },
-    { label: "Enumerate", icon: "bi-list-ul", value: data.ops["enumerate"] ?? 0 },
-    { label: "Read", icon: "bi-download", value: data.ops["read"] ?? 0 },
-    { label: "Write", icon: "bi-upload", value: data.ops["write"] ?? 0 },
-    { label: "Delete", icon: "bi-trash", value: data.ops["delete"] ?? 0 },
+    { label: 'Total', icon: 'bi-activity', value: data.total },
+    { label: 'Enumerate', icon: 'bi-list-ul', value: data.ops['enumerate'] ?? 0 },
+    { label: 'Read', icon: 'bi-download', value: data.ops['read'] ?? 0 },
+    { label: 'Write', icon: 'bi-upload', value: data.ops['write'] ?? 0 },
+    { label: 'Delete', icon: 'bi-trash', value: data.ops['delete'] ?? 0 },
   ];
 
   for (const entry of entries) {
-    const col = document.createElement("div");
-    col.className = "col-md-2 col-sm-4 col-6";
+    const col = document.createElement('div');
+    col.className = 'col-md-2 col-sm-4 col-6';
     col.innerHTML = `
       <div class="card ab-card h-100">
         <div class="card-body text-center">
@@ -74,9 +72,9 @@ function renderSummary(data: Summary): void {
 }
 
 function renderByVault(items: ByVaultItem[]): void {
-  const tbody = document.getElementById("by-vault-rows");
+  const tbody = document.getElementById('by-vault-rows');
   if (!tbody) return;
-  tbody.innerHTML = "";
+  tbody.innerHTML = '';
 
   if (!items.length) {
     tbody.innerHTML =
@@ -86,8 +84,8 @@ function renderByVault(items: ByVaultItem[]): void {
 
   for (const item of items) {
     const url = `/usage/vault/${encodeURIComponent(item.name)}/`;
-    const tr = document.createElement("tr");
-    tr.style.cursor = "pointer";
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
     tr.innerHTML = `
       <td class="fw-semibold">${item.name}</td>
       <td><code class="small">${item.kind}</code></td>
@@ -96,7 +94,9 @@ function renderByVault(items: ByVaultItem[]): void {
       <td>${item.write}</td>
       <td>${item.delete}</td>
       <td><strong>${item.total}</strong></td>`;
-    tr.addEventListener("click", () => { window.location.href = url; });
+    tr.addEventListener('click', () => {
+      window.location.href = url;
+    });
     tbody.appendChild(tr);
   }
 }
@@ -111,10 +111,10 @@ async function load(days: number = DEFAULT_DAYS): Promise<void> {
     renderSummary(summary);
     renderByVault(byVault);
   } catch (err) {
-    setFlash(`Failed to load usage data: ${String(err)}`, "error");
+    setFlash(`Failed to load usage data: ${String(err)}`, 'error');
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   void load();
 });

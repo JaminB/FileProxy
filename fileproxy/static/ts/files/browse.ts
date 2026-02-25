@@ -1,6 +1,6 @@
-import { qs as qsMaybe, setFlash } from "../utils/dom.js";
-import { apiJson } from "../utils/api.js";
-import { getCsrfToken } from "../utils/cookies.js";
+import { qs as qsMaybe, setFlash } from '../utils/dom.js';
+import { apiJson } from '../utils/api.js';
+import { getCsrfToken } from '../utils/cookies.js';
 
 /* ----------------------------- Types ----------------------------- */
 
@@ -18,15 +18,15 @@ type BackendObject = { name: string; path: string; size: number | null };
 type ObjectPage = { objects: BackendObject[]; next_cursor: string | null };
 
 type Entry =
-  | { kind: "folder"; name: string; path: string }
-  | { kind: "file"; name: string; path: string; size: number | null };
+  | { kind: 'folder'; name: string; path: string }
+  | { kind: 'file'; name: string; path: string; size: number | null };
 
 type State = {
   vault: string | null;
   prefix: string;
-  pageSize: number;               // 25 | 50 | 100 | 200
-  cursors: Array<string | null>;  // cursors[i] = cursor needed to fetch page i; cursors[0] = null
-  page: number;                   // current 0-indexed page
+  pageSize: number; // 25 | 50 | 100 | 200
+  cursors: Array<string | null>; // cursors[i] = cursor needed to fetch page i; cursors[0] = null
+  page: number; // current 0-indexed page
   hasNextPage: boolean;
 };
 
@@ -39,31 +39,31 @@ function mustGet<T extends Element>(selector: string, root: ParentNode = documen
 }
 
 const el = {
-  vaultList: () => mustGet<HTMLElement>("#vault-list"),
-  entries: () => mustGet<HTMLTableSectionElement>("#entries"),
-  crumbs: () => mustGet<HTMLOListElement>("#path-crumbs"),
+  vaultList: () => mustGet<HTMLElement>('#vault-list'),
+  entries: () => mustGet<HTMLTableSectionElement>('#entries'),
+  crumbs: () => mustGet<HTMLOListElement>('#path-crumbs'),
 
-  title: () => mustGet<HTMLElement>("#browser-title"),
-  subtitle: () => mustGet<HTMLElement>("#browser-subtitle"),
+  title: () => mustGet<HTMLElement>('#browser-title'),
+  subtitle: () => mustGet<HTMLElement>('#browser-subtitle'),
 
-  refresh: () => mustGet<HTMLButtonElement>("#refresh"),
-  vaultRefresh: () => mustGet<HTMLButtonElement>("#vault-refresh"),
-  up: () => mustGet<HTMLButtonElement>("#up"),
+  refresh: () => mustGet<HTMLButtonElement>('#refresh'),
+  vaultRefresh: () => mustGet<HTMLButtonElement>('#vault-refresh'),
+  up: () => mustGet<HTMLButtonElement>('#up'),
 
-  uploadFile: () => mustGet<HTMLInputElement>("#upload-file"),
-  uploadName: () => mustGet<HTMLInputElement>("#upload-name"),
-  uploadBtn: () => mustGet<HTMLButtonElement>("#upload"),
-  uploadHint: () => mustGet<HTMLElement>("#upload-hint"),
-  uploadStatus: () => mustGet<HTMLElement>("#upload-status"),
+  uploadFile: () => mustGet<HTMLInputElement>('#upload-file'),
+  uploadName: () => mustGet<HTMLInputElement>('#upload-name'),
+  uploadBtn: () => mustGet<HTMLButtonElement>('#upload'),
+  uploadHint: () => mustGet<HTMLElement>('#upload-hint'),
+  uploadStatus: () => mustGet<HTMLElement>('#upload-status'),
 
-  pageControls: () => mustGet<HTMLElement>("#page-controls"),
+  pageControls: () => mustGet<HTMLElement>('#page-controls'),
 };
 
 /* ----------------------------- State ----------------------------- */
 
 const state: State = {
   vault: null,
-  prefix: "",
+  prefix: '',
   pageSize: 50,
   cursors: [null],
   page: 0,
@@ -73,8 +73,8 @@ const state: State = {
 /* ----------------------------- Small utils ----------------------------- */
 
 function fmtBytes(n: number | null | undefined): string {
-  if (n == null) return "";
-  const units = ["B", "KB", "MB", "GB", "TB"];
+  if (n == null) return '';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   let v = n;
   let i = 0;
   while (v >= 1024 && i < units.length - 1) {
@@ -85,18 +85,40 @@ function fmtBytes(n: number | null | undefined): string {
 }
 
 function fileIcon(name: string): string {
-  const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  if (["jpg", "jpeg", "png", "gif", "svg", "webp", "bmp"].includes(ext)) return "bi-file-earmark-image";
-  if (ext === "pdf") return "bi-file-earmark-pdf";
-  if (["doc", "docx"].includes(ext)) return "bi-file-earmark-word";
-  if (["xls", "xlsx", "csv"].includes(ext)) return "bi-file-earmark-excel";
-  if (["ppt", "pptx"].includes(ext)) return "bi-file-earmark-slides";
-  if (["zip", "gz", "tar", "bz2", "7z", "rar"].includes(ext)) return "bi-file-earmark-zip";
-  if (["mp4", "mov", "avi", "mkv", "webm"].includes(ext)) return "bi-file-earmark-play";
-  if (["mp3", "wav", "ogg", "flac", "m4a"].includes(ext)) return "bi-file-earmark-music";
-  if (["js", "ts", "py", "java", "c", "cpp", "cs", "go", "rs", "rb", "php", "html", "css", "json", "xml", "yaml", "yml"].includes(ext)) return "bi-file-earmark-code";
-  if (["txt", "md", "log"].includes(ext)) return "bi-file-earmark-text";
-  return "bi-file-earmark";
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext))
+    return 'bi-file-earmark-image';
+  if (ext === 'pdf') return 'bi-file-earmark-pdf';
+  if (['doc', 'docx'].includes(ext)) return 'bi-file-earmark-word';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'bi-file-earmark-excel';
+  if (['ppt', 'pptx'].includes(ext)) return 'bi-file-earmark-slides';
+  if (['zip', 'gz', 'tar', 'bz2', '7z', 'rar'].includes(ext)) return 'bi-file-earmark-zip';
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'bi-file-earmark-play';
+  if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) return 'bi-file-earmark-music';
+  if (
+    [
+      'js',
+      'ts',
+      'py',
+      'java',
+      'c',
+      'cpp',
+      'cs',
+      'go',
+      'rs',
+      'rb',
+      'php',
+      'html',
+      'css',
+      'json',
+      'xml',
+      'yaml',
+      'yml',
+    ].includes(ext)
+  )
+    return 'bi-file-earmark-code';
+  if (['txt', 'md', 'log'].includes(ext)) return 'bi-file-earmark-text';
+  return 'bi-file-earmark';
 }
 
 function resetPagination(): void {
@@ -121,43 +143,45 @@ function updateUploadButtonState(): void {
 function setBrowserHeader(): void {
   const hasVault = Boolean(state.vault);
 
-  el.up().disabled = !hasVault || state.prefix === "";
+  el.up().disabled = !hasVault || state.prefix === '';
   el.refresh().disabled = !hasVault;
 
   if (!hasVault) {
-    el.title().textContent = "Select a vault";
-    el.subtitle().textContent = "";
-    el.uploadHint().textContent = "Select a vault to enable upload.";
-    el.uploadStatus().textContent = "";
+    el.title().textContent = 'Select a vault';
+    el.subtitle().textContent = '';
+    el.uploadHint().textContent = 'Select a vault to enable upload.';
+    el.uploadStatus().textContent = '';
     setUploadEnabled(false);
     return;
   }
 
   el.title().textContent = state.vault!;
-  el.subtitle().textContent = state.prefix ? `/${state.prefix}` : "/";
-  el.uploadHint().textContent = state.prefix ? `Uploading into /${state.prefix}` : "Uploading into /";
+  el.subtitle().textContent = state.prefix ? `/${state.prefix}` : '/';
+  el.uploadHint().textContent = state.prefix
+    ? `Uploading into /${state.prefix}`
+    : 'Uploading into /';
   setUploadEnabled(true);
   updateUploadButtonState();
 }
 
 function setCrumbs(): void {
   const ol = el.crumbs();
-  ol.innerHTML = "";
+  ol.innerHTML = '';
 
   if (!state.vault) {
     ol.innerHTML = `<li class="breadcrumb-item text-muted">—</li>`;
     return;
   }
 
-  const parts = state.prefix.split("/").filter(Boolean);
+  const parts = state.prefix.split('/').filter(Boolean);
 
   const addCrumbLink = (label: string, prefix: string) => {
-    const li = document.createElement("li");
-    li.className = "breadcrumb-item";
-    const a = document.createElement("a");
-    a.href = "#";
+    const li = document.createElement('li');
+    li.className = 'breadcrumb-item';
+    const a = document.createElement('a');
+    a.href = '#';
     a.textContent = label;
-    a.addEventListener("click", (e) => {
+    a.addEventListener('click', (e) => {
       e.preventDefault();
       state.prefix = prefix;
       resetPagination();
@@ -167,26 +191,26 @@ function setCrumbs(): void {
     ol.appendChild(li);
   };
 
-  addCrumbLink("root", "");
+  addCrumbLink('root', '');
 
-  let accum = "";
+  let accum = '';
   parts.forEach((p, idx) => {
     accum += `${p}/`;
     const isLast = idx === parts.length - 1;
 
-    const li = document.createElement("li");
-    li.className = "breadcrumb-item";
+    const li = document.createElement('li');
+    li.className = 'breadcrumb-item';
 
     if (isLast) {
-      li.classList.add("active");
-      li.setAttribute("aria-current", "page");
+      li.classList.add('active');
+      li.setAttribute('aria-current', 'page');
       li.textContent = p;
     } else {
-      const a = document.createElement("a");
-      a.href = "#";
+      const a = document.createElement('a');
+      a.href = '#';
       a.textContent = p;
       const target = accum;
-      a.addEventListener("click", (e) => {
+      a.addEventListener('click', (e) => {
         e.preventDefault();
         state.prefix = target;
         resetPagination();
@@ -206,28 +230,28 @@ function toEntries(objects: BackendObject[], prefix: string): Entry[] {
   const files: Entry[] = [];
 
   for (const obj of objects) {
-    const key = obj.path || "";
+    const key = obj.path || '';
     if (!key.startsWith(prefix)) continue;
 
     const rest = key.slice(prefix.length);
     if (!rest) continue;
 
-    const slash = rest.indexOf("/");
+    const slash = rest.indexOf('/');
     if (slash !== -1) {
       const folderName = rest.slice(0, slash);
       const folderPath = `${prefix}${folderName}/`;
       if (!folders.has(folderPath)) {
-        folders.set(folderPath, { kind: "folder", name: folderName, path: folderPath });
+        folders.set(folderPath, { kind: 'folder', name: folderName, path: folderPath });
       }
       continue;
     }
 
-    files.push({ kind: "file", name: rest, path: key, size: obj.size ?? null });
+    files.push({ kind: 'file', name: rest, path: key, size: obj.size ?? null });
   }
 
   const out: Entry[] = [...folders.values(), ...files];
   out.sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
+    if (a.kind !== b.kind) return a.kind === 'folder' ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
   return out;
@@ -235,36 +259,40 @@ function toEntries(objects: BackendObject[], prefix: string): Entry[] {
 
 /* ----------------------------- Rendering ----------------------------- */
 
-function makeFileActions(entry: Extract<Entry, { kind: "file" }>): HTMLElement {
-  const dd = document.createElement("div");
-  dd.className = "dropdown dropup";
+function makeFileActions(entry: Extract<Entry, { kind: 'file' }>): HTMLElement {
+  const dd = document.createElement('div');
+  dd.className = 'dropdown dropup';
 
-  const toggle = document.createElement("button");
-  toggle.type = "button";
-  toggle.className = "btn btn-sm btn-outline-secondary dropdown-toggle";
-  toggle.setAttribute("data-bs-toggle", "dropdown");
-  toggle.setAttribute("data-bs-boundary", "viewport");
-  toggle.setAttribute("data-bs-reference", "parent");
-  toggle.setAttribute("aria-expanded", "false");
-  toggle.title = "Actions";
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'btn btn-sm btn-outline-secondary dropdown-toggle';
+  toggle.setAttribute('data-bs-toggle', 'dropdown');
+  toggle.setAttribute('data-bs-boundary', 'viewport');
+  toggle.setAttribute('data-bs-reference', 'parent');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.title = 'Actions';
   toggle.innerHTML = `<i class="bi bi-three-dots"></i>`;
 
-  const menu = document.createElement("ul");
-  menu.className = "dropdown-menu dropdown-menu-end";
+  const menu = document.createElement('ul');
+  menu.className = 'dropdown-menu dropdown-menu-end';
 
-  const addItem = (html: string, onClick: () => void | Promise<void>, className = "dropdown-item") => {
-    const li = document.createElement("li");
-    const btn = document.createElement("button");
-    btn.type = "button";
+  const addItem = (
+    html: string,
+    onClick: () => void | Promise<void>,
+    className = 'dropdown-item',
+  ) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = className;
     btn.innerHTML = html;
-    btn.addEventListener("click", () => void onClick());
+    btn.addEventListener('click', () => void onClick());
     li.appendChild(btn);
     menu.appendChild(li);
   };
 
   const addDivider = () => {
-    const li = document.createElement("li");
+    const li = document.createElement('li');
     li.innerHTML = `<hr class="dropdown-divider">`;
     menu.appendChild(li);
   };
@@ -272,9 +300,9 @@ function makeFileActions(entry: Extract<Entry, { kind: "file" }>): HTMLElement {
   addItem(`<i class="bi bi-download me-2"></i>Download`, () => {
     if (!state.vault) return;
     const url = `/api/v1/files/${encodeURIComponent(state.vault)}/download/?path=${encodeURIComponent(entry.path)}`;
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = entry.name || "download";
+    a.download = entry.name || 'download';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -291,15 +319,15 @@ function makeFileActions(entry: Extract<Entry, { kind: "file" }>): HTMLElement {
       try {
         await apiJson(
           `/api/v1/files/${encodeURIComponent(state.vault)}/object/?path=${encodeURIComponent(entry.path)}`,
-          { method: "DELETE" }
+          { method: 'DELETE' },
         );
-        setFlash("Deleted.", "success");
+        setFlash('Deleted.', 'success');
         await refresh();
       } catch (err) {
-        setFlash(err instanceof Error ? err.message : "Delete failed.", "error");
+        setFlash(err instanceof Error ? err.message : 'Delete failed.', 'error');
       }
     },
-    "dropdown-item text-danger"
+    'dropdown-item text-danger',
   );
 
   dd.appendChild(toggle);
@@ -309,11 +337,10 @@ function makeFileActions(entry: Extract<Entry, { kind: "file" }>): HTMLElement {
 
 function render(entries: Entry[]): void {
   const tbody = el.entries();
-  tbody.innerHTML = "";
+  tbody.innerHTML = '';
 
   if (!state.vault) {
-    tbody.innerHTML =
-      `<tr><td colspan="4" class="text-muted small">Choose a vault from the left to start browsing.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="text-muted small">Choose a vault from the left to start browsing.</td></tr>`;
     return;
   }
 
@@ -323,20 +350,20 @@ function render(entries: Entry[]): void {
   }
 
   for (const entry of entries) {
-    const tr = document.createElement("tr");
+    const tr = document.createElement('tr');
 
-    const tdName = document.createElement("td");
-    const tdPath = document.createElement("td");
-    const tdSize = document.createElement("td");
-    const tdAct = document.createElement("td");
-    tdAct.className = "text-end";
+    const tdName = document.createElement('td');
+    const tdPath = document.createElement('td');
+    const tdSize = document.createElement('td');
+    const tdAct = document.createElement('td');
+    tdAct.className = 'text-end';
 
-    if (entry.kind === "folder") {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btn btn-link btn-sm p-0 text-decoration-none";
+    if (entry.kind === 'folder') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-link btn-sm p-0 text-decoration-none';
       btn.innerHTML = `<i class="bi bi-folder2 me-2 opacity-75"></i>${entry.name}`;
-      btn.addEventListener("click", () => {
+      btn.addEventListener('click', () => {
         state.prefix = entry.path;
         resetPagination();
         void refresh();
@@ -344,7 +371,7 @@ function render(entries: Entry[]): void {
 
       tdName.appendChild(btn);
       tdPath.textContent = entry.path;
-      tdSize.textContent = "";
+      tdSize.textContent = '';
     } else {
       const icon = fileIcon(entry.name);
       tdName.innerHTML = `<i class="bi ${icon} me-2 opacity-75"></i>${entry.name}`;
@@ -363,65 +390,65 @@ function render(entries: Entry[]): void {
 
 function renderPagination(): void {
   const host = el.pageControls();
-  host.innerHTML = "";
+  host.innerHTML = '';
 
   if (!state.vault) return;
 
   // Prev button
-  const prevBtn = document.createElement("button");
-  prevBtn.type = "button";
-  prevBtn.className = "btn btn-sm btn-outline-secondary";
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'btn btn-sm btn-outline-secondary';
   prevBtn.innerHTML = `<i class="bi bi-chevron-left"></i>`;
   prevBtn.disabled = state.page === 0;
-  prevBtn.addEventListener("click", () => {
+  prevBtn.addEventListener('click', () => {
     state.page--;
     void refresh();
   });
 
   // Page label
-  const pageLabel = document.createElement("span");
-  pageLabel.className = "text-muted";
+  const pageLabel = document.createElement('span');
+  pageLabel.className = 'text-muted';
   pageLabel.textContent = `Page ${state.page + 1}`;
 
   // Next button
-  const nextBtn = document.createElement("button");
-  nextBtn.type = "button";
-  nextBtn.className = "btn btn-sm btn-outline-secondary";
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'btn btn-sm btn-outline-secondary';
   nextBtn.innerHTML = `<i class="bi bi-chevron-right"></i>`;
   nextBtn.disabled = !state.hasNextPage;
-  nextBtn.addEventListener("click", () => {
+  nextBtn.addEventListener('click', () => {
     state.page++;
     void refresh();
   });
 
   // Nav group (left side)
-  const navGroup = document.createElement("div");
-  navGroup.className = "d-flex align-items-center gap-2";
+  const navGroup = document.createElement('div');
+  navGroup.className = 'd-flex align-items-center gap-2';
   navGroup.appendChild(prevBtn);
   navGroup.appendChild(pageLabel);
   navGroup.appendChild(nextBtn);
 
   // Page size selector (right side)
-  const sizeLabel = document.createElement("label");
-  sizeLabel.className = "text-muted d-flex align-items-center gap-1";
+  const sizeLabel = document.createElement('label');
+  sizeLabel.className = 'text-muted d-flex align-items-center gap-1';
 
-  const sizeSelect = document.createElement("select");
-  sizeSelect.className = "form-select form-select-sm";
-  sizeSelect.style.width = "auto";
+  const sizeSelect = document.createElement('select');
+  sizeSelect.className = 'form-select form-select-sm';
+  sizeSelect.style.width = 'auto';
   for (const size of [25, 50, 100, 200]) {
-    const opt = document.createElement("option");
+    const opt = document.createElement('option');
     opt.value = String(size);
     opt.textContent = String(size);
     opt.selected = size === state.pageSize;
     sizeSelect.appendChild(opt);
   }
-  sizeSelect.addEventListener("change", () => {
+  sizeSelect.addEventListener('change', () => {
     state.pageSize = Number(sizeSelect.value);
     resetPagination();
     void refresh();
   });
 
-  sizeLabel.appendChild(document.createTextNode("Per page:"));
+  sizeLabel.appendChild(document.createTextNode('Per page:'));
   sizeLabel.appendChild(sizeSelect);
 
   host.appendChild(navGroup);
@@ -441,13 +468,13 @@ async function refresh(): Promise<void> {
   }
 
   const params = new URLSearchParams();
-  if (state.prefix) params.set("prefix", state.prefix);
+  if (state.prefix) params.set('prefix', state.prefix);
   const cursor = state.cursors[state.page];
-  if (cursor) params.set("cursor", cursor);
-  params.set("page_size", String(state.pageSize));
+  if (cursor) params.set('cursor', cursor);
+  params.set('page_size', String(state.pageSize));
 
   const page = await apiJson<ObjectPage>(
-    `/api/v1/files/${encodeURIComponent(state.vault!)}/objects/?${params.toString()}`
+    `/api/v1/files/${encodeURIComponent(state.vault!)}/objects/?${params.toString()}`,
   );
 
   // Store next cursor for forward navigation
@@ -461,19 +488,16 @@ async function refresh(): Promise<void> {
   render(toEntries(page.objects, state.prefix));
   renderPagination();
 
-  el.up().disabled = state.prefix === "";
+  el.up().disabled = state.prefix === '';
   updateUploadButtonState();
 }
 
-function uploadWithProgress(
-  url: string,
-  formData: FormData
-): Promise<void> {
+function uploadWithProgress(url: string, formData: FormData): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const csrf = getCsrfToken();
-    xhr.open("POST", url);
-    if (csrf) xhr.setRequestHeader("X-CSRFToken", csrf);
+    xhr.open('POST', url);
+    if (csrf) xhr.setRequestHeader('X-CSRFToken', csrf);
     xhr.withCredentials = true;
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -483,11 +507,13 @@ function uploadWithProgress(
         try {
           const data = JSON.parse(xhr.responseText) as { detail?: unknown };
           if (data?.detail) detail = String(data.detail);
-        } catch { /* ignore parse errors */ }
+        } catch {
+          /* ignore parse errors */
+        }
         reject(new Error(detail));
       }
     };
-    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.onerror = () => reject(new Error('Network error'));
     xhr.send(formData);
   });
 }
@@ -500,34 +526,31 @@ async function doUpload(): Promise<void> {
 
   const name = (el.uploadName().value || file.name).trim();
   if (!name) {
-    setFlash("Name is required.", "error");
+    setFlash('Name is required.', 'error');
     return;
   }
 
   const path = `${state.prefix}${name}`;
 
-  el.uploadStatus().textContent = "Uploading…";
+  el.uploadStatus().textContent = 'Uploading…';
   el.uploadBtn().disabled = true;
 
   try {
     const form = new FormData();
-    form.append("path", path);
-    form.append("file", file);
-    await uploadWithProgress(
-      `/api/v1/files/${encodeURIComponent(state.vault)}/write/`,
-      form
-    );
+    form.append('path', path);
+    form.append('file', file);
+    await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form);
 
-    el.uploadStatus().textContent = "Uploaded.";
-    setFlash("Upload complete.", "success");
+    el.uploadStatus().textContent = 'Uploaded.';
+    setFlash('Upload complete.', 'success');
 
-    el.uploadFile().value = "";
-    el.uploadName().value = "";
+    el.uploadFile().value = '';
+    el.uploadName().value = '';
 
     await refresh();
   } catch (e) {
-    el.uploadStatus().textContent = "";
-    setFlash(e instanceof Error ? e.message : "Upload failed.", "error");
+    el.uploadStatus().textContent = '';
+    setFlash(e instanceof Error ? e.message : 'Upload failed.', 'error');
   } finally {
     updateUploadButtonState();
   }
@@ -535,9 +558,9 @@ async function doUpload(): Promise<void> {
 
 function goUp(): void {
   if (!state.prefix) return;
-  const parts = state.prefix.split("/").filter(Boolean);
+  const parts = state.prefix.split('/').filter(Boolean);
   parts.pop();
-  state.prefix = parts.length ? `${parts.join("/")}/` : "";
+  state.prefix = parts.length ? `${parts.join('/')}/` : '';
   resetPagination();
   void refresh();
 }
@@ -546,27 +569,27 @@ async function loadVaults(): Promise<void> {
   const host = el.vaultList();
   host.innerHTML = `<div class="text-muted small">Loading…</div>`;
 
-  const items = await apiJson<VaultItemMeta[]>("/api/v1/files/");
+  const items = await apiJson<VaultItemMeta[]>('/api/v1/files/');
 
   if (!items.length) {
     host.innerHTML = `<div class="text-muted small">No vault items yet.</div>`;
     state.vault = null;
-    state.prefix = "";
+    state.prefix = '';
     setBrowserHeader();
     setCrumbs();
     render([]);
     return;
   }
 
-  host.innerHTML = "";
+  host.innerHTML = '';
 
   let firstAnchor: HTMLAnchorElement | null = null;
 
   for (const it of items) {
-    const a = document.createElement("a");
-    a.href = "#";
+    const a = document.createElement('a');
+    a.href = '#';
     a.className =
-      "list-group-item list-group-item-action d-flex align-items-center justify-content-between files-vault-item";
+      'list-group-item list-group-item-action d-flex align-items-center justify-content-between files-vault-item';
     a.innerHTML = `
       <div class="d-flex align-items-center gap-2">
         <i class="bi bi-drive opacity-75"></i>
@@ -578,18 +601,18 @@ async function loadVaults(): Promise<void> {
       <i class="bi bi-chevron-right opacity-50"></i>
     `;
 
-    a.addEventListener("click", (e) => {
+    a.addEventListener('click', (e) => {
       e.preventDefault();
 
       state.vault = it.name;
-      state.prefix = "";
+      state.prefix = '';
       resetPagination();
       void refresh();
 
-      for (const elItem of Array.from(host.querySelectorAll(".list-group-item"))) {
-        elItem.classList.remove("active");
+      for (const elItem of Array.from(host.querySelectorAll('.list-group-item'))) {
+        elItem.classList.remove('active');
       }
-      a.classList.add("active");
+      a.classList.add('active');
     });
 
     if (!firstAnchor) firstAnchor = a;
@@ -601,22 +624,22 @@ async function loadVaults(): Promise<void> {
 
 /* ----------------------------- Boot ----------------------------- */
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener('DOMContentLoaded', async () => {
   await loadVaults();
   setBrowserHeader();
   setCrumbs();
   updateUploadButtonState();
 
-  el.vaultRefresh().addEventListener("click", () => void loadVaults());
-  el.refresh().addEventListener("click", () => void refresh());
-  el.up().addEventListener("click", goUp);
+  el.vaultRefresh().addEventListener('click', () => void loadVaults());
+  el.refresh().addEventListener('click', () => void refresh());
+  el.up().addEventListener('click', goUp);
 
-  el.uploadFile().addEventListener("change", () => {
+  el.uploadFile().addEventListener('change', () => {
     const f = el.uploadFile().files?.[0];
     if (f) el.uploadName().value = f.name;
     updateUploadButtonState();
   });
 
-  el.uploadName().addEventListener("input", updateUploadButtonState);
-  el.uploadBtn().addEventListener("click", () => void doUpload());
+  el.uploadName().addEventListener('input', updateUploadButtonState);
+  el.uploadBtn().addEventListener('click', () => void doUpload());
 });

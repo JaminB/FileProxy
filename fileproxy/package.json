@@ -8,13 +8,19 @@
   },
   "scripts": {
     "ts:build": "tsc",
-    "ts:watch": "tsc --watch --preserveWatchOutput"
+    "ts:watch": "tsc --watch --preserveWatchOutput",
+    "format": "prettier --write \"static/ts/**/*.ts\"",
+    "lint:security": "eslint \"static/ts/**/*.ts\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "prettier": "^3.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-security": "^3.0.0",
+    "@typescript-eslint/parser": "^8.0.0"
   }
 }

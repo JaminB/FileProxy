@@ -5,11 +5,11 @@
 export function getCookie(name: string): string | null {
   if (!document.cookie) return null;
 
-  const cookies = document.cookie.split("; ");
+  const cookies = document.cookie.split('; ');
   for (const cookie of cookies) {
-    const [key, ...rest] = cookie.split("=");
+    const [key, ...rest] = cookie.split('=');
     if (key === name) {
-      return decodeURIComponent(rest.join("="));
+      return decodeURIComponent(rest.join('='));
     }
   }
   return null;
@@ -19,5 +19,5 @@ export function getCookie(name: string): string | null {
  * Convenience helper for Django CSRF.
  */
 export function getCsrfToken(): string | null {
-  return getCookie("csrftoken");
+  return getCookie('csrftoken');
 }
