@@ -48,13 +48,19 @@ function fmtDate(val: string | null): string {
   return isNaN(d.getTime()) ? val : d.toLocaleDateString();
 }
 
-function progressBar(label: string, used: number, limit: number | null): string {
+function progressBar(
+  label: string,
+  used: number,
+  limit: number | null,
+  fmtFn?: (n: number) => string,
+): string {
+  const fmt = fmtFn ?? String;
   if (limit === null) {
     return `
       <div class="mb-3">
         <div class="d-flex justify-content-between small mb-1">
           <span>${label}</span>
-          <span>${used} / <em>unlimited</em></span>
+          <span>${fmt(used)} / <em>unlimited</em></span>
         </div>
         <div class="progress" style="height:6px">
           <div class="progress-bar bg-success" style="width:0%"></div>
@@ -68,12 +74,16 @@ function progressBar(label: string, used: number, limit: number | null): string 
     <div class="mb-3">
       <div class="d-flex justify-content-between small mb-1">
         <span>${label}</span>
-        <span>${used} / ${limit}</span>
+        <span>${fmt(used)} / ${fmt(limit)}</span>
       </div>
       <div class="progress" style="height:6px">
         <div class="progress-bar ${color}" style="width:${pct}%"></div>
       </div>
     </div>`;
+}
+
+function fmtMb(bytes: number): string {
+  return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }
 
 function renderSubInfo(sub: Sub, subInfoEl: HTMLElement): void {
@@ -139,8 +149,8 @@ function renderUsageBars(usage: Usage, usageBarsEl: HTMLElement): void {
     progressBar('Read requests', usage.read, plan?.read_limit ?? null) +
     progressBar('Write requests', usage.write, plan?.write_limit ?? null) +
     progressBar('Delete requests', usage.delete, plan?.delete_limit ?? null) +
-    progressBar('Read data (bytes)', usage.read_bytes, plan?.read_transfer_limit_bytes ?? null) +
-    progressBar('Write data (bytes)', usage.write_bytes, plan?.write_transfer_limit_bytes ?? null);
+    progressBar('Read data', usage.read_bytes, plan?.read_transfer_limit_bytes ?? null, fmtMb) +
+    progressBar('Write data', usage.write_bytes, plan?.write_transfer_limit_bytes ?? null, fmtMb);
 }
 
 async function loadAvailablePlans(plansListEl: HTMLElement): Promise<void> {

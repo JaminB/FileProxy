@@ -9,6 +9,14 @@ function numOrNull(form: HTMLFormElement, name: string): number | null {
   return isNaN(n) ? null : n;
 }
 
+function floatOrNull(form: HTMLFormElement, name: string): number | null {
+  const el = qs<HTMLInputElement>(`[name="${name}"]`, form);
+  const val = (el?.value ?? '').trim();
+  if (!val) return null;
+  const n = parseFloat(val);
+  return isNaN(n) ? null : n;
+}
+
 function requireStr(form: HTMLFormElement, name: string, label: string): string {
   const el = qs<HTMLInputElement>(`[name="${name}"]`, form);
   const val = (el?.value ?? '').trim();
@@ -37,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const isDefaultEl = qs<HTMLInputElement>("[name='is_default']", form);
     const is_default = isDefaultEl?.checked ?? false;
 
+    const read_mb = floatOrNull(form, 'read_transfer_limit_mb');
+    const write_mb = floatOrNull(form, 'write_transfer_limit_mb');
     const payload = {
       name,
       is_default,
@@ -44,8 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
       read_limit: numOrNull(form, 'read_limit'),
       write_limit: numOrNull(form, 'write_limit'),
       delete_limit: numOrNull(form, 'delete_limit'),
-      read_transfer_limit_bytes: numOrNull(form, 'read_transfer_limit_bytes'),
-      write_transfer_limit_bytes: numOrNull(form, 'write_transfer_limit_bytes'),
+      read_transfer_limit_bytes: read_mb !== null ? Math.round(read_mb * 1_048_576) : null,
+      write_transfer_limit_bytes: write_mb !== null ? Math.round(write_mb * 1_048_576) : null,
     };
 
     submitBtn.disabled = true;

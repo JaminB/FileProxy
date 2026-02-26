@@ -18,6 +18,10 @@ function fmtLimit(val: number | null): string {
   return val === null ? '∞' : String(val);
 }
 
+function fmtLimitBytes(val: number | null): string {
+  return val === null ? '∞' : `${(val / 1_048_576).toFixed(1)} MB`;
+}
+
 function esc(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -59,7 +63,7 @@ function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: b
   if (!plans.length) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = staffMode ? 7 : 6;
+    td.colSpan = staffMode ? 9 : 8;
     td.className = 'text-secondary';
     td.textContent = 'No plans defined.';
     tr.appendChild(td);
@@ -102,12 +106,20 @@ function renderPlans(tbody: HTMLTableSectionElement, plans: Plan[], staffMode: b
     const deleteTd = document.createElement('td');
     deleteTd.textContent = fmtLimit(plan.delete_limit);
 
+    const readTransferTd = document.createElement('td');
+    readTransferTd.textContent = fmtLimitBytes(plan.read_transfer_limit_bytes);
+
+    const writeTransferTd = document.createElement('td');
+    writeTransferTd.textContent = fmtLimitBytes(plan.write_transfer_limit_bytes);
+
     tr.appendChild(nameTd);
     tr.appendChild(defaultTd);
     tr.appendChild(enumTd);
     tr.appendChild(readTd);
     tr.appendChild(writeTd);
     tr.appendChild(deleteTd);
+    tr.appendChild(readTransferTd);
+    tr.appendChild(writeTransferTd);
 
     if (staffMode) {
       const actionsTd = document.createElement('td');

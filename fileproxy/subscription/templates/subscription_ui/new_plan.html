@@ -58,16 +58,16 @@
         </div>
 
         <hr class="my-3">
-        <p class="small text-secondary mb-2">Data transfer limits per billing cycle in bytes (leave blank for unlimited):</p>
+        <p class="small text-secondary mb-2">Data transfer limits per billing cycle in MB (leave blank for unlimited):</p>
 
         <div class="row g-2 mb-4">
           <div class="col-sm-6">
-            <label for="read_transfer_limit_bytes" class="form-label small">Read transfer limit (bytes)</label>
-            <input type="number" class="form-control form-control-sm" id="read_transfer_limit_bytes" name="read_transfer_limit_bytes" min="0" placeholder="Unlimited">
+            <label for="read_transfer_limit_mb" class="form-label small">Read transfer limit (MB)</label>
+            <input type="number" class="form-control form-control-sm" id="read_transfer_limit_mb" name="read_transfer_limit_mb" min="0" step="any" placeholder="Unlimited">
           </div>
           <div class="col-sm-6">
-            <label for="write_transfer_limit_bytes" class="form-label small">Write transfer limit (bytes)</label>
-            <input type="number" class="form-control form-control-sm" id="write_transfer_limit_bytes" name="write_transfer_limit_bytes" min="0" placeholder="Unlimited">
+            <label for="write_transfer_limit_mb" class="form-label small">Write transfer limit (MB)</label>
+            <input type="number" class="form-control form-control-sm" id="write_transfer_limit_mb" name="write_transfer_limit_mb" min="0" step="any" placeholder="Unlimited">
           </div>
         </div>
 

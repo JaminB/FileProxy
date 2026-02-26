@@ -11,6 +11,9 @@ function esc(str) {
 function fmtLimit(val) {
     return val === null ? 'Unlimited' : String(val);
 }
+function fmtLimitBytes(bytes) {
+    return bytes === null ? 'Unlimited' : `${(bytes / 1_048_576).toFixed(1)} MB`;
+}
 function fmtDate(val) {
     if (!val)
         return '—';
@@ -52,8 +55,8 @@ async function loadPlanDetail() {
         <div class="col-sm-6"><span class="text-secondary">Read limit:</span> ${fmtLimit(plan.read_limit)}</div>
         <div class="col-sm-6"><span class="text-secondary">Write limit:</span> ${fmtLimit(plan.write_limit)}</div>
         <div class="col-sm-6"><span class="text-secondary">Delete limit:</span> ${fmtLimit(plan.delete_limit)}</div>
-        <div class="col-sm-6"><span class="text-secondary">Read transfer limit:</span> ${fmtLimit(plan.read_transfer_limit_bytes)}</div>
-        <div class="col-sm-6"><span class="text-secondary">Write transfer limit:</span> ${fmtLimit(plan.write_transfer_limit_bytes)}</div>
+        <div class="col-sm-6"><span class="text-secondary">Read transfer limit:</span> ${fmtLimitBytes(plan.read_transfer_limit_bytes)}</div>
+        <div class="col-sm-6"><span class="text-secondary">Write transfer limit:</span> ${fmtLimitBytes(plan.write_transfer_limit_bytes)}</div>
       </div>
       <div class="mt-3 d-flex gap-2">
         ${!plan.is_default ? `<button id="set-default-btn" class="btn btn-sm btn-outline-secondary">Set as Default</button>` : ''}
