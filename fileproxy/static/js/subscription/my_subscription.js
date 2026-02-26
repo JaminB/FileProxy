@@ -14,13 +14,14 @@ function fmtDate(val) {
     const d = new Date(val);
     return isNaN(d.getTime()) ? val : d.toLocaleDateString();
 }
-function progressBar(label, used, limit) {
+function progressBar(label, used, limit, fmtFn) {
+    const fmt = fmtFn ?? String;
     if (limit === null) {
         return `
       <div class="mb-3">
         <div class="d-flex justify-content-between small mb-1">
           <span>${label}</span>
-          <span>${used} / <em>unlimited</em></span>
+          <span>${fmt(used)} / <em>unlimited</em></span>
         </div>
         <div class="progress" style="height:6px">
           <div class="progress-bar bg-success" style="width:0%"></div>
@@ -33,12 +34,15 @@ function progressBar(label, used, limit) {
     <div class="mb-3">
       <div class="d-flex justify-content-between small mb-1">
         <span>${label}</span>
-        <span>${used} / ${limit}</span>
+        <span>${fmt(used)} / ${fmt(limit)}</span>
       </div>
       <div class="progress" style="height:6px">
         <div class="progress-bar ${color}" style="width:${pct}%"></div>
       </div>
     </div>`;
+}
+function fmtMb(bytes) {
+    return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }
 function renderSubInfo(sub, subInfoEl) {
     const plan = sub.effective_plan;
@@ -94,8 +98,8 @@ function renderUsageBars(usage, usageBarsEl) {
             progressBar('Read requests', usage.read, plan?.read_limit ?? null) +
             progressBar('Write requests', usage.write, plan?.write_limit ?? null) +
             progressBar('Delete requests', usage.delete, plan?.delete_limit ?? null) +
-            progressBar('Read data (bytes)', usage.read_bytes, plan?.read_transfer_limit_bytes ?? null) +
-            progressBar('Write data (bytes)', usage.write_bytes, plan?.write_transfer_limit_bytes ?? null);
+            progressBar('Read data', usage.read_bytes, plan?.read_transfer_limit_bytes ?? null, fmtMb) +
+            progressBar('Write data', usage.write_bytes, plan?.write_transfer_limit_bytes ?? null, fmtMb);
 }
 async function loadAvailablePlans(plansListEl) {
     try {

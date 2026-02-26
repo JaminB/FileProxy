@@ -80,12 +80,21 @@ class FilesViewSet(viewsets.ViewSet):
     def _tracked_stream(self, request, connection_name: str, chunks, path: str):
         """Wrap a chunk iterator so the read event is recorded after streaming completes."""
         ok = False
+        total_bytes = 0
         try:
             for chunk in chunks:
+                total_bytes += len(chunk)
                 yield chunk
             ok = True
         finally:
-            self._record_event(request, connection_name, "read", object_path=path, ok=ok)
+            self._record_event(
+                request,
+                connection_name,
+                "read",
+                object_path=path,
+                ok=ok,
+                bytes_transferred=total_bytes,
+            )
 
     def _error(self, e: Exception) -> Response:
         if isinstance(e, ValidationError):
@@ -166,6 +175,7 @@ class FilesViewSet(viewsets.ViewSet):
 
             data = backend.read(path)
             bytes_read = len(data)
+            check_limit(request.user, "read", bytes_count=bytes_read)
             ok = True
             return Response({"path": path, "data_base64": base64.b64encode(data).decode("ascii")})
         except Exception as e:  # noqa: BLE001
@@ -262,6 +272,7 @@ class FilesViewSet(viewsets.ViewSet):
         """GET /api/v1/files/{connection_name}/download/?path=... — binary streaming download."""
         path = ""
         try:
+            check_limit(request.user, "read")
             backend = self._backend(request, connection_name)
             q = ReadFileQuerySerializer(data=request.query_params)
             q.is_valid(raise_exception=True)
