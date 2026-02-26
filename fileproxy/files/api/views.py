@@ -88,8 +88,12 @@ class FilesViewSet(viewsets.ViewSet):
             ok = True
         finally:
             self._record_event(
-                request, connection_name, "read",
-                object_path=path, ok=ok, bytes_transferred=total_bytes,
+                request,
+                connection_name,
+                "read",
+                object_path=path,
+                ok=ok,
+                bytes_transferred=total_bytes,
             )
 
     def _error(self, e: Exception) -> Response:
