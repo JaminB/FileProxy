@@ -9,9 +9,9 @@ urlpatterns = [
         name="usage-summary",
     ),
     path(
-        "usage/by-vault/",
-        UsageViewSet.as_view({"get": "by_vault"}),
-        name="usage-by-vault",
+        "usage/by-connection/",
+        UsageViewSet.as_view({"get": "by_connection"}),
+        name="usage-by-connection",
     ),
     path(
         "usage/timeline/",
