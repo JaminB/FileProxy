@@ -5,7 +5,7 @@ description = ""
 authors = [
     {name = "jamin",email = "jaminbecker@gmail.com"}
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.13,<4.0"
 dependencies = [
     "django (>=6.0.1,<7.0.0)",
     "cryptography (>=46.0.3,<47.0.0)",
@@ -42,4 +42,4 @@ exclude = ["*/migrations/*", "node_modules"]
 select = ["E", "F", "I"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "vault", "files", "api", "accounts", "usage", "config"]
+known-first-party = ["core", "connections", "files", "api", "accounts", "usage", "subscription", "config"]
