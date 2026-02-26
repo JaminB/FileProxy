@@ -146,7 +146,7 @@ function renderItems(tbody, items) {
     }
 }
 export async function loadConnectionsTable() {
-    const tbody = qs('#vault-rows');
+    const tbody = qs('#connection-rows');
     if (!tbody)
         return;
     try {

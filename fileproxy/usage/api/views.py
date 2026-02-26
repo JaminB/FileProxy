@@ -75,8 +75,8 @@ class UsageViewSet(ViewSet):
         ],
         responses={"200": ByConnectionSerializer(many=True)},
     )
-    def by_vault(self, request):
-        """Per-vault-item operation breakdown."""
+    def by_connection(self, request):
+        """Per-connection operation breakdown."""
         try:
             days = max(1, min(3650, int(request.query_params.get("days", 30))))
         except (TypeError, ValueError):

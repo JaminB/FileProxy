@@ -185,7 +185,7 @@ function renderItems(tbody: HTMLTableSectionElement, items: Connection[]): void 
 }
 
 export async function loadConnectionsTable(): Promise<void> {
-  const tbody = qs<HTMLTableSectionElement>('#vault-rows');
+  const tbody = qs<HTMLTableSectionElement>('#connection-rows');
   if (!tbody) return;
 
   try {

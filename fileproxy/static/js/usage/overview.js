@@ -79,12 +79,12 @@ function renderByConnection(items) {
 async function load(days = DEFAULT_DAYS) {
     renderPeriodSelector(days);
     try {
-        const [summary, byVault] = await Promise.all([
+        const [summary, byConnection] = await Promise.all([
             apiJson(`/api/v1/usage/summary/?days=${days}`),
-            apiJson(`/api/v1/usage/by-vault/?days=${days}`),
+            apiJson(`/api/v1/usage/by-connection/?days=${days}`),
         ]);
         renderSummary(summary);
-        renderByConnection(byVault);
+        renderByConnection(byConnection);
     }
     catch (err) {
         setFlash(`Failed to load usage data: ${String(err)}`, 'error');

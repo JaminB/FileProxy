@@ -75,23 +75,23 @@ class UsageSummaryApiTests(APITestCase):
         self.assertIn(resp.status_code, [401, 403])
 
 
-class UsageByVaultApiTests(APITestCase):
+class UsageByConnectionApiTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="u2", password="pw")
         self.client.login(username="u2", password="pw")
         self.scope = f"user:{self.user.id}"
 
-    def test_by_vault_returns_list(self):
+    def test_by_connection_returns_list(self):
         _make_event(self.scope, "vault-a", "s3", "read")
         _make_event(self.scope, "vault-b", "s3", "write")
-        resp = self.client.get("/api/v1/usage/by-vault/")
+        resp = self.client.get("/api/v1/usage/by-connection/")
         self.assertEqual(resp.status_code, 200)
         self.assertIsInstance(resp.data, list)
         self.assertEqual(len(resp.data), 2)
 
-    def test_by_vault_item_structure(self):
+    def test_by_connection_item_structure(self):
         _make_event(self.scope, "vault-a", "s3", "read")
-        resp = self.client.get("/api/v1/usage/by-vault/")
+        resp = self.client.get("/api/v1/usage/by-connection/")
         self.assertEqual(resp.status_code, 200)
         item = resp.data[0]
         self.assertIn("name", item)
@@ -103,27 +103,27 @@ class UsageByVaultApiTests(APITestCase):
         self.assertIn("delete", item)
         self.assertNotIn("test", item)
 
-    def test_by_vault_days_filter(self):
+    def test_by_connection_days_filter(self):
         _make_event(self.scope, "vault-a", "s3", "read")
         _make_event(self.scope, "vault-a", "s3", "read", days_ago=40)
-        resp = self.client.get("/api/v1/usage/by-vault/?days=30")
+        resp = self.client.get("/api/v1/usage/by-connection/?days=30")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.data), 1)
         self.assertEqual(resp.data[0]["read"], 1)
 
-    def test_by_vault_sorted_by_total_descending(self):
+    def test_by_connection_sorted_by_total_descending(self):
         _make_event(self.scope, "vault-b", "s3", "read")
         _make_event(self.scope, "vault-a", "s3", "read")
         _make_event(self.scope, "vault-a", "s3", "write")
-        resp = self.client.get("/api/v1/usage/by-vault/")
+        resp = self.client.get("/api/v1/usage/by-connection/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data[0]["name"], "vault-a")
         self.assertEqual(resp.data[0]["total"], 2)
 
-    def test_by_vault_excludes_test_operations(self):
+    def test_by_connection_excludes_test_operations(self):
         _make_event(self.scope, "vault-a", "s3", "test")
         _make_event(self.scope, "vault-a", "s3", "read")
-        resp = self.client.get("/api/v1/usage/by-vault/")
+        resp = self.client.get("/api/v1/usage/by-connection/")
         self.assertEqual(resp.status_code, 200)
         item = resp.data[0]
         self.assertNotIn("test", item)
