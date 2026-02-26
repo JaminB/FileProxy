@@ -13,8 +13,8 @@ def _make_event(scope, name, kind, operation, days_ago=0):
     """Create a UsageEvent, backdating occurred_at by days_ago days."""
     event = UsageEvent(
         scope=scope,
-        vault_item_name=name,
-        vault_item_kind=kind,
+        connection_name=name,
+        connection_kind=kind,
         operation=operation,
     )
     event.save()
@@ -56,7 +56,7 @@ class UsageSummaryApiTests(APITestCase):
     def test_summary_vault_filter(self):
         _make_event(self.scope, "vault-a", "s3", "read")
         _make_event(self.scope, "vault-b", "s3", "write")
-        resp = self.client.get("/api/v1/usage/summary/?vault=vault-a")
+        resp = self.client.get("/api/v1/usage/summary/?connection=vault-a")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data["ops"]["read"], 1)
         self.assertEqual(resp.data["ops"]["write"], 0)
@@ -75,23 +75,23 @@ class UsageSummaryApiTests(APITestCase):
         self.assertIn(resp.status_code, [401, 403])
 
 
-class UsageByVaultApiTests(APITestCase):
+class UsageByConnectionApiTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="u2", password="pw")
         self.client.login(username="u2", password="pw")
         self.scope = f"user:{self.user.id}"
 
-    def test_by_vault_returns_list(self):
+    def test_by_connection_returns_list(self):
         _make_event(self.scope, "vault-a", "s3", "read")
         _make_event(self.scope, "vault-b", "s3", "write")
-        resp = self.client.get("/api/v1/usage/by-vault/")
+        resp = self.client.get("/api/v1/usage/by-connection/")
         self.assertEqual(resp.status_code, 200)
         self.assertIsInstance(resp.data, list)
         self.assertEqual(len(resp.data), 2)
 
-    def test_by_vault_item_structure(self):
+    def test_by_connection_item_structure(self):
         _make_event(self.scope, "vault-a", "s3", "read")
-        resp = self.client.get("/api/v1/usage/by-vault/")
+        resp = self.client.get("/api/v1/usage/by-connection/")
         self.assertEqual(resp.status_code, 200)
         item = resp.data[0]
         self.assertIn("name", item)
@@ -103,27 +103,27 @@ class UsageByVaultApiTests(APITestCase):
         self.assertIn("delete", item)
         self.assertNotIn("test", item)
 
-    def test_by_vault_days_filter(self):
+    def test_by_connection_days_filter(self):
         _make_event(self.scope, "vault-a", "s3", "read")
         _make_event(self.scope, "vault-a", "s3", "read", days_ago=40)
-        resp = self.client.get("/api/v1/usage/by-vault/?days=30")
+        resp = self.client.get("/api/v1/usage/by-connection/?days=30")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.data), 1)
         self.assertEqual(resp.data[0]["read"], 1)
 
-    def test_by_vault_sorted_by_total_descending(self):
+    def test_by_connection_sorted_by_total_descending(self):
         _make_event(self.scope, "vault-b", "s3", "read")
         _make_event(self.scope, "vault-a", "s3", "read")
         _make_event(self.scope, "vault-a", "s3", "write")
-        resp = self.client.get("/api/v1/usage/by-vault/")
+        resp = self.client.get("/api/v1/usage/by-connection/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data[0]["name"], "vault-a")
         self.assertEqual(resp.data[0]["total"], 2)
 
-    def test_by_vault_excludes_test_operations(self):
+    def test_by_connection_excludes_test_operations(self):
         _make_event(self.scope, "vault-a", "s3", "test")
         _make_event(self.scope, "vault-a", "s3", "read")
-        resp = self.client.get("/api/v1/usage/by-vault/")
+        resp = self.client.get("/api/v1/usage/by-connection/")
         self.assertEqual(resp.status_code, 200)
         item = resp.data[0]
         self.assertNotIn("test", item)
@@ -142,42 +142,42 @@ class UsageTimelineApiTests(APITestCase):
 
     def test_timeline_returns_expected_structure(self):
         _make_event(self.scope, "my-vault", "s3", "read")
-        resp = self.client.get("/api/v1/usage/timeline/?vault=my-vault")
+        resp = self.client.get("/api/v1/usage/timeline/?connection=my-vault")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("vault_item_name", resp.data)
+        self.assertIn("connection_name", resp.data)
         self.assertIn("days", resp.data)
         self.assertIn("dates", resp.data)
         self.assertIn("series", resp.data)
 
     def test_timeline_dates_length_matches_days(self):
         for days in [7, 30, 90]:
-            resp = self.client.get(f"/api/v1/usage/timeline/?vault=my-vault&days={days}")
+            resp = self.client.get(f"/api/v1/usage/timeline/?connection=my-vault&days={days}")
             self.assertEqual(resp.status_code, 200)
             self.assertEqual(len(resp.data["dates"]), days)
 
     def test_timeline_series_length_matches_dates(self):
-        resp = self.client.get("/api/v1/usage/timeline/?vault=my-vault&days=7")
+        resp = self.client.get("/api/v1/usage/timeline/?connection=my-vault&days=7")
         self.assertEqual(resp.status_code, 200)
         date_count = len(resp.data["dates"])
         for op, counts in resp.data["series"].items():
             self.assertEqual(len(counts), date_count, f"series[{op!r}] length mismatch")
 
     def test_timeline_last_date_is_today(self):
-        resp = self.client.get("/api/v1/usage/timeline/?vault=my-vault&days=7")
+        resp = self.client.get("/api/v1/usage/timeline/?connection=my-vault&days=7")
         self.assertEqual(resp.status_code, 200)
         today_str = str(timezone.now().date())
         self.assertEqual(resp.data["dates"][-1], today_str)
 
     def test_timeline_first_date_is_days_minus_1_ago(self):
         days = 7
-        resp = self.client.get(f"/api/v1/usage/timeline/?vault=my-vault&days={days}")
+        resp = self.client.get(f"/api/v1/usage/timeline/?connection=my-vault&days={days}")
         self.assertEqual(resp.status_code, 200)
         expected_start = str(timezone.now().date() - timedelta(days=days - 1))
         self.assertEqual(resp.data["dates"][0], expected_start)
 
     def test_timeline_event_counted_on_correct_date(self):
         _make_event(self.scope, "my-vault", "s3", "read", days_ago=2)
-        resp = self.client.get("/api/v1/usage/timeline/?vault=my-vault&days=7")
+        resp = self.client.get("/api/v1/usage/timeline/?connection=my-vault&days=7")
         self.assertEqual(resp.status_code, 200)
         expected_date = str(timezone.now().date() - timedelta(days=2))
         idx = resp.data["dates"].index(expected_date)
@@ -185,12 +185,12 @@ class UsageTimelineApiTests(APITestCase):
 
     def test_timeline_old_events_excluded(self):
         _make_event(self.scope, "my-vault", "s3", "read", days_ago=40)
-        resp = self.client.get("/api/v1/usage/timeline/?vault=my-vault&days=7")
+        resp = self.client.get("/api/v1/usage/timeline/?connection=my-vault&days=7")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(sum(resp.data["series"]["read"]), 0)
 
     def test_timeline_default_days_is_30(self):
-        resp = self.client.get("/api/v1/usage/timeline/?vault=my-vault")
+        resp = self.client.get("/api/v1/usage/timeline/?connection=my-vault")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data["days"], 30)
         self.assertEqual(len(resp.data["dates"]), 30)

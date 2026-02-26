@@ -48,8 +48,8 @@ function renderSummary(data) {
         container.appendChild(col);
     }
 }
-function renderByVault(items) {
-    const tbody = document.getElementById('by-vault-rows');
+function renderByConnection(items) {
+    const tbody = document.getElementById('by-connection-rows');
     if (!tbody)
         return;
     tbody.innerHTML = '';
@@ -59,7 +59,7 @@ function renderByVault(items) {
         return;
     }
     for (const item of items) {
-        const url = `/usage/vault/${encodeURIComponent(item.name)}/`;
+        const url = `/usage/connection/${encodeURIComponent(item.name)}/`;
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.innerHTML = `
@@ -79,12 +79,12 @@ function renderByVault(items) {
 async function load(days = DEFAULT_DAYS) {
     renderPeriodSelector(days);
     try {
-        const [summary, byVault] = await Promise.all([
+        const [summary, byConnection] = await Promise.all([
             apiJson(`/api/v1/usage/summary/?days=${days}`),
-            apiJson(`/api/v1/usage/by-vault/?days=${days}`),
+            apiJson(`/api/v1/usage/by-connection/?days=${days}`),
         ]);
         renderSummary(summary);
-        renderByVault(byVault);
+        renderByConnection(byConnection);
     }
     catch (err) {
         setFlash(`Failed to load usage data: ${String(err)}`, 'error');

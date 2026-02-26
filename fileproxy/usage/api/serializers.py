@@ -14,7 +14,7 @@ class SummarySerializer(serializers.Serializer):
     ops = OperationCountsSerializer()
 
 
-class ByVaultItemSerializer(serializers.Serializer):
+class ByConnectionSerializer(serializers.Serializer):
     name = serializers.CharField()
     kind = serializers.CharField()
     enumerate = serializers.IntegerField()
@@ -25,7 +25,7 @@ class ByVaultItemSerializer(serializers.Serializer):
 
 
 class TimelineSerializer(serializers.Serializer):
-    vault_item_name = serializers.CharField()
+    connection_name = serializers.CharField()
     days = serializers.IntegerField()
     dates = serializers.ListField(child=serializers.CharField())
     series = serializers.DictField(child=serializers.ListField(child=serializers.IntegerField()))

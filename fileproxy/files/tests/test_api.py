@@ -182,7 +182,7 @@ class FilesApiS3Tests(APITestCase):
         )
 
         resp = self.client.post(
-            "/api/v1/vault-items/s3/",
+            "/api/v1/connections/s3/",
             {
                 "name": self.vault_item_name,
                 "bucket": self.bucket,
@@ -264,7 +264,7 @@ class _BaseFilesTest(APITestCase):
         self._patchers = _start_patches(self._fake_s3)
         self.assertTrue(self._patchers, "No patches applied; check import style")
         resp = self.client.post(
-            "/api/v1/vault-items/s3/",
+            "/api/v1/connections/s3/",
             {**_VAULT_ITEM_PAYLOAD, "name": self.vault_item_name, "bucket": self.bucket},
             format="json",
         )
@@ -293,7 +293,7 @@ class FilesListTests(APITestCase):
         self._patchers = _start_patches(self._fake_s3)
         self.assertTrue(self._patchers, "No patches applied; check import style")
         resp = self.client.post(
-            "/api/v1/vault-items/s3/",
+            "/api/v1/connections/s3/",
             {**_VAULT_ITEM_PAYLOAD, "bucket": self.bucket},
             format="json",
         )
@@ -327,7 +327,7 @@ class FilesListTests(APITestCase):
         patchers2 = _start_patches(fake2)
         try:
             resp = client2.post(
-                "/api/v1/vault-items/s3/",
+                "/api/v1/connections/s3/",
                 {
                     **_VAULT_ITEM_PAYLOAD,
                     "name": "user2item",
