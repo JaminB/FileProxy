@@ -10,6 +10,7 @@ from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from connections.models import Connection
 from core.backends.base import (
     BackendConnectionError,
     BackendDeleteError,
@@ -18,7 +19,6 @@ from core.backends.base import (
     BackendTestError,
     BackendWriteError,
 )
-from connections.models import Connection
 from subscription.service import SubscriptionLimitExceeded, check_limit
 
 from ..serializers import (
