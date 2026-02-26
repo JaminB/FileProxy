@@ -209,4 +209,3 @@ class ConnectionViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e), "ok": False}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"detail": "Connection OK.", "ok": True})
-
