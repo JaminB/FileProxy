@@ -4,7 +4,7 @@ import { getCsrfToken } from '../utils/cookies.js';
 
 /* ----------------------------- Types ----------------------------- */
 
-type VaultItemMeta = {
+type ConnectionMeta = {
   id: number;
   name: string;
   kind: string;
@@ -569,7 +569,7 @@ async function loadVaults(): Promise<void> {
   const host = el.vaultList();
   host.innerHTML = `<div class="text-muted small">Loading…</div>`;
 
-  const items = await apiJson<VaultItemMeta[]>('/api/v1/files/');
+  const items = await apiJson<ConnectionMeta[]>('/api/v1/files/');
 
   if (!items.length) {
     host.innerHTML = `<div class="text-muted small">No vault items yet.</div>`;

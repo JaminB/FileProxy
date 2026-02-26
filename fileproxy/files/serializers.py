@@ -33,7 +33,7 @@ class DeleteFileSerializer(serializers.Serializer):
     path = serializers.CharField()
 
 
-class VaultItemMetaSerializer(serializers.Serializer):
+class ConnectionMetaSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
     kind = serializers.CharField()

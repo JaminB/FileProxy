@@ -3,8 +3,8 @@ from __future__ import annotations
 
 def record_event(
     scope: str,
-    vault_item_name: str,
-    vault_item_kind: str,
+    connection_name: str,
+    connection_kind: str,
     operation: str,
     object_path: str = "",
     ok: bool = True,
@@ -15,8 +15,8 @@ def record_event(
 
         UsageEvent.objects.create(
             scope=scope,
-            vault_item_name=vault_item_name,
-            vault_item_kind=vault_item_kind,
+            connection_name=connection_name,
+            connection_kind=connection_kind,
             operation=operation,
             object_path=object_path,
             ok=ok,

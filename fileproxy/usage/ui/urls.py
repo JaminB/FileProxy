@@ -6,5 +6,5 @@ app_name = "usage_ui"
 
 urlpatterns = [
     path("", views.overview, name="overview"),
-    path("vault/<str:name>/", views.vault_detail, name="vault_detail"),
+    path("connection/<str:name>/", views.connection_detail, name="connection_detail"),
 ]

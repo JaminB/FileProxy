@@ -9,7 +9,7 @@ type Summary = {
   ops: SummaryOps;
 };
 
-type ByVaultItem = {
+type ByConnection = {
   name: string;
   kind: string;
   enumerate: number;
@@ -71,8 +71,8 @@ function renderSummary(data: Summary): void {
   }
 }
 
-function renderByVault(items: ByVaultItem[]): void {
-  const tbody = document.getElementById('by-vault-rows');
+function renderByConnection(items: ByConnection[]): void {
+  const tbody = document.getElementById('by-connection-rows');
   if (!tbody) return;
   tbody.innerHTML = '';
 
@@ -83,7 +83,7 @@ function renderByVault(items: ByVaultItem[]): void {
   }
 
   for (const item of items) {
-    const url = `/usage/vault/${encodeURIComponent(item.name)}/`;
+    const url = `/usage/connection/${encodeURIComponent(item.name)}/`;
     const tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
     tr.innerHTML = `
@@ -106,10 +106,10 @@ async function load(days: number = DEFAULT_DAYS): Promise<void> {
   try {
     const [summary, byVault] = await Promise.all([
       apiJson<Summary>(`/api/v1/usage/summary/?days=${days}`),
-      apiJson<ByVaultItem[]>(`/api/v1/usage/by-vault/?days=${days}`),
+      apiJson<ByConnection[]>(`/api/v1/usage/by-vault/?days=${days}`),
     ]);
     renderSummary(summary);
-    renderByVault(byVault);
+    renderByConnection(byVault);
   } catch (err) {
     setFlash(`Failed to load usage data: ${String(err)}`, 'error');
   }

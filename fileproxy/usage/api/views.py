@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
 from ..models import OperationKind, UsageEvent
-from .serializers import ByVaultItemSerializer, SummarySerializer, TimelineSerializer
+from .serializers import ByConnectionSerializer, SummarySerializer, TimelineSerializer
 
 
 def _user_scope(request) -> str:
@@ -54,7 +54,7 @@ class UsageViewSet(ViewSet):
 
         vault = request.query_params.get("connection", "").strip()
         if vault:
-            qs = qs.filter(vault_item_name=vault)
+            qs = qs.filter(connection_name=vault)
 
         ops = {
             kind: qs.filter(operation=kind).count()
@@ -73,7 +73,7 @@ class UsageViewSet(ViewSet):
                 required=False,
             )
         ],
-        responses={"200": ByVaultItemSerializer(many=True)},
+        responses={"200": ByConnectionSerializer(many=True)},
     )
     def by_vault(self, request):
         """Per-vault-item operation breakdown."""
@@ -89,9 +89,9 @@ class UsageViewSet(ViewSet):
         non_test_ops = [op for op in OperationKind.values if op != "test"]
         annotations = {op: Count("id", filter=Q(operation=op)) for op in non_test_ops}
         rows = (
-            qs.values("vault_item_name", "vault_item_kind")
+            qs.values("connection_name", "connection_kind")
             .annotate(**annotations)
-            .order_by("vault_item_name")
+            .order_by("connection_name")
         )
 
         result = []
@@ -99,8 +99,8 @@ class UsageViewSet(ViewSet):
             ops = {op: row[op] for op in non_test_ops}
             result.append(
                 {
-                    "name": row["vault_item_name"],
-                    "kind": row["vault_item_kind"],
+                    "name": row["connection_name"],
+                    "kind": row["connection_kind"],
                     "total": sum(ops.values()),
                     **ops,
                 }
@@ -151,7 +151,7 @@ class UsageViewSet(ViewSet):
         )
 
         rows = (
-            UsageEvent.objects.filter(scope=scope, vault_item_name=vault, occurred_at__gte=since)
+            UsageEvent.objects.filter(scope=scope, connection_name=vault, occurred_at__gte=since)
             .annotate(date=TruncDate("occurred_at"))
             .values("date", "operation")
             .annotate(count=Count("id"))
@@ -172,5 +172,5 @@ class UsageViewSet(ViewSet):
                     series[op][idx] += row["count"]
 
         return Response(
-            {"vault_item_name": vault, "days": days, "dates": date_list, "series": series}
+            {"connection_name": vault, "days": days, "dates": date_list, "series": series}
         )

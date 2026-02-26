@@ -67,7 +67,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "core.apps.CoreConfig",
-    "vault.apps.VaultConfig",
+    "connections.apps.ConnectionsConfig",
     "files.apps.FilesConfig",
     "api.apps.ApiConfig",
     "accounts.apps.AccountsConfig",
