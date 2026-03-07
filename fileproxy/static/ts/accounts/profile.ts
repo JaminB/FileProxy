@@ -17,17 +17,33 @@ function formatDate(iso: string | null): string {
 function buildRow(key: APIKeyData): HTMLTableRowElement {
   const tr = document.createElement('tr');
   tr.dataset.id = key.id;
-  tr.innerHTML = `
-    <td>${key.name}</td>
-    <td>${formatDate(key.created_at)}</td>
-    <td class="text-secondary">${formatDate(key.last_used_at)}</td>
-    <td class="text-end">
-      <button class="btn btn-sm btn-outline-danger btn-revoke" data-id="${key.id}" data-name="${key.name}">
-        Revoke
-      </button>
-    </td>
-  `;
-  tr.querySelector<HTMLButtonElement>('.btn-revoke')!.addEventListener('click', handleRevoke);
+
+  const nameTd = document.createElement('td');
+  nameTd.textContent = key.name;
+  tr.appendChild(nameTd);
+
+  const createdTd = document.createElement('td');
+  createdTd.textContent = formatDate(key.created_at);
+  tr.appendChild(createdTd);
+
+  const lastUsedTd = document.createElement('td');
+  lastUsedTd.className = 'text-secondary';
+  lastUsedTd.textContent = formatDate(key.last_used_at);
+  tr.appendChild(lastUsedTd);
+
+  const actionsTd = document.createElement('td');
+  actionsTd.className = 'text-end';
+
+  const revokeBtn = document.createElement('button');
+  revokeBtn.className = 'btn btn-sm btn-outline-danger btn-revoke';
+  revokeBtn.dataset.id = key.id;
+  revokeBtn.dataset.name = key.name;
+  revokeBtn.textContent = 'Revoke';
+
+  actionsTd.appendChild(revokeBtn);
+  tr.appendChild(actionsTd);
+
+  revokeBtn.addEventListener('click', handleRevoke);
   return tr;
 }
 
