@@ -16,7 +16,7 @@ class APIKeyAuthentication(BaseAuthentication):
         auth = request.META.get("HTTP_AUTHORIZATION", "")
         if not auth.startswith("Bearer "):
             return None  # pass to SessionAuthentication
-        raw = auth[len("Bearer "):]
+        raw = auth[len("Bearer ") :]
         try:
             untyped = UntypedToken(raw)
         except TokenError as e:
