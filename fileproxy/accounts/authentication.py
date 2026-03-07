@@ -37,6 +37,9 @@ class APIKeyAuthentication(BaseAuthentication):
         except APIKey.DoesNotExist:
             raise AuthenticationFailed("API key has been revoked or is invalid.")
         now = timezone.now()
-        if api_key.last_used_at is None or (now - api_key.last_used_at) >= _LAST_USED_UPDATE_INTERVAL:
+        if (
+            api_key.last_used_at is None
+            or (now - api_key.last_used_at) >= _LAST_USED_UPDATE_INTERVAL
+        ):
             APIKey.objects.filter(pk=api_key_id).update(last_used_at=now)
         return (api_key.user, untyped)

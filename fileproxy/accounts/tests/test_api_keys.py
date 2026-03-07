@@ -106,7 +106,9 @@ class APIKeyTests(APITestCase):
         key = APIKey.objects.create(user=self.user, name="k1", last_used_at=recent)
         token = str(APIKeyToken.for_api_key(key))
         self.client.logout()
-        with patch("accounts.authentication.timezone.now", return_value=recent + timedelta(seconds=30)):
+        with patch(
+            "accounts.authentication.timezone.now", return_value=recent + timedelta(seconds=30)
+        ):
             self.client.get("/api/v1/connections/", HTTP_AUTHORIZATION=f"Bearer {token}")
         key.refresh_from_db()
         # Should still equal the original value — no update was issued
