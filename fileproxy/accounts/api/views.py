@@ -26,7 +26,7 @@ class APIKeyViewSet(viewsets.ViewSet):
     def destroy(self, request, pk=None):
         try:
             api_key = APIKey.objects.get(pk=pk, user=request.user)
-        except (APIKey.DoesNotExist, Exception):
+        except (APIKey.DoesNotExist, ValueError):
             return Response(status=status.HTTP_404_NOT_FOUND)
         api_key.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
