@@ -1,4 +1,8 @@
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from accounts.models import APIKey
@@ -86,3 +90,42 @@ class APIKeyTests(APITestCase):
         res = self.client.delete(f"/api/v1/accounts/api-keys/{bob_key.id}/")
         self.assertEqual(res.status_code, 404)
         self.assertTrue(APIKey.objects.filter(pk=bob_key.id).exists())
+
+    # --- last_used_at throttle ---
+
+    def test_last_used_at_updated_on_first_request(self):
+        key = APIKey.objects.create(user=self.user, name="throttle-none")
+        token = str(APIKeyToken.for_api_key(key))
+        self.client.logout()
+        res = self.client.get("/api/v1/connections/", HTTP_AUTHORIZATION=f"Bearer {token}")
+        self.assertEqual(res.status_code, 200)
+        key.refresh_from_db()
+        self.assertIsNotNone(key.last_used_at)
+
+    def test_last_used_at_not_updated_within_interval(self):
+        recent = timezone.now()
+        key = APIKey.objects.create(user=self.user, name="throttle-within", last_used_at=recent)
+        token = str(APIKeyToken.for_api_key(key))
+        self.client.logout()
+        with patch(
+            "accounts.authentication.timezone.now", return_value=recent + timedelta(seconds=30)
+        ):
+            res = self.client.get("/api/v1/connections/", HTTP_AUTHORIZATION=f"Bearer {token}")
+        self.assertEqual(res.status_code, 200)
+        key.refresh_from_db()
+        # last_used_at must not have been bumped forward — assertLessEqual is more
+        # robust than assertEqual because some DB backends truncate sub-microsecond
+        # precision when round-tripping through the ORM.
+        self.assertLessEqual(key.last_used_at, recent)
+
+    def test_last_used_at_updated_after_interval_elapsed(self):
+        recent = timezone.now()
+        key = APIKey.objects.create(user=self.user, name="throttle-after", last_used_at=recent)
+        token = str(APIKeyToken.for_api_key(key))
+        self.client.logout()
+        later = recent + timedelta(minutes=2)
+        with patch("accounts.authentication.timezone.now", return_value=later):
+            res = self.client.get("/api/v1/connections/", HTTP_AUTHORIZATION=f"Bearer {token}")
+        self.assertEqual(res.status_code, 200)
+        key.refresh_from_db()
+        self.assertEqual(key.last_used_at, later)
