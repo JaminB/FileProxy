@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
@@ -26,7 +27,7 @@ class APIKeyViewSet(viewsets.ViewSet):
     def destroy(self, request, pk=None):
         try:
             api_key = APIKey.objects.get(pk=pk, user=request.user)
-        except (APIKey.DoesNotExist, ValueError):
+        except (APIKey.DoesNotExist, ValueError, ValidationError):
             return Response(status=status.HTTP_404_NOT_FOUND)
         api_key.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -4,16 +4,6 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
-
-
-def _get_or_404(queryset_or_model, **kwargs):
-    """Like get_object_or_404 but also catches ValidationError for invalid PK types (e.g. non-UUID)."""
-    try:
-        return get_object_or_404(queryset_or_model, **kwargs)
-    except (DjangoValidationError, ValueError, TypeError):
-        raise Http404
-
-
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -35,6 +25,14 @@ from .serializers import (
     SubscriptionPlanSerializer,
     UserSubscriptionSerializer,
 )
+
+
+def _get_or_404(queryset_or_model, **kwargs):
+    """Like get_object_or_404, but also catches ValidationError for invalid PK types."""
+    try:
+        return get_object_or_404(queryset_or_model, **kwargs)
+    except (DjangoValidationError, ValueError, TypeError):
+        raise Http404
 
 
 class SubscriptionPlanViewSet(viewsets.GenericViewSet):

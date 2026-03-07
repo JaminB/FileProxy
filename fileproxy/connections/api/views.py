@@ -27,7 +27,7 @@ from .serializers import (
 
 
 def _get_or_404(queryset, **kwargs):
-    """Like get_object_or_404 but also catches ValidationError for invalid PK types (e.g. non-UUID)."""
+    """Like get_object_or_404, but also catches ValidationError for invalid PK types."""
     try:
         return get_object_or_404(queryset, **kwargs)
     except (DjangoValidationError, ValueError, TypeError):
