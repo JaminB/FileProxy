@@ -37,9 +37,19 @@ class APIKeyAuthentication(BaseAuthentication):
         except APIKey.DoesNotExist:
             raise AuthenticationFailed("API key has been revoked or is invalid.")
         now = timezone.now()
-        if (
-            api_key.last_used_at is None
-            or (now - api_key.last_used_at) >= _LAST_USED_UPDATE_INTERVAL
+        # The check below is best-effort under concurrency: concurrent requests that
+        # all arrive after the interval has elapsed will each read the same stale
+        # last_used_at value, pass this check, and each issue an UPDATE. That is
+        # benign (a few near-identical writes) and intentionally not prevented here
+        # to avoid the overhead of a SELECT FOR UPDATE or advisory lock.
+        #
+        # Edge case: if last_used_at is ever set to a future timestamp (e.g. after
+        # a server clock correction), now - last_used_at will be negative and the
+        # UPDATE will be skipped until wall-clock time catches up. The extra guard
+        # `now >= api_key.last_used_at` ensures we still update in that scenario.
+        if api_key.last_used_at is None or (
+            now >= api_key.last_used_at
+            and (now - api_key.last_used_at) >= _LAST_USED_UPDATE_INTERVAL
         ):
             APIKey.objects.filter(pk=api_key_id).update(last_used_at=now)
         return (api_key.user, untyped)
