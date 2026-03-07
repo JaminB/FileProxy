@@ -90,7 +90,7 @@ class ConnectionViewSet(viewsets.ModelViewSet):
         if not client_id or not client_secret:
             return Response(
                 {"detail": "Google Drive is not configured on this server."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = GDriveCreateSerializer(data=request.data)
@@ -138,7 +138,7 @@ class ConnectionViewSet(viewsets.ModelViewSet):
         if not app_key or not app_secret:
             return Response(
                 {"detail": "Dropbox is not configured on this server."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = DropboxCreateSerializer(data=request.data)
