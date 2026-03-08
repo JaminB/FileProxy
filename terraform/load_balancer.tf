@@ -16,6 +16,7 @@ resource "aws_lb_target_group" "app" {
 
   health_check {
     path                = "/accounts/login/"
+    host                = aws_lb.main.dns_name
     healthy_threshold   = 2
     unhealthy_threshold = 3
     interval            = 30

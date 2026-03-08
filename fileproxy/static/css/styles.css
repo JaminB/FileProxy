@@ -168,3 +168,14 @@
   border-color: var(--bs-border-color);
 }
 
+
+/* ================================
+   Logo theme switching
+   ================================ */
+/* Default (light): show light logo only */
+.fp-logo-light { display: inline-block; }
+.fp-logo-dark  { display: none; }
+
+/* Dark theme: swap */
+[data-bs-theme="dark"] .fp-logo-light { display: none; }
+[data-bs-theme="dark"] .fp-logo-dark  { display: inline-block; }

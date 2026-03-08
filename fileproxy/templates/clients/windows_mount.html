@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Windows Mount Client{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/clients/">Clients</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Windows Mount</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-2 mb-1">
+    <i class="bi bi-windows opacity-75" aria-hidden="true"></i>
+    <span class="fw-semibold small">Windows Mount Client</span>
+  </div>
+  <p class="text-secondary small mb-4">
+    A lightweight Windows utility that bridges FileProxy's REST API to a native Windows drive letter via WebDAV.
+    No runtime required — single static <code>.exe</code> with no dependencies.
+  </p>
+
+  <!-- Download section -->
+  <div class="card ab-card mb-4">
+    <div class="card-body">
+      <h6 class="fw-semibold mb-3">Download</h6>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{% static 'dist/fileproxy-mount-amd64.exe' %}" class="btn btn-primary btn-sm" download>
+          <i class="bi bi-download me-1"></i>Download 64-bit (.exe)
+        </a>
+        <a href="{% static 'dist/fileproxy-mount-386.exe' %}" class="btn btn-outline-secondary btn-sm" download>
+          <i class="bi bi-download me-1"></i>Download 32-bit (.exe)
+        </a>
+      </div>
+      <p class="text-secondary small mt-2 mb-0">
+        64-bit recommended for Windows 7 and later. 32-bit for older or 32-bit-only Windows.
+      </p>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+
+      <ol class="ps-3" style="list-style: none;">
+
+        <!-- Step 1 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">1</span>
+            Prerequisites
+          </h3>
+          <p class="small mb-2">
+            The Windows <strong>WebClient</strong> service must be running. Open a command prompt as Administrator and check:
+          </p>
+          <pre class="bg-light p-2 rounded small mb-2">sc query WebClient</pre>
+          <p class="small mb-2">If the state is not <code>RUNNING</code>, start it:</p>
+          <pre class="bg-light p-2 rounded small mb-0">sc start WebClient</pre>
+        </li>
+
+        <!-- Step 2 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">2</span>
+            Create an API key
+          </h3>
+          <p class="small mb-2">
+            The client authenticates to FileProxy using an API key. To create one:
+          </p>
+          <ol class="small ps-3 mb-2">
+            <li>Click your username in the top-right corner and go to <strong>Profile</strong>.</li>
+            <li>Open the <strong>API Keys</strong> tab and click <strong>Create</strong>.</li>
+            <li>Copy the token — it is shown only once.</li>
+          </ol>
+          <div class="alert alert-warning small py-2 mb-0">
+            Save the token somewhere safe now — you won't be able to view it again.
+          </div>
+        </li>
+
+        <!-- Step 3 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">3</span>
+            GUI mode
+          </h3>
+          <p class="small mb-2">
+            Double-click the downloaded <code>.exe</code> to open the GUI. Fill in the fields:
+          </p>
+          <ul class="small ps-3 mb-2">
+            <li><strong>Server URL</strong> — the base URL of your FileProxy instance (e.g. <code>https://fileproxy.example.com</code>)</li>
+            <li><strong>API Key</strong> — the token you created in step 2</li>
+            <li><strong>Drive Letter</strong> — the letter to mount as (e.g. <code>F</code>)</li>
+          </ul>
+          <p class="small mb-0">
+            Click <strong>Mount</strong>. A tray icon appears while the drive is active. Your credentials are
+            automatically saved to <code>%APPDATA%\FileProxyMount\config.json</code> for next time.
+          </p>
+        </li>
+
+        <!-- Step 4 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">4</span>
+            CLI mode
+          </h3>
+          <p class="small mb-2">
+            Run from a command prompt to mount without the GUI:
+          </p>
+          <pre class="bg-light p-2 rounded small mb-2">fileproxy-mount-amd64.exe mount --server-url https://fileproxy.example.com --api-key YOUR_TOKEN --drive F --port 6789</pre>
+          <p class="small mb-0">
+            Press <kbd>Ctrl+C</kbd> to unmount and exit.
+          </p>
+        </li>
+
+        <!-- Step 5 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">5</span>
+            Path structure
+          </h3>
+          <p class="small mb-0">
+            Once mounted, each FileProxy connection appears as a top-level folder under the drive letter:
+          </p>
+          <pre class="bg-light p-2 rounded small mt-2 mb-0">F:\connection-name\folder\file.txt</pre>
+        </li>
+
+      </ol>
+
+      <!-- Troubleshooting -->
+      <h6 class="fw-semibold mt-2 mb-3">Troubleshooting</h6>
+
+      <dl class="small">
+        <dt class="mb-1">Error 67 — "The network name cannot be found"</dt>
+        <dd class="mb-3">
+          The WebClient service is not running.
+          Open an Administrator command prompt and run <code>sc start WebClient</code>, then try again.
+        </dd>
+
+        <dt class="mb-1">Error 85 — "The local device name is already in use"</dt>
+        <dd class="mb-3">
+          The chosen drive letter is already mapped to something else. Pick a different letter, or
+          release the existing mapping first:
+          <pre class="bg-light p-2 rounded small mt-1 mb-0">net use F: /delete /y</pre>
+        </dd>
+
+        <dt class="mb-1">Port conflict — "address already in use"</dt>
+        <dd class="mb-3">
+          Another process is using the default WebDAV port. Pass a different port with the <code>--port</code> flag:
+          <pre class="bg-light p-2 rounded small mt-1 mb-0">fileproxy-mount-amd64.exe mount --port 7890 ...</pre>
+        </dd>
+      </dl>
+
+    </div>
+  </div>
+{% endblock %}

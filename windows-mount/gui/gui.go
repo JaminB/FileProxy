@@ -4,8 +4,12 @@
 package gui
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
+	"image"
+	_ "image/png"
 	"strings"
 	"sync"
 
@@ -13,6 +17,24 @@ import (
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative" //nolint:revive // dot-import required by walk declarative API
 )
+
+//go:embed assets/logo-light.png
+var logoLightBytes []byte
+
+//go:embed assets/logo-dark.png
+var logoDarkBytes []byte
+
+func iconFromBytes(b []byte) *walk.Icon {
+	img, _, err := image.Decode(bytes.NewReader(b))
+	if err != nil {
+		return walk.IconApplication()
+	}
+	ico, err := walk.NewIconFromImage(img)
+	if err != nil {
+		return walk.IconApplication()
+	}
+	return ico
+}
 
 // Run opens the main window. cfg pre-fills the form; if autoStart is true the
 // mount begins immediately (used when CLI args were supplied).
@@ -31,6 +53,9 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 
 	drives := availableDrives()
 	driveIdx := driveIndex(drives, cfg.Drive)
+
+	winIcon := iconFromBytes(logoLightBytes)
+	trayIcon := iconFromBytes(logoDarkBytes)
 
 	lw := &logWriter{}
 
@@ -141,7 +166,7 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 	err := MainWindow{
 		AssignTo: &mw,
 		Title:    "FileProxy Mount",
-		Icon:     walk.IconApplication(),
+		Icon:     winIcon,
 		MinSize:  Size{Width: 500, Height: 520},
 		Size:     Size{Width: 520, Height: 540},
 		Font:     Font{Family: "Segoe UI", PointSize: 9},
@@ -241,7 +266,7 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 		// Tray unavailable (e.g. no shell) — continue without it.
 		ni = nil
 	} else {
-		ni.SetIcon(walk.IconApplication())
+		ni.SetIcon(trayIcon)
 		ni.SetToolTip("FileProxy Mount")
 		ni.SetVisible(true)
 

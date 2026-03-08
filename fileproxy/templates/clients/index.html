@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Clients{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Clients</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-2 mb-1">
+    <i class="bi bi-download opacity-75" aria-hidden="true"></i>
+    <span class="fw-semibold small">Clients</span>
+  </div>
+  <p class="text-secondary small mb-4">Download client software to connect your desktop to FileProxy.</p>
+
+  <div class="row g-3">
+    <div class="col-md-4">
+      <a href="/clients/windows-mount/" class="text-decoration-none">
+        <div class="card ab-card h-100">
+          <div class="card-body">
+            <div class="mb-2">
+              <i class="bi bi-windows fs-3 text-secondary"></i>
+            </div>
+            <h6 class="card-title fw-semibold mb-1">Windows Mount</h6>
+            <p class="card-text text-secondary small mb-0">
+              Mount FileProxy connections as a Windows drive letter. Uses WebDAV — no additional software required.
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+{% endblock %}

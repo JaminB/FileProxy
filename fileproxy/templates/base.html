@@ -38,11 +38,9 @@
     <!-- Top nav -->
     <nav class="navbar navbar-expand-lg border-bottom ab-nav">
       <div class="container">
-        <a class="navbar-brand d-flex align-items-center gap-2" href="/">
-          <svg width="20" height="20" aria-hidden="true">
-            <use href="#i-vault"></use>
-          </svg>
-          <span class="fw-semibold">FileProxy</span>
+        <a class="navbar-brand" href="/">
+          <img src="{% static 'images/logo-light.png' %}" alt="FileProxy" height="36" class="fp-logo-light">
+          <img src="{% static 'images/logo-dark.png' %}" alt="FileProxy" height="36" class="fp-logo-dark">
         </a>
 
         <div class="d-flex align-items-center gap-2">
@@ -73,7 +71,7 @@
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="/accounts/profile/">
-                  <i class="bi bi-key me-1"></i> Profile &amp; API Keys
+                  <i class="bi bi-person me-1"></i> Profile
                 </a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>

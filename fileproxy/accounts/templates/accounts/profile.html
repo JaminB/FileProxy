@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Profile &amp; API Keys{% endblock %}
+{% block title %}Profile{% endblock %}
 
 {% block content %}
   <!-- Breadcrumb -->
@@ -13,17 +13,105 @@
   </nav>
 
   <!-- Header -->
-  <div class="d-flex align-items-center justify-content-between mb-2">
+  <div class="d-flex align-items-center justify-content-between mb-3">
     <div class="fw-semibold small">
-      <i class="bi bi-key me-1 opacity-75"></i>Profile &amp; API Keys
+      <i class="bi bi-person me-1 opacity-75"></i>Profile
     </div>
   </div>
 
-  <div id="flash" role="status" aria-live="polite" class="mb-3"></div>
+  <!-- Section 1: Account Info -->
+  <div class="card ab-card files-card mb-3">
+    <div class="card-body">
+      <h2 class="h6 mb-3">Account</h2>
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-2 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label mb-1" for="{{ profile_form.first_name.id_for_label }}">First name</label>
+            <input class="form-control form-control-sm{% if profile_form.first_name.errors %} is-invalid{% endif %}"
+                   id="{{ profile_form.first_name.id_for_label }}"
+                   name="first_name" type="text"
+                   value="{{ profile_form.first_name.value|default:'' }}" required />
+            {% for error in profile_form.first_name.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label mb-1" for="{{ profile_form.last_name.id_for_label }}">Last name</label>
+            <input class="form-control form-control-sm{% if profile_form.last_name.errors %} is-invalid{% endif %}"
+                   id="{{ profile_form.last_name.id_for_label }}"
+                   name="last_name" type="text"
+                   value="{{ profile_form.last_name.value|default:'' }}" required />
+            {% for error in profile_form.last_name.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label mb-1" for="{{ profile_form.username.id_for_label }}">Username</label>
+            <input class="form-control form-control-sm{% if profile_form.username.errors %} is-invalid{% endif %}"
+                   id="{{ profile_form.username.id_for_label }}"
+                   name="username" type="text"
+                   value="{{ profile_form.username.value|default:'' }}" />
+            {% for error in profile_form.username.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label mb-1" for="{{ profile_form.email.id_for_label }}">Email</label>
+            <input class="form-control form-control-sm{% if profile_form.email.errors %} is-invalid{% endif %}"
+                   id="{{ profile_form.email.id_for_label }}"
+                   name="email" type="email"
+                   value="{{ profile_form.email.value|default:'' }}" required />
+            {% for error in profile_form.email.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
 
-  <!-- API Keys card -->
+        <h3 class="h6 mb-2 text-secondary">Contact preferences</h3>
+        <div class="mb-3">
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox"
+                   id="{{ prefs_form.email_billing_alerts.id_for_label }}"
+                   name="email_billing_alerts"
+                   {% if prefs_form.email_billing_alerts.value %}checked{% endif %} />
+            <label class="form-check-label small" for="{{ prefs_form.email_billing_alerts.id_for_label }}">
+              Email billing alerts
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox"
+                   id="{{ prefs_form.email_product_updates.id_for_label }}"
+                   name="email_product_updates"
+                   {% if prefs_form.email_product_updates.value %}checked{% endif %} />
+            <label class="form-check-label small" for="{{ prefs_form.email_product_updates.id_for_label }}">
+              Email product updates
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-sm btn-primary">Save</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Section 2: Subscription (conditional) -->
+  {% if SUBSCRIPTIONS_ENABLED %}
+  <div class="card ab-card files-card mb-3">
+    <div class="card-body">
+      <h2 class="h6 mb-2">Subscription</h2>
+      <a href="/subscription/my/" class="btn btn-sm btn-outline-secondary">View subscription</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Section 3: API Keys -->
   <div class="card ab-card files-card mb-3">
     <div class="card-body p-0">
+      <div class="px-3 pt-3 pb-2">
+        <h2 class="h6 mb-0">API Keys</h2>
+      </div>
+      <div id="flash" role="status" aria-live="polite" class="px-3"></div>
       <div class="table-responsive">
         <table class="table table-sm table-hover align-middle mb-0">
           <thead>
@@ -45,7 +133,7 @@
   </div>
 
   <!-- New key form -->
-  <div class="card ab-card files-card">
+  <div class="card ab-card files-card mb-3">
     <div class="card-body">
       <h2 class="h6 mb-3">Create API key</h2>
       <form id="new-key-form" class="d-flex gap-2 align-items-end">

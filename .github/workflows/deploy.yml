@@ -52,7 +52,7 @@ jobs:
 
       - name: Run tests
         working-directory: fileproxy
-        run: python manage.py test connections files usage subscription
+        run: python manage.py test accounts connections files usage subscription
 
   build-and-deploy:
     name: Build & Deploy
