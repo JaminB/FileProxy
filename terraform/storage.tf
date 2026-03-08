@@ -47,6 +47,18 @@ resource "aws_cloudfront_origin_access_control" "static" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_response_headers_policy" "static_cors" {
+  name = "${var.project}-${var.env}-cors"
+
+  cors_config {
+    access_control_allow_credentials = false
+    access_control_allow_headers { items = ["*"] }
+    access_control_allow_methods { items = ["GET", "HEAD"] }
+    access_control_allow_origins { items = ["*"] }
+    origin_override = true
+  }
+}
+
 resource "aws_cloudfront_distribution" "static" {
   enabled             = true
   default_root_object = ""
@@ -59,11 +71,12 @@ resource "aws_cloudfront_distribution" "static" {
   }
 
   default_cache_behavior {
-    target_origin_id       = "s3-static"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
+    target_origin_id          = "s3-static"
+    viewer_protocol_policy    = "redirect-to-https"
+    allowed_methods           = ["GET", "HEAD"]
+    cached_methods            = ["GET", "HEAD"]
+    compress                  = true
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.static_cors.id
 
     forwarded_values {
       query_string = false
