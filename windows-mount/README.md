@@ -55,6 +55,18 @@ GOOS=windows GOARCH=386 go build -ldflags="-s -w" -o dist/fileproxy-mount-386.ex
 
 ## Usage
 
+### GUI mode
+
+Double-click the `.exe` (or run it with no arguments). A window opens with fields
+for Server URL, API Key, Drive Letter, and WebDAV Port. Click **Mount** — the
+window minimises to the system tray and a balloon notification confirms the drive
+is live. Right-click the tray icon → **Exit** to unmount and quit.
+
+Credentials are saved to `%APPDATA%\FileProxyMount\config.json` on first
+successful mount and pre-filled on subsequent launches.
+
+### CLI mode
+
 ```
 fileproxy-mount-amd64.exe mount [flags]
 ```
@@ -65,8 +77,6 @@ fileproxy-mount-amd64.exe mount [flags]
 | `--api-key` | *(prompted if omitted)* | JWT API key created in the web UI |
 | `--port` | `6789` | Local port for the WebDAV server |
 | `--drive` | `F` | Drive letter to map (without colon) |
-
-### Example
 
 ```powershell
 .\fileproxy-mount-amd64.exe mount `
@@ -139,3 +149,43 @@ If the remote server uses HTTPS, it works without any special configuration.
 File contents are read entirely into memory before being served to Windows
 (the FileProxy API returns base64-encoded JSON). For very large files, this may
 cause high memory usage. A streaming download endpoint is a planned improvement.
+
+---
+
+## Development
+
+### Running tests
+
+The four testable packages (`client`, `proxyfs`, `wdfs`, `mountsvc`) are
+platform-independent and run on Linux/macOS/Windows:
+
+```bash
+cd windows-mount
+go test ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/...
+
+# With coverage
+go test ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/... -coverprofile=coverage.out
+go tool cover -func=coverage.out
+```
+
+> The `gui` package is excluded because it depends on `github.com/lxn/walk`
+> (Win32-only). Build and smoke-test the GUI manually on Windows.
+
+### Package overview
+
+| Package | Role |
+|---|---|
+| `client` | REST API client — connections, enumerate, read, write, delete |
+| `proxyfs` | `afero.Fs` implementation backed by the FileProxy API |
+| `wdfs` | Adapts `proxyfs` to `webdav.FileSystem`; adds verbose logging |
+| `mountsvc` | Orchestrates client → filesystem → WebDAV server → `net use` mount |
+| `winmount` | Thin wrapper around `net use` for mount/unmount |
+| `cmd` | Cobra CLI (`mount` subcommand) |
+| `gui` | Native Win32 GUI via `github.com/lxn/walk` |
+
+### Static security scan
+
+```bash
+go install github.com/securego/gosec/v2/cmd/gosec@latest
+gosec -exclude=G104,G112,G117 ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/... ./winmount/... ./cmd/...
+```
