@@ -315,29 +315,33 @@ func driveIndex(drives []string, letter string) int {
 // use from any goroutine.
 type logWriter struct {
 	mu   sync.Mutex
-	buf  strings.Builder
 	te   *walk.TextEdit
 	sync func(func())
 }
 
 func (w *logWriter) reset(te *walk.TextEdit) {
 	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.buf.Reset()
 	w.te = te
-}
-
-func (w *logWriter) Write(p []byte) (int, error) {
-	w.mu.Lock()
-	w.buf.Write(p)
-	text := w.buf.String()
-	te := w.te
 	syncFn := w.sync
 	w.mu.Unlock()
 
 	if te != nil && syncFn != nil {
 		syncFn(func() {
-			te.SetText(text)
+			te.SetText("")
+		})
+	}
+}
+
+func (w *logWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	te := w.te
+	syncFn := w.sync
+	w.mu.Unlock()
+
+	if te != nil && syncFn != nil {
+		text := string(p)
+		syncFn(func() {
+			te.AppendText(text)
 		})
 	}
 	return len(p), nil
