@@ -11,7 +11,7 @@ import (
 
 	"github.com/fileproxy/windows-mount/mountsvc"
 	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
+	. "github.com/lxn/walk/declarative" //nolint:revive // dot-import required by walk declarative API
 )
 
 // Run opens the main window. cfg pre-fills the form; if autoStart is true the
@@ -41,7 +41,9 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 	)
 
 	setMounted := func(m bool, drive string) {
+		mountMu.Lock()
 		mounted = m
+		mountMu.Unlock()
 		if m {
 			actionBtn.SetText("Unmount")
 			urlEdit.SetEnabled(false)
@@ -82,10 +84,9 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 		apiKey := strings.TrimSpace(keyEdit.Text())
 		drive := drives[driveCombo.CurrentIndex()]
 		port := 6789
-		portText := strings.TrimSpace(portEdit.Text())
-		if portText != "" {
+		if portText := strings.TrimSpace(portEdit.Text()); portText != "" {
 			var parsedPort int
-			if n, err := fmt.Sscanf(portText, "%d", &parsedPort); n != 1 || err != nil || parsedPort <= 0 || parsedPort > 65535 {
+			if n, err := fmt.Sscanf(portText, "%d", &parsedPort); n != 1 || err != nil || parsedPort < 1 || parsedPort > 65535 {
 				walk.MsgBox(mw, "Invalid Port", "Port must be a number between 1 and 65535.", walk.MsgBoxIconWarning|walk.MsgBoxOK)
 				return
 			}
@@ -121,8 +122,8 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 			})
 			mw.Synchronize(func() {
 				mountMu.Lock()
-				defer mountMu.Unlock()
 				cancelMount = nil
+				mountMu.Unlock()
 				setMounted(false, drive)
 				if err != nil && err != context.Canceled {
 					statusBar.SetText("Error — see log")
@@ -234,39 +235,45 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 	lw.mu.Unlock()
 
 	// ── System tray ───────────────────────────────────────────────────────
-	ni, _ = walk.NewNotifyIcon(mw)
-	ni.SetIcon(walk.IconApplication())
-	ni.SetToolTip("FileProxy Mount")
-	ni.SetVisible(true)
+	var niErr error
+	ni, niErr = walk.NewNotifyIcon(mw)
+	if niErr != nil {
+		// Tray unavailable (e.g. no shell) — continue without it.
+		ni = nil
+	} else {
+		ni.SetIcon(walk.IconApplication())
+		ni.SetToolTip("FileProxy Mount")
+		ni.SetVisible(true)
 
-	showAction := walk.NewAction()
-	showAction.SetText("Show")
-	showAction.Triggered().Attach(func() {
-		mw.SetVisible(true)
-		mw.BringToTop()
-	})
-	ni.ContextMenu().Actions().Add(showAction)
-
-	ni.ContextMenu().Actions().Add(walk.NewSeparatorAction())
-
-	exitAction := walk.NewAction()
-	exitAction.SetText("Exit")
-	exitAction.Triggered().Attach(func() {
-		mountMu.Lock()
-		if cancelMount != nil {
-			cancelMount()
-		}
-		mountMu.Unlock()
-		mw.Close()
-	})
-	ni.ContextMenu().Actions().Add(exitAction)
-
-	ni.MouseDown().Attach(func(x, y int, button walk.MouseButton) {
-		if button == walk.LeftButton {
+		showAction := walk.NewAction()
+		showAction.SetText("Show")
+		showAction.Triggered().Attach(func() {
 			mw.SetVisible(true)
 			mw.BringToTop()
-		}
-	})
+		})
+		ni.ContextMenu().Actions().Add(showAction)
+
+		ni.ContextMenu().Actions().Add(walk.NewSeparatorAction())
+
+		exitAction := walk.NewAction()
+		exitAction.SetText("Exit")
+		exitAction.Triggered().Attach(func() {
+			mountMu.Lock()
+			if cancelMount != nil {
+				cancelMount()
+			}
+			mountMu.Unlock()
+			mw.Close()
+		})
+		ni.ContextMenu().Actions().Add(exitAction)
+
+		ni.MouseDown().Attach(func(x, y int, button walk.MouseButton) {
+			if button == walk.LeftButton {
+				mw.SetVisible(true)
+				mw.BringToTop()
+			}
+		})
+	}
 
 	// Closing the window hides to tray while mounted; exits otherwise.
 	mw.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
@@ -291,7 +298,9 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 		cancelMount()
 	}
 	mountMu.Unlock()
-	ni.Dispose()
+	if ni != nil {
+		ni.Dispose()
+	}
 }
 
 // availableDrives returns the drive letters D–Z as options.
@@ -320,7 +329,8 @@ func driveIndex(drives []string, letter string) int {
 }
 
 // logWriter is an io.Writer that appends text to a walk TextEdit, safe to
-// use from any goroutine.
+// use from any goroutine. Each Write appends only the new chunk via AppendText
+// so the cost per write is O(chunk) rather than O(total log size).
 type logWriter struct {
 	mu   sync.Mutex
 	te   *walk.TextEdit
@@ -329,15 +339,8 @@ type logWriter struct {
 
 func (w *logWriter) reset(te *walk.TextEdit) {
 	w.mu.Lock()
+	defer w.mu.Unlock()
 	w.te = te
-	syncFn := w.sync
-	w.mu.Unlock()
-
-	if te != nil && syncFn != nil {
-		syncFn(func() {
-			te.SetText("")
-		})
-	}
 }
 
 func (w *logWriter) Write(p []byte) (int, error) {

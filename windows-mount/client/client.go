@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -195,7 +196,7 @@ func (c *FileProxyClient) Write(conn, path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest("POST", endpoint, strings.NewReader(string(body)))
+	req, err := c.newRequest("POST", endpoint, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}

@@ -30,7 +30,9 @@ type Config struct {
 // Start connects to FileProxy, starts the local WebDAV server, mounts the
 // drive, and blocks until ctx is cancelled or a fatal error occurs.
 // All status and error messages are written to log.
-// onMounted is called (on a background goroutine) when the drive is live.
+// onMounted is called synchronously in the same goroutine that invoked Start,
+// after the drive is successfully mounted. Callers that need to update UI state
+// should wrap it in their own synchronization (e.g. mw.Synchronize).
 func Start(ctx context.Context, cfg Config, log io.Writer, onMounted func()) error {
 	c := client.New(cfg.ServerURL, cfg.APIKey)
 
@@ -107,13 +109,20 @@ func Start(ctx context.Context, cfg Config, log io.Writer, onMounted func()) err
 // use it walks up by 1 until it finds a free port (up to +99). Returns the
 // actual port and the already-listening net.Listener.
 func bindPort(port int) (int, net.Listener, error) {
-	for p := port; p < port+100; p++ {
+	if port < 1 || port > 65535 {
+		return 0, nil, fmt.Errorf("invalid port %d: must be between 1 and 65535", port)
+	}
+	maxPort := port + 99
+	if maxPort > 65535 {
+		maxPort = 65535
+	}
+	for p := port; p <= maxPort; p++ {
 		ln, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", p))
 		if err == nil {
 			return p, ln, nil
 		}
 	}
-	return 0, nil, fmt.Errorf("no free port found in range %d–%d; another instance may still be running", port, port+99)
+	return 0, nil, fmt.Errorf("no free port found in range %d–%d; another instance may still be running", port, maxPort)
 }
 
 // --- HTTP routing ---
