@@ -45,14 +45,8 @@ variable "asg_desired_capacity" {
   default     = 1
 }
 
-variable "on_demand_base_capacity" {
-  description = "Number of on-demand instances to maintain as a base"
-  type        = number
-  default     = 1
-}
-
-variable "instance_types" {
-  description = "Ordered list of instance types for the mixed policy"
-  type        = list(string)
-  default     = ["t3.small", "t3.medium"]
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "m5.large"
 }

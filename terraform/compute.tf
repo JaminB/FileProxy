@@ -16,7 +16,7 @@ data "aws_ami" "amazon_linux_2023" {
 resource "aws_launch_template" "app" {
   name_prefix   = "${var.project}-${var.env}-"
   image_id      = data.aws_ami.amazon_linux_2023.id
-  instance_type = var.instance_types[0]
+  instance_type = var.instance_type
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.ec2.arn
@@ -64,26 +64,9 @@ resource "aws_autoscaling_group" "app" {
   max_size         = var.asg_max_size
   desired_capacity = var.asg_desired_capacity
 
-  mixed_instances_policy {
-    launch_template {
-      launch_template_specification {
-        launch_template_id = aws_launch_template.app.id
-        version            = "$Latest"
-      }
-
-      dynamic "override" {
-        for_each = var.instance_types
-        content {
-          instance_type = override.value
-        }
-      }
-    }
-
-    instances_distribution {
-      on_demand_base_capacity                  = var.on_demand_base_capacity
-      on_demand_percentage_above_base_capacity = 0
-      spot_allocation_strategy                 = "capacity-optimized"
-    }
+  launch_template {
+    id      = aws_launch_template.app.id
+    version = "$Latest"
   }
 
   instance_refresh {
