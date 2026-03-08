@@ -25,6 +25,14 @@ urlpatterns = [
     path("usage/", include("usage.ui.urls")),
     path("subscription/", include("subscription.ui.urls")),
     path("api/v1/", include("api.urls")),
-    path("clients/", login_required(TemplateView.as_view(template_name="clients/index.html")), name="clients"),
-    path("clients/windows-mount/", login_required(TemplateView.as_view(template_name="clients/windows_mount.html")), name="clients-windows-mount"),
+    path(
+        "clients/",
+        login_required(TemplateView.as_view(template_name="clients/index.html")),
+        name="clients",
+    ),
+    path(
+        "clients/windows-mount/",
+        login_required(TemplateView.as_view(template_name="clients/windows_mount.html")),
+        name="clients-windows-mount",
+    ),
 ]
