@@ -34,6 +34,26 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
 
 @admin.register(UserSubscription)
 class UserSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ["user", "plan", "status", "cycle_started_at", "cycle_ends_at", "created_at"]
+    list_display = [
+        "user",
+        "plan",
+        "status",
+        "current_period_start",
+        "current_period_end",
+        "stripe_customer_id",
+        "stripe_subscription_id",
+        "created_at",
+    ]
     list_filter = ["status"]
     raw_id_fields = ["user"]
+    readonly_fields = [
+        "stripe_customer_id",
+        "stripe_subscription_id",
+        "trial_start",
+        "trial_end",
+        "cancel_at_period_end",
+        "canceled_at",
+        "ended_at",
+        "created_at",
+        "updated_at",
+    ]

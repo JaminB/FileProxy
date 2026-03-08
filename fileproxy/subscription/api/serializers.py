@@ -20,6 +20,11 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             "write_transfer_limit_bytes",
             "expires_at",
             "created_at",
+            "price_cents",
+            "currency",
+            "billing_interval",
+            "billing_interval_count",
+            "trial_days",
         ]
         read_only_fields = fields
 
@@ -54,9 +59,16 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
             "plan",
             "effective_plan",
             "status",
-            "cycle_started_at",
-            "cycle_ends_at",
-            "cancels_at",
+            "current_period_start",
+            "current_period_end",
+            "cancel_at",
+            "stripe_customer_id",
+            "stripe_subscription_id",
+            "trial_start",
+            "trial_end",
+            "cancel_at_period_end",
+            "canceled_at",
+            "ended_at",
             "created_at",
             "updated_at",
         ]

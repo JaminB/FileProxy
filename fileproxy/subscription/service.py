@@ -36,8 +36,8 @@ def get_or_create_subscription(user):
             user=user,
             plan=None,
             status=UserSubscription.STATUS_ACTIVE,
-            cycle_started_at=now,
-            cycle_ends_at=_add_one_month(now),
+            current_period_start=now,
+            current_period_end=_add_one_month(now),
         )
 
     advance_cycle_if_needed(sub)
@@ -47,24 +47,24 @@ def get_or_create_subscription(user):
 def advance_cycle_if_needed(sub) -> None:
 
     now = timezone.now()
-    if now <= sub.cycle_ends_at:
+    if now <= sub.current_period_end:
         return
 
     # Advance the cycle
-    sub.cycle_started_at = sub.cycle_ends_at
-    sub.cycle_ends_at = _add_one_month(sub.cycle_started_at)
+    sub.current_period_start = sub.current_period_end
+    sub.current_period_end = _add_one_month(sub.current_period_start)
 
     # If the plan is expired/soft-deleted, fall back to default
     if sub.plan and sub.plan.is_expired:
         sub.plan = None
 
-    # If status is canceled and the cancels_at has passed, reset to active on default
-    if sub.status == sub.STATUS_CANCELED and sub.cancels_at and now >= sub.cancels_at:
+    # If status is canceled and the cancel_at has passed, reset to active on default
+    if sub.status == sub.STATUS_CANCELED and sub.cancel_at and now >= sub.cancel_at:
         sub.plan = None
         sub.status = sub.STATUS_ACTIVE
-        sub.cancels_at = None
+        sub.cancel_at = None
 
-    sub.save(update_fields=["cycle_started_at", "cycle_ends_at", "plan", "status", "cancels_at"])
+    sub.save(update_fields=["current_period_start", "current_period_end", "plan", "status", "cancel_at"])
 
 
 def get_cycle_usage(sub) -> dict:
@@ -73,8 +73,8 @@ def get_cycle_usage(sub) -> dict:
     scope = user_scope(sub.user)
     events = UsageEvent.objects.filter(
         scope=scope,
-        occurred_at__gte=sub.cycle_started_at,
-        occurred_at__lt=sub.cycle_ends_at,
+        occurred_at__gte=sub.current_period_start,
+        occurred_at__lt=sub.current_period_end,
         ok=True,
     )
 
@@ -212,11 +212,11 @@ def switch_plan(user, plan) -> object:
     sub = get_or_create_subscription(user)
     now = timezone.now()
     sub.plan = plan
-    sub.cycle_started_at = now
-    sub.cycle_ends_at = _add_one_month(now)
+    sub.current_period_start = now
+    sub.current_period_end = _add_one_month(now)
     sub.status = UserSubscription.STATUS_ACTIVE
-    sub.cancels_at = None
-    sub.save(update_fields=["plan", "cycle_started_at", "cycle_ends_at", "status", "cancels_at"])
+    sub.cancel_at = None
+    sub.save(update_fields=["plan", "current_period_start", "current_period_end", "status", "cancel_at"])
     return sub
 
 
@@ -224,6 +224,7 @@ def switch_plan(user, plan) -> object:
 def cancel_subscription(user) -> object:
     sub = get_or_create_subscription(user)
     sub.status = sub.STATUS_CANCELED
-    sub.cancels_at = sub.cycle_ends_at
-    sub.save(update_fields=["status", "cancels_at"])
+    sub.cancel_at = sub.current_period_end
+    sub.cancel_at_period_end = True
+    sub.save(update_fields=["status", "cancel_at", "cancel_at_period_end"])
     return sub

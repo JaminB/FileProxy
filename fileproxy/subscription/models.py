@@ -21,6 +21,19 @@ class SubscriptionPlan(models.Model):
     write_transfer_limit_bytes = models.BigIntegerField(null=True, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Stripe pricing fields (null = free/default plan)
+    stripe_product_id = models.CharField(max_length=255, null=True, blank=True, unique=True)
+    stripe_price_id = models.CharField(max_length=255, null=True, blank=True, unique=True)
+    price_cents = models.PositiveIntegerField(null=True, blank=True)
+    currency = models.CharField(max_length=3, default="usd")
+    billing_interval = models.CharField(
+        max_length=10,
+        choices=[("month", "Monthly"), ("year", "Yearly")],
+        null=True,
+        blank=True,
+    )
+    billing_interval_count = models.PositiveIntegerField(default=1)
+    trial_days = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -44,8 +57,12 @@ class UserSubscription(models.Model):
     STATUS_ACTIVE = "active"
     STATUS_CANCELED = "canceled"
     STATUS_CHOICES = [
-        (STATUS_ACTIVE, "Active"),
-        (STATUS_CANCELED, "Canceled"),
+        ("trialing", "Trialing"),
+        ("active", "Active"),
+        ("past_due", "Past Due"),
+        ("canceled", "Canceled"),
+        ("incomplete", "Incomplete"),
+        ("incomplete_expired", "Incomplete Expired"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -58,11 +75,25 @@ class UserSubscription(models.Model):
         related_name="subscribers",
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
-    cycle_started_at = models.DateTimeField()
-    cycle_ends_at = models.DateTimeField()
-    cancels_at = models.DateTimeField(null=True, blank=True)
+    current_period_start = models.DateTimeField()
+    current_period_end = models.DateTimeField()
+    cancel_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Stripe identifiers
+    stripe_customer_id = models.CharField(
+        max_length=255, null=True, blank=True, unique=True, db_index=True
+    )
+    stripe_subscription_id = models.CharField(
+        max_length=255, null=True, blank=True, unique=True, db_index=True
+    )
+    # Trial period
+    trial_start = models.DateTimeField(null=True, blank=True)
+    trial_end = models.DateTimeField(null=True, blank=True)
+    # Cancellation state
+    cancel_at_period_end = models.BooleanField(default=False)
+    canceled_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
