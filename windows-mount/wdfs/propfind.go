@@ -119,7 +119,7 @@ func writeDAVResponse(w http.ResponseWriter, name string, fi os.FileInfo) {
 	}
 
 	fmt.Fprintf(w, "<D:response>\n")
-	fmt.Fprintf(w, "  <D:href>%s</D:href>\n", xmlEscape(href)) //nolint:gosec // G705: href is URL-encoded then XML-escaped
+	fmt.Fprintf(w, "  <D:href>%s</D:href>\n", xmlEscape(href)) // #nosec G705 -- href is URL-encoded then XML-escaped
 	fmt.Fprintf(w, "  <D:propstat>\n")
 	fmt.Fprintf(w, "    <D:prop>\n")
 
@@ -127,14 +127,14 @@ func writeDAVResponse(w http.ResponseWriter, name string, fi os.FileInfo) {
 		fmt.Fprintf(w, "      <D:resourcetype><D:collection/></D:resourcetype>\n")
 	} else {
 		fmt.Fprintf(w, "      <D:resourcetype/>\n")
-		fmt.Fprintf(w, "      <D:getcontentlength>%d</D:getcontentlength>\n", fi.Size()) //nolint:gosec // G705: integer format verb, no injection possible
+		fmt.Fprintf(w, "      <D:getcontentlength>%d</D:getcontentlength>\n", fi.Size()) // #nosec G705 -- integer format verb, no injection possible
 		fmt.Fprintf(w, "      <D:getcontenttype>application/octet-stream</D:getcontenttype>\n")
 	}
 
-	fmt.Fprintf(w, "      <D:displayname>%s</D:displayname>\n", xmlEscape(fi.Name())) //nolint:gosec // G705: value is XML-escaped
-	fmt.Fprintf(w, "      <D:getlastmodified>%s</D:getlastmodified>\n", //nolint:gosec // G705: formatted time literal, no injection possible
+	fmt.Fprintf(w, "      <D:displayname>%s</D:displayname>\n", xmlEscape(fi.Name())) // #nosec G705 -- value is XML-escaped
+	fmt.Fprintf(w, "      <D:getlastmodified>%s</D:getlastmodified>\n", // #nosec G705 -- formatted time literal, no injection possible
 		modTime.UTC().Format(http.TimeFormat))
-	fmt.Fprintf(w, "      <D:creationdate>%s</D:creationdate>\n", //nolint:gosec // G705: formatted time literal, no injection possible
+	fmt.Fprintf(w, "      <D:creationdate>%s</D:creationdate>\n", // #nosec G705 -- formatted time literal, no injection possible
 		modTime.UTC().Format(time.RFC3339))
 
 	fmt.Fprintf(w, "    </D:prop>\n")
