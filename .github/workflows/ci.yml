@@ -107,7 +107,10 @@ jobs:
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
       - name: Go security scan (gosec)
         working-directory: windows-mount
-        run: gosec ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/... ./winmount/... ./cmd/...
+        # G104: unhandled errors on Body.Close/srv.Close (idiomatic Go)
+        # G112: Slowloris / missing ReadHeaderTimeout (localhost-only server, DoS excluded)
+        # G117: secret field name in marshaled struct (API key saved intentionally to 0600 file)
+        run: gosec -exclude=G104,G112,G117 ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/... ./winmount/... ./cmd/...
 
   fuzz:
     runs-on: ubuntu-latest

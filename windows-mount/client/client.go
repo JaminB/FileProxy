@@ -48,7 +48,7 @@ func (c *FileProxyClient) newRequest(method, path string, body io.Reader) (*http
 }
 
 func (c *FileProxyClient) do(req *http.Request) (*http.Response, error) {
-	resp, err := c.http.Do(req)
+	resp, err := c.http.Do(req) //nolint:gosec // G704: BaseURL is user-configured (desktop client), not attacker-controlled
 	if err != nil {
 		return nil, err
 	}
