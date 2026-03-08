@@ -25,8 +25,8 @@ aws ssm get-parameters-by-path \
 # Append runtime values
 ALB_DNS="${alb_dns}"
 PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
-echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP" >> /etc/fileproxy.env
-echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS" >> /etc/fileproxy.env
+echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP,fileproxy.io,www.fileproxy.io" >> /etc/fileproxy.env
+echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.fileproxy.io" >> /etc/fileproxy.env
 
 # Pull and run the container
 docker pull ${ecr_url}:latest

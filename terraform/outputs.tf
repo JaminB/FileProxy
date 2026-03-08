@@ -22,3 +22,8 @@ output "github_actions_role_arn" {
   description = "IAM role ARN for GitHub Actions to assume"
   value       = aws_iam_role.github_actions.arn
 }
+
+output "route53_nameservers" {
+  description = "Nameservers to set in Namecheap for fileproxy.io"
+  value       = aws_route53_zone.main.name_servers
+}
