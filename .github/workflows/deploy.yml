@@ -126,6 +126,11 @@ jobs:
 
       - name: Trigger ASG instance refresh
         run: |
+          # Cancel any in-progress refresh so ours isn't blocked
+          aws autoscaling cancel-instance-refresh \
+            --auto-scaling-group-name fileproxy-prod-asg 2>/dev/null || true
+          # Wait for cancellation to settle
+          sleep 5
           aws autoscaling start-instance-refresh \
             --auto-scaling-group-name fileproxy-prod-asg \
             --preferences '{"MinHealthyPercentage": 50}'

@@ -43,6 +43,12 @@ FILEPROXY_VAULT_MASTER_KEY=<32-byte key encoded as URL-safe base64>
 
 Generate a key with: `python -c "import os, base64; print(base64.urlsafe_b64encode(os.urandom(32)).decode())"`
 
+## Slash Commands
+
+| Command | Description |
+|---|---|
+| `/manage-environment-variables` | Enumerate and set production env vars in AWS SSM Parameter Store |
+
 ## Architecture
 
 FileProxy is a Django app that proxies file operations to external storage backends (currently S3 only), with credentials stored encrypted in a local database.
