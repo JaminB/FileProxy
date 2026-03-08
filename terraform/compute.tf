@@ -27,6 +27,15 @@ resource "aws_launch_template" "app" {
     security_groups             = [aws_security_group.ec2.id]
   }
 
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = 30
+      volume_type           = "gp3"
+      delete_on_termination = true
+    }
+  }
+
   user_data = base64encode(templatefile("${path.module}/user_data.sh.tpl", {
     aws_region = var.aws_region
     ecr_url    = aws_ecr_repository.app.repository_url
