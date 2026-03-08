@@ -82,7 +82,15 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 		apiKey := strings.TrimSpace(keyEdit.Text())
 		drive := drives[driveCombo.CurrentIndex()]
 		port := 6789
-		fmt.Sscanf(strings.TrimSpace(portEdit.Text()), "%d", &port)
+		portText := strings.TrimSpace(portEdit.Text())
+		if portText != "" {
+			var parsedPort int
+			if n, err := fmt.Sscanf(portText, "%d", &parsedPort); n != 1 || err != nil || parsedPort <= 0 || parsedPort > 65535 {
+				walk.MsgBox(mw, "Invalid Port", "Port must be a number between 1 and 65535.", walk.MsgBoxIconWarning|walk.MsgBoxOK)
+				return
+			}
+			port = parsedPort
+		}
 
 		if serverURL == "" {
 			walk.MsgBox(mw, "Required", "Server URL cannot be empty.", walk.MsgBoxIconWarning|walk.MsgBoxOK)
