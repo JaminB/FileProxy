@@ -1,0 +1,15 @@
+.venv/
+.git/
+.github/
+node_modules/
+terraform/
+fileproxy/node_modules/
+fileproxy/db.sqlite3
+fileproxy/.env
+fileproxy/staticfiles/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.idea/
+.claude/
+*.md
