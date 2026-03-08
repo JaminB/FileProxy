@@ -54,6 +54,37 @@ jobs:
         working-directory: fileproxy
         run: poetry run python manage.py test accounts connections files usage subscription
 
+  build-windows-client:
+    name: Build Windows Client
+    runs-on: windows-latest
+    needs: test
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: windows-mount/go.mod
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Build executables
+        working-directory: windows-mount
+        run: |
+          go build -ldflags="-H windowsgui" -o dist/fileproxy-mount-amd64.exe .
+          set GOARCH=386
+          go build -ldflags="-H windowsgui" -o dist/fileproxy-mount-386.exe .
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp windows-mount/dist/fileproxy-mount-amd64.exe s3://${{ secrets.S3_STATIC_BUCKET }}/static/dist/fileproxy-mount-amd64.exe --cache-control "public, max-age=3600"
+          aws s3 cp windows-mount/dist/fileproxy-mount-386.exe s3://${{ secrets.S3_STATIC_BUCKET }}/static/dist/fileproxy-mount-386.exe --cache-control "public, max-age=3600"
+
   build-and-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
@@ -91,7 +122,6 @@ jobs:
           docker cp "$CONTAINER:/app/staticfiles/." ./staticfiles-out/
           docker rm "$CONTAINER"
           aws s3 sync ./staticfiles-out/ s3://${{ secrets.S3_STATIC_BUCKET }}/static/ \
-            --delete \
             --cache-control "public, max-age=31536000, immutable"
 
       - name: Trigger ASG instance refresh
