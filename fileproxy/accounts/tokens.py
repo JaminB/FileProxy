@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import Token
 
 class APIKeyToken(Token):
     token_type = "api_key"
-    lifetime = timedelta(days=3650)  # ~10 years
+    lifetime = timedelta(days=365)  # 1 year
 
     @classmethod
     def for_api_key(cls, api_key) -> "APIKeyToken":

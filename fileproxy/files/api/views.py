@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import urllib.parse
 
 from django.http import StreamingHttpResponse
 from rest_framework import status, viewsets
@@ -278,13 +279,14 @@ class FilesViewSet(viewsets.ViewSet):
             q.is_valid(raise_exception=True)
             path = q.validated_data["path"]
             filename = path.rsplit("/", 1)[-1] or "download"
+            encoded_filename = urllib.parse.quote(filename, safe="")
 
             chunks = backend.read_stream(path)
             resp = StreamingHttpResponse(
                 self._tracked_stream(request, connection_name, chunks, path),
                 content_type="application/octet-stream",
             )
-            resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+            resp["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
             return resp
         except Exception as e:  # noqa: BLE001
             self._record_event(request, connection_name, "read", object_path=path, ok=False)

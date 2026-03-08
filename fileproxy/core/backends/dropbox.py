@@ -7,6 +7,7 @@ from typing import BinaryIO, Iterator
 import dropbox
 import dropbox.exceptions
 import dropbox.files
+from django.conf import settings as django_settings
 
 from .base import (
     Backend,
@@ -42,8 +43,8 @@ class DropboxBackend(Backend):
         super().__init__(config)
         self._dbx = dropbox.Dropbox(
             oauth2_refresh_token=self._require_secret("refresh_token"),
-            app_key=self._require_secret("app_key"),
-            app_secret=self._require_secret("app_secret"),
+            app_key=django_settings.DROPBOX_APP_KEY,
+            app_secret=django_settings.DROPBOX_APP_SECRET,
         )
 
     def _require_secret(self, key: str) -> str:

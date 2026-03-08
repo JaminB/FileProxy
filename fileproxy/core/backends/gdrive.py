@@ -7,6 +7,7 @@ from typing import Any
 
 import google.auth.exceptions
 import google.oauth2.credentials
+from django.conf import settings as django_settings
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaInMemoryUpload, MediaIoBaseDownload, MediaIoBaseUpload
@@ -42,8 +43,8 @@ class GDriveBackend(Backend):
         creds = google.oauth2.credentials.Credentials(
             token=None,
             refresh_token=self._require_secret("refresh_token"),
-            client_id=self._require_secret("client_id"),
-            client_secret=self._require_secret("client_secret"),
+            client_id=django_settings.GOOGLE_CLIENT_ID,
+            client_secret=django_settings.GOOGLE_CLIENT_SECRET,
             token_uri="https://oauth2.googleapis.com/token",
         )
         self._service = build("drive", "v3", credentials=creds, cache_discovery=False)

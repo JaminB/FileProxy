@@ -48,6 +48,17 @@ CSRF_TRUSTED_ORIGINS = [h for h in env("CSRF_TRUSTED_ORIGINS", "").split(",") if
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
+# Session cookie security — always enforce HttpOnly and SameSite; only
+# enforce Secure in production (DEBUG=False) so local dev still works.
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = not DEBUG
+
+# HTTPS enforcement in production
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
@@ -89,7 +100,6 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "accounts.authentication.APIKeyAuthentication",
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

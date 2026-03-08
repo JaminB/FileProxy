@@ -31,6 +31,7 @@ jobs:
     env:
       FILEPROXY_VAULT_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       DJANGO_SECRET_KEY: ci-test-only-not-used-in-production
+      DEBUG: "true"
       DB_HOST: localhost
       DB_NAME: fileproxy_test
       DB_USER: fileproxy

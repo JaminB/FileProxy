@@ -1,6 +1,10 @@
+import logging
+
 from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -61,6 +65,7 @@ def connections_oauth_gdrive_callback(request):
         flow.fetch_token(code=code)
         refresh_token = flow.credentials.refresh_token
     except Exception:
+        logger.exception("GDrive OAuth token exchange failed for user %s", request.user.id)
         return redirect("/connections/new/gdrive/?error=token_exchange_failed")
     finally:
         request.session.pop("gdrive_oauth_pending", None)
@@ -70,11 +75,7 @@ def connections_oauth_gdrive_callback(request):
     item = create_gdrive_oauth2_credentials(
         scope=pending["scope"],
         name=pending["name"],
-        secrets_obj={
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "refresh_token": refresh_token,
-        },
+        secrets_obj={"refresh_token": refresh_token},
     )
     return redirect(f"/connections/item/{item.id}/")
 
@@ -114,6 +115,7 @@ def connections_oauth_dropbox_callback(request):
         result = flow.finish(request.GET)
         refresh_token = result.refresh_token
     except Exception:
+        logger.exception("Dropbox OAuth token exchange failed for user %s", request.user.id)
         return redirect("/connections/new/dropbox/?error=token_exchange_failed")
     finally:
         request.session.pop("dropbox_oauth_pending", None)
@@ -123,11 +125,7 @@ def connections_oauth_dropbox_callback(request):
     item = create_dropbox_oauth2_credentials(
         scope=pending["scope"],
         name=pending["name"],
-        secrets_obj={
-            "app_key": app_key,
-            "app_secret": app_secret,
-            "refresh_token": refresh_token,
-        },
+        secrets_obj={"refresh_token": refresh_token},
     )
     return redirect(f"/connections/item/{item.id}/")
 

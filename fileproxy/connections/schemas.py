@@ -26,24 +26,14 @@ class S3StaticCredentials:
 
 @dataclass(frozen=True)
 class GoogleDriveOAuth2Credentials:
-    client_id: str
-    client_secret: str
     refresh_token: str
 
     def to_payload(self) -> Dict[str, Any]:
-        return {
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "refresh_token": self.refresh_token,
-        }
+        return {"refresh_token": self.refresh_token}
 
     @staticmethod
     def from_payload(p: Dict[str, Any]) -> "GoogleDriveOAuth2Credentials":
-        return GoogleDriveOAuth2Credentials(
-            client_id=p["client_id"],
-            client_secret=p["client_secret"],
-            refresh_token=p["refresh_token"],
-        )
+        return GoogleDriveOAuth2Credentials(refresh_token=p["refresh_token"])
 
 
 @dataclass(frozen=True)
@@ -70,21 +60,11 @@ class AzureBlobCredentials:
 
 @dataclass(frozen=True)
 class DropboxOAuth2Credentials:
-    app_key: str
-    app_secret: str
     refresh_token: str
 
     def to_payload(self) -> Dict[str, Any]:
-        return {
-            "app_key": self.app_key,
-            "app_secret": self.app_secret,
-            "refresh_token": self.refresh_token,
-        }
+        return {"refresh_token": self.refresh_token}
 
     @classmethod
     def from_payload(cls, d: Dict[str, Any]) -> "DropboxOAuth2Credentials":
-        return cls(
-            app_key=d["app_key"],
-            app_secret=d["app_secret"],
-            refresh_token=d["refresh_token"],
-        )
+        return cls(refresh_token=d["refresh_token"])
