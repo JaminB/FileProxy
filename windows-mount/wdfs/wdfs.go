@@ -5,7 +5,9 @@ package wdfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	fpfs "github.com/fileproxy/windows-mount/proxyfs"
@@ -100,7 +102,7 @@ func (f *loggingFile) Readdir(count int) ([]os.FileInfo, error) {
 
 func (f *loggingFile) Read(p []byte) (int, error) {
 	n, err := f.File.Read(p)
-	if err != nil && err.Error() != "EOF" {
+	if err != nil && !errors.Is(err, io.EOF) {
 		fmt.Fprintf(os.Stderr, "  [fs] Read(%q, buf=%d) n=%d ERROR: %v\n", f.name, len(p), n, err)
 	} else {
 		fmt.Fprintf(os.Stderr, "  [fs] Read(%q, buf=%d) n=%d\n", f.name, len(p), n)

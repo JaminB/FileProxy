@@ -69,6 +69,18 @@ jobs:
         working-directory: fileproxy
         run: poetry run python manage.py test
 
+  go-test:
+    runs-on: ubuntu-latest
+    needs: [format]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: windows-mount/go.mod
+      - name: Run Go tests
+        working-directory: windows-mount
+        run: go test ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/...
+
   security:
     runs-on: ubuntu-latest
     needs: [format]
@@ -80,6 +92,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: windows-mount/go.mod
       - name: Install Bandit
         run: pip install bandit
       - name: Python security scan (Bandit)
@@ -88,6 +103,11 @@ jobs:
         run: npm --prefix fileproxy install
       - name: TypeScript security scan (ESLint)
         run: npm --prefix fileproxy run lint:security
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+      - name: Go security scan (gosec)
+        working-directory: windows-mount
+        run: gosec ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/... ./winmount/... ./cmd/...
 
   fuzz:
     runs-on: ubuntu-latest

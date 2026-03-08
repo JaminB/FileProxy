@@ -189,8 +189,13 @@ func (c *FileProxyClient) Read(conn, path string) ([]byte, error) {
 func (c *FileProxyClient) Write(conn, path string, data []byte) error {
 	q := url.Values{"path": {path}}
 	endpoint := fmt.Sprintf("/api/v1/files/%s/write/?%s", url.PathEscape(conn), q.Encode())
-	payload := fmt.Sprintf(`{"data_base64":%q}`, base64.StdEncoding.EncodeToString(data))
-	req, err := c.newRequest("POST", endpoint, strings.NewReader(payload))
+	body, err := json.Marshal(struct {
+		DataBase64 string `json:"data_base64"`
+	}{DataBase64: base64.StdEncoding.EncodeToString(data)})
+	if err != nil {
+		return err
+	}
+	req, err := c.newRequest("POST", endpoint, strings.NewReader(string(body)))
 	if err != nil {
 		return err
 	}

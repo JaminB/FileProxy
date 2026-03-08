@@ -14,9 +14,20 @@ import (
 	"github.com/spf13/afero"
 )
 
+// APIClient is the minimal interface that FileProxyFS requires from the REST
+// client. *client.FileProxyClient satisfies it automatically.
+type APIClient interface {
+	ListConnections() ([]client.Connection, error)
+	Enumerate(conn, prefix string) ([]client.Object, error)
+	EnumerateStream(conn, prefix string) (<-chan client.Object, <-chan error)
+	Read(conn, path string) ([]byte, error)
+	Write(conn, path string, data []byte) error
+	Delete(conn, path string) error
+}
+
 // FileProxyFS implements afero.Fs backed by the FileProxy REST API.
 type FileProxyFS struct {
-	client *client.FileProxyClient
+	client APIClient
 
 	connMu  sync.RWMutex
 	connTTL time.Time
@@ -24,6 +35,12 @@ type FileProxyFS struct {
 }
 
 func New(c *client.FileProxyClient) *FileProxyFS {
+	return &FileProxyFS{client: c}
+}
+
+// NewFromAPIClient creates a FileProxyFS backed by any APIClient implementation.
+// Useful for testing with a mock client.
+func NewFromAPIClient(c APIClient) *FileProxyFS {
 	return &FileProxyFS{client: c}
 }
 
@@ -352,7 +369,7 @@ func (d *dirFile) Readdirnames(n int) ([]string, error) {
 // --- readFile ---
 
 type readFile struct {
-	client *client.FileProxyClient
+	client APIClient
 	conn   string
 	path   string
 	info   *fileInfo
@@ -411,7 +428,7 @@ func (h *readFile) Seek(off int64, whence int) (int64, error) {
 // --- writeFile ---
 
 type writeFile struct {
-	client *client.FileProxyClient
+	client APIClient
 	conn   string
 	path   string
 	info   *fileInfo
@@ -449,6 +466,7 @@ type streamingDirFile struct {
 	seen    map[string]bool
 	pending []os.FileInfo
 	done    bool
+	err     error // first error received from errCh, if any
 }
 
 // fill reads the next object from the channel and, if it produces a new unique
@@ -459,7 +477,7 @@ func (d *streamingDirFile) fill() {
 		if !ok {
 			select {
 			case err := <-d.errCh:
-				_ = err // errors are logged upstream
+				d.err = err
 			default:
 			}
 			d.done = true
@@ -499,6 +517,9 @@ func (d *streamingDirFile) Readdir(count int) ([]os.FileInfo, error) {
 		result := d.pending
 		d.pending = nil
 		if len(result) == 0 {
+			if d.err != nil {
+				return nil, d.err
+			}
 			return nil, io.EOF
 		}
 		return result, nil
@@ -508,6 +529,9 @@ func (d *streamingDirFile) Readdir(count int) ([]os.FileInfo, error) {
 		d.fill()
 	}
 	if len(d.pending) == 0 {
+		if d.err != nil {
+			return nil, d.err
+		}
 		return nil, io.EOF
 	}
 	n := count
