@@ -41,12 +41,10 @@ DROPBOX_APP_SECRET = env("DROPBOX_APP_SECRET", default="")
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-08*v8$l01bjmh$s3is1m3yx&tdc-+)v!dq$)2c5wr$ael46__y"
+SECRET_KEY = env("DJANGO_SECRET_KEY", "django-insecure-dev-only")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ["100.68.182.56", "localhost", "127.0.0.1", "desktop-825kevv.tail00c4bf.ts.net"]
+ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+CSRF_TRUSTED_ORIGINS = [h for h in env("CSRF_TRUSTED_ORIGINS", "").split(",") if h]
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
@@ -137,12 +135,25 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+_db_host = env("DB_HOST", "")
+if _db_host:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME", "fileproxy"),
+            "USER": env("DB_USER", "fileproxy"),
+            "PASSWORD": env("DB_PASSWORD", ""),
+            "HOST": _db_host,
+            "PORT": env("DB_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -179,7 +190,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "/static/"
+STATIC_URL = env("STATIC_URL", "/static/")
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
