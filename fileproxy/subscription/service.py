@@ -64,7 +64,9 @@ def advance_cycle_if_needed(sub) -> None:
         sub.status = sub.STATUS_ACTIVE
         sub.cancel_at = None
 
-    sub.save(update_fields=["current_period_start", "current_period_end", "plan", "status", "cancel_at"])
+    sub.save(
+        update_fields=["current_period_start", "current_period_end", "plan", "status", "cancel_at"]
+    )
 
 
 def get_cycle_usage(sub) -> dict:
@@ -216,7 +218,9 @@ def switch_plan(user, plan) -> object:
     sub.current_period_end = _add_one_month(now)
     sub.status = UserSubscription.STATUS_ACTIVE
     sub.cancel_at = None
-    sub.save(update_fields=["plan", "current_period_start", "current_period_end", "status", "cancel_at"])
+    sub.save(
+        update_fields=["plan", "current_period_start", "current_period_end", "status", "cancel_at"]
+    )
     return sub
 
 
