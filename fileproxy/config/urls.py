@@ -1,11 +1,20 @@
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect, render
 from django.urls import include, path
 from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+
+def index(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+    return render(request, "landing.html")
+
+
 urlpatterns = [
-    path("", login_required(TemplateView.as_view(template_name="home.html")), name="home"),
+    path("", index, name="index"),
+    path("home/", login_required(TemplateView.as_view(template_name="home.html")), name="home"),
     path(
         "docs/",
         login_required(TemplateView.as_view(template_name="api_docs.html")),
