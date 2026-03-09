@@ -224,37 +224,37 @@ graph TD
     Internet((Internet))
 
     subgraph DNS["DNS & TLS"]
-        R53["Route53\nfileproxy.io / www.fileproxy.io"]
-        ACM["ACM Certificate\nfileproxy.io + www.fileproxy.io"]
+        R53["Route53<br/>fileproxy.io / www.fileproxy.io"]
+        ACM["ACM Certificate<br/>fileproxy.io + www.fileproxy.io"]
     end
 
     subgraph CDN["Static Content"]
-        CF["CloudFront\nPriceClass_100\nOAC SigV4"]
-        S3["S3 Bucket\nfileproxy-prod-static\n(fully private)"]
+        CF["CloudFront<br/>PriceClass_100<br/>OAC SigV4"]
+        S3["S3 Bucket<br/>fileproxy-prod-static<br/>(fully private)"]
     end
 
     subgraph VPC["VPC 10.0.0.0/16"]
         IGW[Internet Gateway]
 
         subgraph PublicSubnets["Public Subnets — 10.0.1.0/24, 10.0.2.0/24"]
-            ALB["ALB fileproxy-prod-alb\n:80 redirect → :443 forward"]
+            ALB["ALB fileproxy-prod-alb<br/>:80 redirect → :443 forward"]
             subgraph ASG["ASG fileproxy-prod-asg (min 1 / max 4)"]
-                EC2["EC2 m5.large\nAmazon Linux 2023 + Docker\nDjango :8000"]
+                EC2["EC2 m5.large<br/>Amazon Linux 2023 + Docker<br/>Django :8000"]
             end
         end
 
-        subgraph PrivateSubnets["Private Subnets — 10.0.11.0/24, 10.0.12.0/24\n(no internet route)"]
-            RDS[("Aurora PostgreSQL 16.6\nServerless v2 — 0.5–16 ACU")]
+        subgraph PrivateSubnets["Private Subnets — 10.0.11.0/24, 10.0.12.0/24<br/>(no internet route)"]
+            RDS[("Aurora PostgreSQL 16.6<br/>Serverless v2 — 0.5–16 ACU")]
         end
     end
 
     subgraph AWSServices["AWS Services"]
-        ECR["ECR\nfileproxy"]
-        SSM["SSM Parameter Store\n/fileproxy/prod/*"]
+        ECR["ECR<br/>fileproxy"]
+        SSM["SSM Parameter Store<br/>/fileproxy/prod/*"]
     end
 
     subgraph CICD["CI/CD"]
-        GHA["GitHub Actions\nOIDC Role"]
+        GHA["GitHub Actions<br/>OIDC Role"]
     end
 
     Internet -->|"HTTPS (fileproxy.io)"| R53
