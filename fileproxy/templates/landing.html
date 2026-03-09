@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}FileProxy — One API for all your cloud storage{% endblock %}
+
+{% block content %}
+
+  {# Hero #}
+  <div class="text-center py-5 mb-2">
+    <h1 class="fw-bold mb-3" style="font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.2;">
+      Your files live in more places than they should.<br>
+      <span class="text-secondary">FileProxy doesn't care.</span>
+    </h1>
+    <p class="text-secondary mb-4 mx-auto" style="max-width: 540px; font-size: 1.1rem; line-height: 1.6;">
+      One REST API (and an MCP server) across all your cloud storage.
+      Add credentials once. Never think about it again.
+    </p>
+    <div class="d-flex gap-2 justify-content-center flex-wrap mb-4">
+      <a href="/accounts/login/" class="btn btn-primary px-4">Log in</a>
+      {% if REGISTRATION_ENABLED %}<a href="/accounts/register/" class="btn btn-outline-secondary px-4">Create an account</a>{% endif %}
+      <a href="/api/docs/" class="btn btn-outline-secondary px-4">API docs</a>
+    </div>
+
+    {# Backend logos #}
+    <div class="d-flex justify-content-center align-items-center gap-4 opacity-50">
+      <img src="{% static 'images/logos/s3.svg' %}" alt="Amazon S3" height="22" style="filter: var(--fp-logo-filter, none);">
+      <img src="{% static 'images/logos/gdrive.svg' %}" alt="Google Drive" height="22">
+      <img src="{% static 'images/logos/dropbox.png' %}" alt="Dropbox" height="20">
+      <img src="{% static 'images/logos/azure.svg' %}" alt="Azure Blob" height="22">
+    </div>
+  </div>
+
+  {# Primary feature cards #}
+  <div class="row g-4 mt-3">
+
+    <div class="col-md-4">
+      <div class="card ab-card h-100">
+        <div class="card-body">
+          <div class="mb-2"><i class="bi bi-plug fs-3 text-secondary"></i></div>
+          <h6 class="card-title fw-semibold mb-1">One endpoint for all of them</h6>
+          <p class="card-text text-secondary small mb-0">
+            Every backend looks identical once connected:
+            <code>GET /api/v1/files/{name}/read/</code>.
+            No per-provider SDK. No ceremony.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card ab-card h-100">
+        <div class="card-body">
+          <div class="mb-2"><i class="bi bi-cpu fs-3 text-secondary"></i></div>
+          <h6 class="card-title fw-semibold mb-1">REST or MCP, your call</h6>
+          <p class="card-text text-secondary small mb-0">
+            Curl it, pipe it through CI, or wire it up as an MCP server and let an AI agent
+            browse your files directly. FileProxy works the same either way.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card ab-card h-100">
+        <div class="card-body">
+          <div class="mb-2"><i class="bi bi-graph-up-arrow fs-3 text-secondary"></i></div>
+          <h6 class="card-title fw-semibold mb-1">Know what's touching your data</h6>
+          <p class="card-text text-secondary small mb-0">
+            Every read, write, and delete is logged with timestamps, operation type, and which
+            backend. Not a raw log dump. Actual insight into how your data moves.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# Secondary feature cards #}
+  <div class="row g-4 mt-0">
+
+    <div class="col-md-6">
+      <div class="card ab-card h-100">
+        <div class="card-body">
+          <div class="mb-2"><i class="bi bi-shield-lock fs-3 text-secondary"></i></div>
+          <h6 class="card-title fw-semibold mb-1">Boring security, on purpose</h6>
+          <p class="card-text text-secondary small mb-0">
+            Each credential gets its own AES-GCM data key, encrypted by a rotating master key.
+            A compromised credential can't decrypt others, and yesterday's keys are already gone.
+            Master keys rotate daily.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card ab-card h-100">
+        <div class="card-body">
+          <div class="mb-2"><i class="bi bi-hdd-network fs-3 text-secondary"></i></div>
+          <h6 class="card-title fw-semibold mb-1">Mount it like a drive</h6>
+          <p class="card-text text-secondary small mb-0">
+            Windows client available. Mount FileProxy as a network drive and drag-and-drop
+            files like it's 2003. No judgment.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+{% endblock %}
