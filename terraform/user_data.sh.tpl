@@ -1,10 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-# Install Docker
-yum update -y
-yum install -y docker aws-cli jq
-systemctl enable docker
+# Skip Docker install if already present (warm pool restart fast path)
+if ! command -v docker &>/dev/null; then
+  yum update -y
+  yum install -y docker aws-cli jq
+  systemctl enable docker
+fi
 systemctl start docker
 
 # ECR login
@@ -28,7 +30,11 @@ PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP,fileproxy.io,www.fileproxy.io" >> /etc/fileproxy.env
 echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.fileproxy.io" >> /etc/fileproxy.env
 
-# Pull and run the container
+# Remove previous container (idempotent across warm pool restarts)
+docker stop fileproxy 2>/dev/null || true
+docker rm fileproxy 2>/dev/null || true
+
+# Pull latest image and run
 docker pull ${ecr_url}:latest
 docker run -d \
   --name fileproxy \

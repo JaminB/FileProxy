@@ -134,4 +134,4 @@ jobs:
           sleep 5
           aws autoscaling start-instance-refresh \
             --auto-scaling-group-name fileproxy-prod-asg \
-            --preferences '{"MinHealthyPercentage": 50}'
+            --preferences '{"MinHealthyPercentage": 100}'
