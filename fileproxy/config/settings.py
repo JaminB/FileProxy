@@ -19,6 +19,7 @@ from .env import env, env_bool, env_bytes_b64url
 DEBUG = env("DEBUG", "false").lower() == "true"
 
 SUBSCRIPTIONS_ENABLED: bool = env_bool("FILEPROXY_SUBSCRIPTIONS_ENABLED", default=False)
+REGISTRATION_ENABLED: bool = env_bool("FILEPROXY_REGISTRATION_ENABLED", default=True)
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
