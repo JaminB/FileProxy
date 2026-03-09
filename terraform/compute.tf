@@ -72,8 +72,14 @@ resource "aws_autoscaling_group" "app" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
-      min_healthy_percentage = 50
+      min_healthy_percentage = 100
     }
+  }
+
+  warm_pool {
+    pool_state                  = "Stopped"
+    min_size                    = 0
+    max_group_prepared_capacity = 1
   }
 
   tag {
