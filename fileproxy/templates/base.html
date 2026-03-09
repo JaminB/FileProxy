@@ -86,7 +86,7 @@
             </div>
           {% else %}
             <a href="/accounts/login/" class="btn btn-sm btn-outline-secondary">Login</a>
-            <a href="/accounts/register/" class="btn btn-sm btn-primary">Register</a>
+            {% if REGISTRATION_ENABLED %}<a href="/accounts/register/" class="btn btn-sm btn-primary">Register</a>{% endif %}
           {% endif %}
         </div>
       </div>
