@@ -59,6 +59,7 @@ CSRF_COOKIE_SECURE = not DEBUG
 # HTTPS enforcement in production
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_REDIRECT_EXEMPT = [r"^health/"]  # ALB health check hits port 8000 over HTTP
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # Trust ALB's forwarded proto
 SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 
