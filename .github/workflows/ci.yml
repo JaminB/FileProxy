@@ -65,6 +65,7 @@ jobs:
           echo "FILEPROXY_VAULT_MASTER_KEY=$(python3 -c \
             'import os,base64; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" \
             >> "$GITHUB_ENV"
+          echo "DEBUG=true" >> "$GITHUB_ENV"
       - name: Run tests
         working-directory: fileproxy
         run: poetry run python manage.py test
@@ -138,6 +139,7 @@ jobs:
           echo "FILEPROXY_VAULT_MASTER_KEY=$(python3 -c \
             'import os,base64; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" \
             >> "$GITHUB_ENV"
+          echo "DEBUG=true" >> "$GITHUB_ENV"
 
       - name: Apply migrations
         working-directory: fileproxy

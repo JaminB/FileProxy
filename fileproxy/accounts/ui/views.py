@@ -22,7 +22,11 @@ def profile(request):
         profile_form = ProfileUpdateForm(instance=request.user)
         prefs_form = NotificationPreferencesForm(instance=prefs)
 
-    return render(request, "accounts/profile.html", {
-        "profile_form": profile_form,
-        "prefs_form": prefs_form,
-    })
+    return render(
+        request,
+        "accounts/profile.html",
+        {
+            "profile_form": profile_form,
+            "prefs_form": prefs_form,
+        },
+    )
