@@ -44,7 +44,7 @@ DROPBOX_APP_SECRET = env("DROPBOX_APP_SECRET", default="")
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("DJANGO_SECRET_KEY", "django-insecure-dev-only")
 
-ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if DEBUG else ["*"]
 CSRF_TRUSTED_ORIGINS = [h for h in env("CSRF_TRUSTED_ORIGINS", "").split(",") if h]
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
@@ -58,7 +58,7 @@ CSRF_COOKIE_SECURE = not DEBUG
 
 # HTTPS enforcement in production
 SECURE_SSL_REDIRECT = not DEBUG
-SECURE_REDIRECT_EXEMPT = [r"^health/$"]  # ALB health check hits port 8000 over HTTP
+SECURE_REDIRECT_EXEMPT = [r"^/health/"]  # ALB health check hits port 8000 over HTTP
 SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 
