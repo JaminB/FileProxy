@@ -53,11 +53,13 @@
           <button type="submit" class="btn btn-primary w-100">Sign in</button>
         </form>
 
+        {% if REGISTRATION_ENABLED %}
         <hr class="my-4">
         <p class="text-center mb-0 small">
           Don't have an account?
           <a href="{% url 'register' %}">Register</a>
         </p>
+        {% endif %}
       </div>
     </div>
   </div>
