@@ -288,7 +288,7 @@ class FilesViewSet(viewsets.ViewSet):
                 content_type="application/octet-stream",
             )
             resp["Content-Disposition"] = (
-                f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}'
+                f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
             )
             return resp
         except Exception as e:  # noqa: BLE001
