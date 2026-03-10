@@ -225,9 +225,7 @@ class FilesViewSet(viewsets.ViewSet):
 
                 raw_content_length = request.META.get("CONTENT_LENGTH")
                 if raw_content_length is None:
-                    return Response(
-                        {"detail": "Content-Length header is required."}, status=411
-                    )
+                    return Response({"detail": "Content-Length header is required."}, status=411)
                 try:
                     content_length = int(raw_content_length)
                 except (ValueError, TypeError):
