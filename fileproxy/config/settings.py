@@ -149,7 +149,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Allow large file uploads via multipart write endpoint
 DATA_UPLOAD_MAX_MEMORY_SIZE = 500 * 1024 * 1024  # 500 MB (form fields, not file data)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024    # 2 MB — spill file data to disk early
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2 MB — spill file data to disk early
 
 
 # Database
