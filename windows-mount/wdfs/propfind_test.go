@@ -199,9 +199,12 @@ func (m *mockAPIClient) EnumerateStream(conn, prefix string) (<-chan client.Obje
 	return objCh, errCh
 }
 
-func (m *mockAPIClient) Download(conn, path string) ([]byte, error)            { return nil, nil }
-func (m *mockAPIClient) WriteStream(conn, path string, data []byte) error      { return nil }
-func (m *mockAPIClient) Delete(conn, path string) error                        { return nil }
+func (m *mockAPIClient) Download(conn, path string) ([]byte, error) { return nil, nil }
+func (m *mockAPIClient) WriteStream(conn, path string, r io.Reader) error {
+	io.Copy(io.Discard, r) //nolint:errcheck
+	return nil
+}
+func (m *mockAPIClient) Delete(conn, path string) error { return nil }
 
 func newTestHandler(api *mockAPIClient) *PropfindHandler {
 	proxyFS := fpfs.NewFromAPIClient(api)
@@ -297,5 +300,26 @@ func TestPropfindHandler_fileWithDepth1_singleResponse(t *testing.T) {
 	}
 	if strings.Contains(body, "<D:collection/>") {
 		t.Errorf("file should not have collection:\n%s", body)
+	}
+}
+
+// --- contentType tests ---
+
+func TestContentType_knownExtension(t *testing.T) {
+	ct := contentType("photo.png")
+	if !strings.HasPrefix(ct, "image/png") {
+		t.Errorf("expected image/png, got %q", ct)
+	}
+}
+
+func TestContentType_unknownExtension(t *testing.T) {
+	if got := contentType("file.xyz999"); got != "application/octet-stream" {
+		t.Errorf("expected fallback, got %q", got)
+	}
+}
+
+func TestContentType_noExtension(t *testing.T) {
+	if got := contentType("Makefile"); got != "application/octet-stream" {
+		t.Errorf("expected fallback, got %q", got)
 	}
 }
