@@ -47,6 +47,7 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 		portEdit     *walk.LineEdit
 		logEdit      *walk.TextEdit
 		actionBtn    *walk.PushButton
+		patchBtn     *walk.PushButton
 		statusBar    *walk.StatusBarItem
 		ni           *walk.NotifyIcon
 	)
@@ -233,9 +234,26 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 
 			// ── Action button ─────────────────────────────────────────────
 			Composite{
-				Layout: HBox{MarginsZero: true},
+				Layout: HBox{MarginsZero: true, Spacing: 8},
 				Children: []Widget{
 					HSpacer{},
+					PushButton{
+						AssignTo: &patchBtn,
+						Text:     "Allow Large Files (>50 MB)",
+						MinSize:  Size{Width: 200, Height: 32},
+						ToolTipText: `Sets the Windows WebDAV file size limit to 4 GB by writing to:
+HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters\FileSizeLimitInBytes
+
+Without this, Windows blocks any write larger than 50 MB to the virtual
+drive with error 0x800700DF. This is a one-time system-wide setting.
+
+Requires administrator privileges — a UAC prompt will appear.`,
+						OnClicked: func() {
+							if err := relaunchElevated(uintptr(mw.Handle()), "--set-webdav-limit"); err != nil {
+								walk.MsgBox(mw, "Elevation Failed", err.Error(), walk.MsgBoxIconError|walk.MsgBoxOK)
+							}
+						},
+					},
 					PushButton{
 						AssignTo: &actionBtn,
 						Text:     "Mount Drive",
@@ -254,6 +272,8 @@ func Run(cfg mountsvc.Config, autoStart bool) {
 		walk.MsgBox(nil, "Startup Error", err.Error(), walk.MsgBoxIconError|walk.MsgBoxOK)
 		return
 	}
+
+	setShieldIcon(patchBtn)
 
 	lw.mu.Lock()
 	lw.sync = mw.Synchronize

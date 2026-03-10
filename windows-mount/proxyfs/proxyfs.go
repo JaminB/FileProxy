@@ -20,8 +20,8 @@ type APIClient interface {
 	ListConnections() ([]client.Connection, error)
 	Enumerate(conn, prefix string) ([]client.Object, error)
 	EnumerateStream(conn, prefix string) (<-chan client.Object, <-chan error)
-	Read(conn, path string) ([]byte, error)
-	Write(conn, path string, data []byte) error
+	Download(conn, path string) ([]byte, error)
+	WriteStream(conn, path string, r io.Reader) error
 	Delete(conn, path string) error
 }
 
@@ -188,12 +188,13 @@ func (f *FileProxyFS) OpenFile(name string, flag int, perm os.FileMode) (afero.F
 
 	// Write / create.
 	if flag&(os.O_WRONLY|os.O_RDWR|os.O_CREATE) != 0 {
+		pr, pw := io.Pipe()
+		done := make(chan error, 1)
+		go func() { done <- f.client.WriteStream(conn, path, pr) }()
 		return &writeFile{
-			client: f.client,
-			conn:   conn,
-			path:   path,
-			info:   &fileInfo{name: lastName(path)},
-			buf:    &bytes.Buffer{},
+			info: &fileInfo{name: lastName(path)},
+			pw:   pw,
+			done: done,
 		}, nil
 	}
 
@@ -226,11 +227,15 @@ func (f *FileProxyFS) OpenFile(name string, flag int, perm os.FileMode) (afero.F
 		if strings.Contains(rel, "/") {
 			return f.openDirStream(conn, path+"/")
 		}
+		size := int64(0)
+		if o.Size != nil {
+			size = *o.Size
+		}
 		return &readFile{
 			client: f.client,
 			conn:   conn,
 			path:   path,
-			info:   &fileInfo{name: entryName},
+			info:   &fileInfo{name: entryName, size: size},
 		}, nil
 	}
 	return nil, os.ErrNotExist
@@ -270,11 +275,11 @@ func (f *FileProxyFS) Rename(oldname, newname string) error {
 	if oldConn == "" || oldPath == "" || newConn == "" || newPath == "" {
 		return os.ErrPermission
 	}
-	data, err := f.client.Read(oldConn, oldPath)
+	data, err := f.client.Download(oldConn, oldPath)
 	if err != nil {
 		return err
 	}
-	if err := f.client.Write(newConn, newPath, data); err != nil {
+	if err := f.client.WriteStream(newConn, newPath, bytes.NewReader(data)); err != nil {
 		return err
 	}
 	return f.client.Delete(oldConn, oldPath)
@@ -288,7 +293,7 @@ func (f *FileProxyFS) Mkdir(name string, perm os.FileMode) error {
 	if path == "" {
 		return os.ErrExist
 	}
-	return f.client.Write(conn, strings.TrimRight(path, "/")+"/.keep", []byte{})
+	return f.client.WriteStream(conn, strings.TrimRight(path, "/")+"/.keep", bytes.NewReader(nil))
 }
 
 func (f *FileProxyFS) MkdirAll(path string, perm os.FileMode) error {
@@ -382,7 +387,7 @@ type readFile struct {
 
 func (h *readFile) load() {
 	h.once.Do(func() {
-		h.data, h.err = h.client.Read(h.conn, h.path)
+		h.data, h.err = h.client.Download(h.conn, h.path)
 		if h.err == nil {
 			h.info.size = int64(len(h.data))
 			h.reader = bytes.NewReader(h.data)
@@ -428,28 +433,31 @@ func (h *readFile) Seek(off int64, whence int) (int64, error) {
 // --- writeFile ---
 
 type writeFile struct {
-	client APIClient
-	conn   string
-	path   string
-	info   *fileInfo
-	buf    *bytes.Buffer
+	info *fileInfo
+	pw   *io.PipeWriter
+	done <-chan error
 }
 
 func (w *writeFile) Name() string                              { return w.info.Name() }
 func (w *writeFile) Stat() (os.FileInfo, error)                { return w.info, nil }
 func (w *writeFile) Sync() error                               { return nil }
-func (w *writeFile) Truncate(int64) error                      { w.buf.Reset(); return nil }
+func (w *writeFile) Truncate(int64) error {
+	err := errors.New("truncate not supported")
+	w.pw.CloseWithError(err)
+	return err
+}
 func (w *writeFile) Read([]byte) (int, error)                  { return 0, errors.New("write-only") }
 func (w *writeFile) ReadAt([]byte, int64) (int, error)         { return 0, errors.New("write-only") }
 func (w *writeFile) Seek(int64, int) (int64, error)            { return 0, errors.New("write-only") }
 func (w *writeFile) Readdir(int) ([]os.FileInfo, error)        { return nil, errors.New("not a dir") }
 func (w *writeFile) Readdirnames(int) ([]string, error)        { return nil, errors.New("not a dir") }
-func (w *writeFile) WriteString(s string) (int, error)         { return w.buf.WriteString(s) }
-func (w *writeFile) Write(p []byte) (int, error)               { return w.buf.Write(p) }
-func (w *writeFile) WriteAt(p []byte, off int64) (int, error)  { return w.buf.Write(p) }
+func (w *writeFile) Write(p []byte) (int, error)               { return w.pw.Write(p) }
+func (w *writeFile) WriteString(s string) (int, error)         { return io.WriteString(w.pw, s) }
+func (w *writeFile) WriteAt(p []byte, _ int64) (int, error)    { return 0, errors.New("write-only: WriteAt not supported") }
 
 func (w *writeFile) Close() error {
-	return w.client.Write(w.conn, w.path, w.buf.Bytes())
+	w.pw.Close()
+	return <-w.done
 }
 
 // --- streamingDirFile ---

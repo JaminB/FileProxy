@@ -1,7 +1,6 @@
 package proxyfs
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"os"
@@ -13,14 +12,15 @@ import (
 
 // mockClient implements APIClient for unit tests.
 type mockClient struct {
-	conns      []client.Connection
-	listErr    error
-	objects    map[string][]client.Object // key: "conn:prefix"
-	readData   map[string][]byte          // key: "conn:path"
-	readErr    error
-	writeErr   error
-	deleteErr  error
-	writeCalls []writeCall
+	conns         []client.Connection
+	listErr       error
+	objects       map[string][]client.Object // key: "conn:prefix"
+	readData      map[string][]byte          // key: "conn:path"
+	readErr       error
+	writeErr      error
+	deleteErr     error
+	writeCalls    []writeCall
+	downloadCalls int
 }
 
 type writeCall struct{ conn, path string; data []byte }
@@ -48,7 +48,8 @@ func (m *mockClient) EnumerateStream(conn, prefix string) (<-chan client.Object,
 	return objCh, errCh
 }
 
-func (m *mockClient) Read(conn, path string) ([]byte, error) {
+func (m *mockClient) Download(conn, path string) ([]byte, error) {
+	m.downloadCalls++
 	if m.readErr != nil {
 		return nil, m.readErr
 	}
@@ -59,7 +60,11 @@ func (m *mockClient) Read(conn, path string) ([]byte, error) {
 	return nil, errors.New("not found")
 }
 
-func (m *mockClient) Write(conn, path string, data []byte) error {
+func (m *mockClient) WriteStream(conn, path string, r io.Reader) error {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
 	m.writeCalls = append(m.writeCalls, writeCall{conn, path, data})
 	return m.writeErr
 }
@@ -557,21 +562,19 @@ func TestReadFile_Seek(t *testing.T) {
 // --- writeFile tests ---
 
 func TestWriteFile_Write_buffersAndUploadsOnClose(t *testing.T) {
-	mc := &mockClient{}
-	wf := &writeFile{
-		client: mc,
-		conn:   "myconn",
-		path:   "out.txt",
-		info:   &fileInfo{name: "out.txt"},
-		buf:    &bytes.Buffer{},
+	mc := &mockClient{conns: []client.Connection{{Name: "myconn", Kind: "aws_s3"}}}
+	fs := NewFromAPIClient(mc)
+	f, err := fs.OpenFile("/myconn/out.txt", os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		t.Fatal(err)
 	}
-	wf.Write([]byte("hello "))
-	wf.WriteString("world")
+	f.Write([]byte("hello "))
+	f.WriteString("world")
 
 	if len(mc.writeCalls) != 0 {
 		t.Error("expected no writes before Close")
 	}
-	if err := wf.Close(); err != nil {
+	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if len(mc.writeCalls) != 1 {
@@ -731,6 +734,31 @@ func TestStreamingDirFile_Readdir_errorSurfaced(t *testing.T) {
 	_, err := d.Readdir(0)
 	if err == nil || err == io.EOF {
 		t.Errorf("expected stream error, got %v", err)
+	}
+}
+
+// --- OpenFile Stat size test ---
+
+func TestOpenFile_statReturnsSizeBeforeDownload(t *testing.T) {
+	size := int64(1234)
+	mc := &mockClient{
+		conns:   []client.Connection{{Name: "myconn", Kind: "aws_s3"}},
+		objects: map[string][]client.Object{"myconn:": {{Path: "big.bin", Size: &size}}},
+	}
+	fs := NewFromAPIClient(mc)
+	f, err := fs.OpenFile("/myconn/big.bin", os.O_RDONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Size() != size {
+		t.Errorf("expected size %d before download, got %d", size, fi.Size())
+	}
+	if mc.downloadCalls > 0 {
+		t.Error("Stat() should not trigger Download()")
 	}
 }
 

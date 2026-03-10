@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/fileproxy/windows-mount/client"
 	fpfs "github.com/fileproxy/windows-mount/proxyfs"
@@ -51,7 +52,7 @@ func Start(ctx context.Context, cfg Config, log io.Writer, onMounted func()) err
 	filesystem := wdfs.New(fpfs.New(c))
 	davHandler := &webdav.Handler{
 		FileSystem: filesystem,
-		LockSystem: webdav.NewMemLS(),
+		LockSystem: newCappedMemLS(30 * time.Second),
 		Logger: func(r *http.Request, err error) {
 			if err != nil {
 				fmt.Fprintf(log, "[webdav] %s %s: %v\n", r.Method, r.URL.Path, err)
@@ -96,11 +97,15 @@ func Start(ctx context.Context, cfg Config, log io.Writer, onMounted func()) err
 		return fmt.Errorf("WebDAV server error: %w", err)
 	}
 
+	// Close the HTTP server first to immediately drop all in-flight connections.
+	// This unblocks net use /delete, which waits for open connections before
+	// releasing the drive mapping. Shutdown with context.Background() would
+	// wait forever for a large file transfer to finish — a deadlock.
+	srv.Close()
 	fmt.Fprintf(log, "Unmounting drive %s: ...\n", cfg.Drive)
 	if err := winmount.Unmount(cfg.Drive); err != nil {
 		fmt.Fprintf(log, "Warning: unmount failed: %v\n", err)
 	}
-	srv.Shutdown(context.Background())
 	fmt.Fprintf(log, "Done.\n")
 	return nil
 }

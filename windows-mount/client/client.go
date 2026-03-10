@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -201,6 +202,69 @@ func (c *FileProxyClient) Write(conn, path string, data []byte) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
+}
+
+// Download fetches object data for the given path in conn using the binary
+// streaming endpoint. No base64 encoding — raw bytes are returned directly.
+func (c *FileProxyClient) Download(conn, path string) ([]byte, error) {
+	q := url.Values{"path": {path}}
+	endpoint := fmt.Sprintf("/api/v1/files/%s/download/?%s", url.PathEscape(conn), q.Encode())
+	req, err := c.newRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading download response: %w", err)
+	}
+	return data, nil
+}
+
+// WriteStream uploads data to the given path in conn using multipart/form-data.
+// r is streamed directly into the request body via io.Pipe — no full buffering.
+func (c *FileProxyClient) WriteStream(conn, path string, r io.Reader) error {
+	endpoint := fmt.Sprintf("/api/v1/files/%s/write/", url.PathEscape(conn))
+	filename := path
+	if idx := strings.LastIndex(path, "/"); idx >= 0 {
+		filename = path[idx+1:]
+	}
+
+	pr, pw := io.Pipe()
+	mw := multipart.NewWriter(pw)
+	go func() {
+		var werr error
+		defer func() { pw.CloseWithError(werr) }()
+		if werr = mw.WriteField("path", path); werr != nil {
+			return
+		}
+		part, err := mw.CreateFormFile("file", filename)
+		if err != nil {
+			werr = err
+			return
+		}
+		if _, werr = io.Copy(part, r); werr != nil {
+			return
+		}
+		werr = mw.Close()
+	}()
+
+	req, err := c.newRequest("POST", endpoint, pr)
+	if err != nil {
+		pr.CloseWithError(err)
+		return err
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
 	resp, err := c.do(req)
 	if err != nil {
 		return err

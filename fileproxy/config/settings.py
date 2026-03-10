@@ -146,6 +146,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Allow large file uploads via multipart write endpoint.
+# Override with DATA_UPLOAD_MAX_MEMORY_SIZE env var (bytes). Default: 500 MB.
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(env("DATA_UPLOAD_MAX_MEMORY_SIZE", str(500 * 1024 * 1024)))
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2 MB — spill file data to disk early
+
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
