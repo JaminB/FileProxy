@@ -1,43 +1,78 @@
 #!/bin/bash
 set -euo pipefail
 
-# Skip Docker install if already present (warm pool restart fast path)
+# Install Docker + jq if not present (runs once on first boot; skipped on warm pool restarts)
 if ! command -v docker &>/dev/null; then
-  dnf install -y docker aws-cli jq
+  dnf install -y docker jq
   systemctl enable docker
 fi
-systemctl start docker
+
+# Write the application startup script (always overwritten so deploys update it)
+cat > /usr/local/bin/fileproxy-start.sh << 'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+ECR_URL="${ecr_url}"
+AWS_REGION="${aws_region}"
+ALB_DNS="${alb_dns}"
 
 # ECR login
-aws ecr get-login-password --region ${aws_region} \
-  | docker login --username AWS --password-stdin ${ecr_url}
+aws ecr get-login-password --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin "$ECR_URL"
 
-# Fetch all SSM parameters under /fileproxy/prod/ and write to /etc/fileproxy.env
+# Fetch all SSM parameters and write env file
 mkdir -p /etc
 aws ssm get-parameters-by-path \
   --path "/fileproxy/prod/" \
   --with-decryption \
-  --region ${aws_region} \
+  --region "$AWS_REGION" \
   --query "Parameters[*].[Name,Value]" \
   --output json \
   | jq -r '.[] | (.[0] | split("/") | last | ascii_upcase) + "=" + .[1]' \
   > /etc/fileproxy.env
 
 # Append runtime values
-ALB_DNS="${alb_dns}"
 PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP,fileproxy.io,www.fileproxy.io" >> /etc/fileproxy.env
 echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.fileproxy.io" >> /etc/fileproxy.env
 
-# Remove previous container (idempotent across warm pool restarts)
+# Stop and remove previous container
 docker stop fileproxy 2>/dev/null || true
-docker rm fileproxy 2>/dev/null || true
+docker rm   fileproxy 2>/dev/null || true
 
-# Pull latest image and run
-docker pull ${ecr_url}:latest
+# Pull latest image (only changed layers downloaded on warm pool restarts)
+docker pull "$ECR_URL:latest"
+
 docker run -d \
   --name fileproxy \
   --restart unless-stopped \
   -p 8000:8000 \
   --env-file /etc/fileproxy.env \
-  ${ecr_url}:latest
+  "$ECR_URL:latest"
+SCRIPT
+
+chmod +x /usr/local/bin/fileproxy-start.sh
+
+# Install systemd service so it runs on every boot (including warm pool restarts)
+cat > /etc/systemd/system/fileproxy.service << 'SERVICE'
+[Unit]
+Description=FileProxy Application
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/fileproxy-start.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+systemctl daemon-reload
+systemctl enable fileproxy.service
+systemctl start docker
+systemctl start fileproxy.service
