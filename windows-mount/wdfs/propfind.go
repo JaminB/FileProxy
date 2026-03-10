@@ -129,7 +129,7 @@ func writeDAVResponse(w http.ResponseWriter, name string, fi os.FileInfo) {
 	} else {
 		fmt.Fprintf(w, "      <D:resourcetype/>\n")
 		fmt.Fprintf(w, "      <D:getcontentlength>%d</D:getcontentlength>\n", fi.Size()) // #nosec G705 -- integer format verb, no injection possible
-		fmt.Fprintf(w, "      <D:getcontenttype>%s</D:getcontenttype>\n", xmlEscape(contentType(fi.Name())))
+		fmt.Fprintf(w, "      <D:getcontenttype>%s</D:getcontenttype>\n", xmlEscape(contentType(fi.Name()))) // #nosec G705 -- value is XML-escaped
 	}
 
 	fmt.Fprintf(w, "      <D:displayname>%s</D:displayname>\n", xmlEscape(fi.Name())) // #nosec G705 -- value is XML-escaped
