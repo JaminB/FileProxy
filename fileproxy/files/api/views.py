@@ -87,6 +87,9 @@ class FilesViewSet(viewsets.ViewSet):
                 total_bytes += len(chunk)
                 yield chunk
             ok = True
+        except GeneratorExit:
+            ok = True  # Client disconnected; count bytes already sent
+            raise
         finally:
             self._record_event(
                 request,
@@ -173,8 +176,15 @@ class FilesViewSet(viewsets.ViewSet):
             path = q.validated_data["path"]
 
             chunks = backend.read_stream(path)
+
+            def _limited_chunks():
+                for chunk in chunks:
+                    if chunk:
+                        check_limit(request.user, "read", bytes_count=len(chunk))
+                    yield chunk
+
             return StreamingHttpResponse(
-                self._tracked_stream(request, connection_name, chunks, path),
+                self._tracked_stream(request, connection_name, _limited_chunks(), path),
                 content_type="application/octet-stream",
             )
         except Exception as e:  # noqa: BLE001
@@ -213,8 +223,13 @@ class FilesViewSet(viewsets.ViewSet):
                 if not path:
                     raise ValidationError({"path": "This query parameter is required."})
 
+                raw_content_length = request.META.get("CONTENT_LENGTH")
+                if raw_content_length is None:
+                    return Response(
+                        {"detail": "Content-Length header is required."}, status=411
+                    )
                 try:
-                    content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+                    content_length = int(raw_content_length)
                 except (ValueError, TypeError):
                     content_length = 0
 
@@ -223,6 +238,11 @@ class FilesViewSet(viewsets.ViewSet):
                 counting_stream = _ByteCountingStream(request.stream)
                 backend.write_stream(path, counting_stream)
                 bytes_written = counting_stream.bytes_read
+
+                # Post-write check on actual bytes (catches inaccurate Content-Length)
+                if bytes_written != content_length:
+                    check_limit(request.user, "write", bytes_count=bytes_written)
+
                 ok = True
                 return Response({"detail": "OK", "path": path})
 
@@ -285,8 +305,15 @@ class FilesViewSet(viewsets.ViewSet):
             encoded_filename = urllib.parse.quote(filename, safe="")
 
             chunks = backend.read_stream(path)
+
+            def _limited_chunks():
+                for chunk in chunks:
+                    if chunk:
+                        check_limit(request.user, "read", bytes_count=len(chunk))
+                    yield chunk
+
             resp = StreamingHttpResponse(
-                self._tracked_stream(request, connection_name, chunks, path),
+                self._tracked_stream(request, connection_name, _limited_chunks(), path),
                 content_type="application/octet-stream",
             )
             resp["Content-Disposition"] = (
