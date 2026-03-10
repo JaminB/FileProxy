@@ -214,9 +214,9 @@ class FilesApiS3Tests(APITestCase):
 
         # read
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
-        self.assertEqual(resp.status_code, 200, resp.text)
-        self.assertEqual(resp.data["path"], path)
-        self.assertEqual(base64.b64decode(resp.data["data_base64"]), payload)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
+        self.assertEqual(b"".join(resp.streaming_content), payload)
 
         # objects (no prefix)
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
@@ -388,15 +388,15 @@ class FilesObjectsTests(_BaseFilesTest):
 
 
 class FilesReadTests(_BaseFilesTest):
-    def test_read_returns_base64_data(self):
+    def test_read_returns_binary_stream(self):
         payload = b"read me back"
         path = "read/test.bin"
         self._write(path, payload)
 
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
-        self.assertEqual(resp.status_code, 200, resp.text)
-        self.assertEqual(resp.data["path"], path)
-        self.assertEqual(base64.b64decode(resp.data["data_base64"]), payload)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
+        self.assertEqual(b"".join(resp.streaming_content), payload)
 
     def test_read_missing_path_param_returns_400(self):
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/")
@@ -519,6 +519,23 @@ class FilesWriteOctetStreamTests(_BaseFilesTest):
             content_type="application/octet-stream",
         )
         self.assertEqual(resp.status_code, 400)
+
+    def test_octet_stream_write_then_streaming_read_roundtrip(self):
+        path = "stream/roundtrip.bin"
+        data = bytes(range(256)) * 16  # 4 KB of binary data
+
+        resp = self.client.post(
+            f"/api/v1/files/{self.vault_item_name}/write/?path={path}",
+            data=data,
+            content_type="application/octet-stream",
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertEqual(resp.data["path"], path)
+
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
+        self.assertEqual(b"".join(resp.streaming_content), data)
 
 
 class FilesDeleteTests(_BaseFilesTest):
@@ -675,4 +692,5 @@ class FilesWriteStreamTests(_BaseFilesTest):
         # Confirm it lands correctly via the read endpoint
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(base64.b64decode(resp.data["data_base64"]), data)
+        self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
+        self.assertEqual(b"".join(resp.streaming_content), data)

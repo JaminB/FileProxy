@@ -14,17 +14,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from .env import env, env_bool, env_bytes_b64url
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+from .env import env, env_bool, env_bytes_b64url  # noqa: E402
 
 DEBUG = env("DEBUG", "false").lower() == "true"
 
 SUBSCRIPTIONS_ENABLED: bool = env_bool("FILEPROXY_SUBSCRIPTIONS_ENABLED", default=False)
 REGISTRATION_ENABLED: bool = env_bool("FILEPROXY_REGISTRATION_ENABLED", default=True)
-
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
 
 VAULT_MASTER_KEY = env_bytes_b64url(
     "FILEPROXY_VAULT_MASTER_KEY",

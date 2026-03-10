@@ -30,7 +30,7 @@ from ..serializers import (
     WriteFileSerializer,
 )
 from ..services import ConnectionNotFound, connections_for_user, get_backend_for_connection
-from .parsers import OctetStreamParser
+from .parsers import OctetStreamParser, _ByteCountingStream
 
 
 class FilesViewSet(viewsets.ViewSet):
@@ -163,9 +163,7 @@ class FilesViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["get"], url_path="read")
     def read(self, request, connection_name: str = ""):
-        ok = False
         path = ""
-        bytes_read = 0
         try:
             check_limit(request.user, "read")
             backend = self._backend(request, connection_name)
@@ -174,22 +172,14 @@ class FilesViewSet(viewsets.ViewSet):
             q.is_valid(raise_exception=True)
             path = q.validated_data["path"]
 
-            data = backend.read(path)
-            bytes_read = len(data)
-            check_limit(request.user, "read", bytes_count=bytes_read)
-            ok = True
-            return Response({"path": path, "data_base64": base64.b64encode(data).decode("ascii")})
-        except Exception as e:  # noqa: BLE001
-            return self._error(e)
-        finally:
-            self._record_event(
-                request,
-                connection_name,
-                "read",
-                object_path=path,
-                ok=ok,
-                bytes_transferred=bytes_read,
+            chunks = backend.read_stream(path)
+            return StreamingHttpResponse(
+                self._tracked_stream(request, connection_name, chunks, path),
+                content_type="application/octet-stream",
             )
+        except Exception as e:  # noqa: BLE001
+            self._record_event(request, connection_name, "read", object_path=path, ok=False)
+            return self._error(e)
 
     @action(
         detail=True,
@@ -222,7 +212,19 @@ class FilesViewSet(viewsets.ViewSet):
                 path = (request.query_params.get("path") or "").strip()
                 if not path:
                     raise ValidationError({"path": "This query parameter is required."})
-                raw = request.data  # bytes from OctetStreamParser
+
+                try:
+                    content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+                except (ValueError, TypeError):
+                    content_length = 0
+
+                check_limit(request.user, "write", bytes_count=content_length)
+
+                counting_stream = _ByteCountingStream(request.stream)
+                backend.write_stream(path, counting_stream)
+                bytes_written = counting_stream.bytes_read
+                ok = True
+                return Response({"detail": "OK", "path": path})
 
             else:  # application/json (default)
                 s = WriteFileSerializer(data=request.data)
