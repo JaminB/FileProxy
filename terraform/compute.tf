@@ -58,7 +58,8 @@ resource "aws_autoscaling_group" "app" {
   name                = "${var.project}-${var.env}-asg"
   vpc_zone_identifier = aws_subnet.public[*].id
   target_group_arns   = [aws_lb_target_group.app.arn]
-  health_check_type   = "ELB"
+  health_check_type         = "ELB"
+  health_check_grace_period = 600
 
   min_size         = var.asg_min_size
   max_size         = var.asg_max_size
@@ -73,6 +74,7 @@ resource "aws_autoscaling_group" "app" {
     strategy = "Rolling"
     preferences {
       min_healthy_percentage = 100
+      instance_warmup        = 600
     }
   }
 

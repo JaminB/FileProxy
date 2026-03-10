@@ -3,8 +3,7 @@ set -euo pipefail
 
 # Skip Docker install if already present (warm pool restart fast path)
 if ! command -v docker &>/dev/null; then
-  yum update -y
-  yum install -y docker aws-cli jq
+  dnf install -y docker aws-cli jq
   systemctl enable docker
 fi
 systemctl start docker
