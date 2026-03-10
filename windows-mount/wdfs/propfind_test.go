@@ -199,9 +199,9 @@ func (m *mockAPIClient) EnumerateStream(conn, prefix string) (<-chan client.Obje
 	return objCh, errCh
 }
 
-func (m *mockAPIClient) Read(conn, path string) ([]byte, error)          { return nil, nil }
-func (m *mockAPIClient) Write(conn, path string, data []byte) error       { return nil }
-func (m *mockAPIClient) Delete(conn, path string) error                   { return nil }
+func (m *mockAPIClient) Download(conn, path string) ([]byte, error)            { return nil, nil }
+func (m *mockAPIClient) WriteStream(conn, path string, data []byte) error      { return nil }
+func (m *mockAPIClient) Delete(conn, path string) error                        { return nil }
 
 func newTestHandler(api *mockAPIClient) *PropfindHandler {
 	proxyFS := fpfs.NewFromAPIClient(api)

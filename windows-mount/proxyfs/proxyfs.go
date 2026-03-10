@@ -20,8 +20,8 @@ type APIClient interface {
 	ListConnections() ([]client.Connection, error)
 	Enumerate(conn, prefix string) ([]client.Object, error)
 	EnumerateStream(conn, prefix string) (<-chan client.Object, <-chan error)
-	Read(conn, path string) ([]byte, error)
-	Write(conn, path string, data []byte) error
+	Download(conn, path string) ([]byte, error)
+	WriteStream(conn, path string, data []byte) error
 	Delete(conn, path string) error
 }
 
@@ -226,11 +226,15 @@ func (f *FileProxyFS) OpenFile(name string, flag int, perm os.FileMode) (afero.F
 		if strings.Contains(rel, "/") {
 			return f.openDirStream(conn, path+"/")
 		}
+		size := int64(0)
+		if o.Size != nil {
+			size = *o.Size
+		}
 		return &readFile{
 			client: f.client,
 			conn:   conn,
 			path:   path,
-			info:   &fileInfo{name: entryName},
+			info:   &fileInfo{name: entryName, size: size},
 		}, nil
 	}
 	return nil, os.ErrNotExist
@@ -270,11 +274,11 @@ func (f *FileProxyFS) Rename(oldname, newname string) error {
 	if oldConn == "" || oldPath == "" || newConn == "" || newPath == "" {
 		return os.ErrPermission
 	}
-	data, err := f.client.Read(oldConn, oldPath)
+	data, err := f.client.Download(oldConn, oldPath)
 	if err != nil {
 		return err
 	}
-	if err := f.client.Write(newConn, newPath, data); err != nil {
+	if err := f.client.WriteStream(newConn, newPath, data); err != nil {
 		return err
 	}
 	return f.client.Delete(oldConn, oldPath)
@@ -288,7 +292,7 @@ func (f *FileProxyFS) Mkdir(name string, perm os.FileMode) error {
 	if path == "" {
 		return os.ErrExist
 	}
-	return f.client.Write(conn, strings.TrimRight(path, "/")+"/.keep", []byte{})
+	return f.client.WriteStream(conn, strings.TrimRight(path, "/")+"/.keep", []byte{})
 }
 
 func (f *FileProxyFS) MkdirAll(path string, perm os.FileMode) error {
@@ -382,7 +386,7 @@ type readFile struct {
 
 func (h *readFile) load() {
 	h.once.Do(func() {
-		h.data, h.err = h.client.Read(h.conn, h.path)
+		h.data, h.err = h.client.Download(h.conn, h.path)
 		if h.err == nil {
 			h.info.size = int64(len(h.data))
 			h.reader = bytes.NewReader(h.data)
@@ -449,7 +453,7 @@ func (w *writeFile) Write(p []byte) (int, error)               { return w.buf.Wr
 func (w *writeFile) WriteAt(p []byte, off int64) (int, error)  { return w.buf.Write(p) }
 
 func (w *writeFile) Close() error {
-	return w.client.Write(w.conn, w.path, w.buf.Bytes())
+	return w.client.WriteStream(w.conn, w.path, w.buf.Bytes())
 }
 
 // --- streamingDirFile ---

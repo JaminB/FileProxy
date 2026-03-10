@@ -48,7 +48,7 @@ func (m *mockClient) EnumerateStream(conn, prefix string) (<-chan client.Object,
 	return objCh, errCh
 }
 
-func (m *mockClient) Read(conn, path string) ([]byte, error) {
+func (m *mockClient) Download(conn, path string) ([]byte, error) {
 	if m.readErr != nil {
 		return nil, m.readErr
 	}
@@ -59,7 +59,7 @@ func (m *mockClient) Read(conn, path string) ([]byte, error) {
 	return nil, errors.New("not found")
 }
 
-func (m *mockClient) Write(conn, path string, data []byte) error {
+func (m *mockClient) WriteStream(conn, path string, data []byte) error {
 	m.writeCalls = append(m.writeCalls, writeCall{conn, path, data})
 	return m.writeErr
 }

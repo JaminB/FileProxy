@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -201,6 +202,63 @@ func (c *FileProxyClient) Write(conn, path string, data []byte) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
+}
+
+// Download fetches object data for the given path in conn using the binary
+// streaming endpoint. No base64 encoding — raw bytes are returned directly.
+func (c *FileProxyClient) Download(conn, path string) ([]byte, error) {
+	q := url.Values{"path": {path}}
+	endpoint := fmt.Sprintf("/api/v1/files/%s/download/?%s", url.PathEscape(conn), q.Encode())
+	req, err := c.newRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading download response: %w", err)
+	}
+	return data, nil
+}
+
+// WriteStream uploads data to the given path in conn using multipart/form-data.
+// This avoids base64 encoding and Django's DATA_UPLOAD_MAX_MEMORY_SIZE JSON limit.
+func (c *FileProxyClient) WriteStream(conn, path string, data []byte) error {
+	endpoint := fmt.Sprintf("/api/v1/files/%s/write/", url.PathEscape(conn))
+
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	if err := w.WriteField("path", path); err != nil {
+		return err
+	}
+	filename := path
+	if idx := strings.LastIndex(path, "/"); idx >= 0 {
+		filename = path[idx+1:]
+	}
+	part, err := w.CreateFormFile("file", filename)
+	if err != nil {
+		return err
+	}
+	if _, err := part.Write(data); err != nil {
+		return err
+	}
+	w.Close()
+
+	req, err := c.newRequest("POST", endpoint, &buf)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
 	resp, err := c.do(req)
 	if err != nil {
 		return err
