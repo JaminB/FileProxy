@@ -25,7 +25,7 @@ resource "aws_rds_cluster" "main" {
   storage_encrypted       = true
 
   serverlessv2_scaling_configuration {
-    min_capacity = 0.5
+    min_capacity = 1
     max_capacity = 16
   }
 

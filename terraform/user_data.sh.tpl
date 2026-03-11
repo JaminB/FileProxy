@@ -49,6 +49,26 @@ docker run -d \
   -p 8000:8000 \
   --env-file /etc/fileproxy.env \
   "$ECR_URL:latest"
+
+# Wait until the app is serving before declaring success.
+# This gates systemd (Type=oneshot) so the ASG only counts the instance
+# ready once /health/ actually returns 200 — eliminating 502s during deploys.
+echo "Waiting for fileproxy to become ready..."
+READY=0
+for i in $(seq 1 36); do
+  if curl -sf http://localhost:8000/health/ > /dev/null 2>&1; then
+    echo "fileproxy is ready after $((i * 5))s"
+    READY=1
+    break
+  fi
+  sleep 5
+done
+
+if [ "$READY" -eq 0 ]; then
+  echo "ERROR: fileproxy did not become ready within 180s" >&2
+  docker logs fileproxy >&2
+  exit 1
+fi
 SCRIPT
 
 chmod +x /usr/local/bin/fileproxy-start.sh
