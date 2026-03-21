@@ -65,11 +65,11 @@ def upload_to_backend(self, upload_id: str) -> None:
             return
         # Stale or missing claim — re-claim atomically via CAS so only one worker proceeds.
         logger.info("upload_to_backend: re-claiming stale record %s", upload_id)
-        updated = PendingUpload.objects.filter(
-            id=upload_id, status=PendingUpload.Status.UPLOADING
-        ).filter(
-            Q(claimed_at__isnull=True) | Q(claimed_at__lt=_stale_cutoff)
-        ).update(claimed_at=timezone.now())
+        updated = (
+            PendingUpload.objects.filter(id=upload_id, status=PendingUpload.Status.UPLOADING)
+            .filter(Q(claimed_at__isnull=True) | Q(claimed_at__lt=_stale_cutoff))
+            .update(claimed_at=timezone.now())
+        )
         if not updated:
             # Another worker won the re-claim race.
             logger.info(
