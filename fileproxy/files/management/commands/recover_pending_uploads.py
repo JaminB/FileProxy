@@ -26,9 +26,9 @@ class Command(BaseCommand):
         # stale timeout — these belong to workers that have died. Records with a
         # fresh claimed_at are left alone (another instance is actively uploading).
         stale_cutoff = timezone.now() - self._stale_timeout
-        stale_qs = PendingUpload.objects.filter(
-            status=PendingUpload.Status.UPLOADING
-        ).filter(Q(claimed_at__isnull=True) | Q(claimed_at__lt=stale_cutoff))
+        stale_qs = PendingUpload.objects.filter(status=PendingUpload.Status.UPLOADING).filter(
+            Q(claimed_at__isnull=True) | Q(claimed_at__lt=stale_cutoff)
+        )
         reset_count = stale_qs.update(status=PendingUpload.Status.PENDING)
         if reset_count:
             self.stdout.write(f"Reset {reset_count} stale UPLOADING record(s) to PENDING.")

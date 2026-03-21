@@ -64,9 +64,9 @@ def upload_to_backend(self, upload_id: str) -> None:
             return
         # Stale or missing claim — re-claim and proceed.
         logger.info("upload_to_backend: re-claiming stale record %s", upload_id)
-        PendingUpload.objects.filter(
-            id=upload_id, status=PendingUpload.Status.UPLOADING
-        ).update(claimed_at=timezone.now())
+        PendingUpload.objects.filter(id=upload_id, status=PendingUpload.Status.UPLOADING).update(
+            claimed_at=timezone.now()
+        )
     # Else: UPLOADING and retries > 0 → we own it from a previous backend-failure retry.
 
     temp_path = Path(pending.temp_file_path)
