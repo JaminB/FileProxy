@@ -97,10 +97,6 @@ def upload_to_backend(self, upload_id: str) -> None:
         id=pending.id, status=PendingUpload.Status.UPLOADING
     ).update(status=PendingUpload.Status.DONE, completed_at=timezone.now())
     if updated:
-        logger.info(
-            "upload_to_backend: completed %s (%s bytes)", upload_id, pending.expected_size
-        )
+        logger.info("upload_to_backend: completed %s (%s bytes)", upload_id, pending.expected_size)
     else:
-        logger.info(
-            "upload_to_backend: skipped final DONE save for %s (status changed)", upload_id
-        )
+        logger.info("upload_to_backend: skipped final DONE save for %s (status changed)", upload_id)
