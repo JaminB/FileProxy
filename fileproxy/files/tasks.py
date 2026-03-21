@@ -38,9 +38,7 @@ def upload_to_backend(self, upload_id: str) -> None:
             return
     elif self.request.retries == 0:
         # UPLOADING but this is not a retry → another task owns this record.
-        logger.info(
-            "upload_to_backend: %s already claimed by another worker, skipping", upload_id
-        )
+        logger.info("upload_to_backend: %s already claimed by another worker, skipping", upload_id)
         return
     # Else: UPLOADING and self.request.retries > 0 → we own it from a previous attempt.
 

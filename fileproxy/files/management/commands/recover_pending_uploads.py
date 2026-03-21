@@ -24,8 +24,6 @@ class Command(BaseCommand):
 
         for record in records:
             upload_to_backend.delay(str(record.id))
-            self.stdout.write(
-                f"Re-dispatched {record.id} ({record.connection_name}/{record.path})"
-            )
+            self.stdout.write(f"Re-dispatched {record.id} ({record.connection_name}/{record.path})")
 
         self.stdout.write(self.style.SUCCESS(f"Recovered {len(records)} pending upload(s)."))
