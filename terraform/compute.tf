@@ -40,6 +40,7 @@ resource "aws_launch_template" "app" {
     aws_region = var.aws_region
     ecr_url    = aws_ecr_repository.app.repository_url
     alb_dns    = aws_lb.main.dns_name
+    efs_dns    = aws_efs_file_system.write_cache.dns_name
   }))
 
   tag_specifications {

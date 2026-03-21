@@ -74,18 +74,6 @@ resource "aws_ssm_parameter" "dropbox_app_secret" {
   tags = { Name = "dropbox_app_secret" }
 }
 
-resource "aws_ssm_parameter" "celery_broker_url" {
-  name  = "/fileproxy/prod/celery_broker_url"
-  type  = "SecureString"
-  value = "REPLACE_ME"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
-
-  tags = { Name = "celery_broker_url" }
-}
-
 resource "aws_ssm_parameter" "static_url" {
   name  = "/fileproxy/prod/static_url"
   type  = "String"

@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# Install Docker + jq if not present (runs once on first boot; skipped on warm pool restarts)
+# Install Docker, jq, and amazon-efs-utils if not present (runs once on first boot)
 if ! command -v docker &>/dev/null; then
-  dnf install -y docker jq
+  dnf install -y docker jq amazon-efs-utils
   systemctl enable docker
 fi
 
@@ -15,6 +15,7 @@ set -euo pipefail
 ECR_URL="${ecr_url}"
 AWS_REGION="${aws_region}"
 ALB_DNS="${alb_dns}"
+EFS_DNS="${efs_dns}"
 
 # ECR login
 aws ecr get-login-password --region "$AWS_REGION" \
@@ -36,40 +37,38 @@ PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP,fileproxy.io,www.fileproxy.io" >> /etc/fileproxy.env
 echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.fileproxy.io" >> /etc/fileproxy.env
 
+# Mount shared EFS write-cache volume (idempotent across warm pool restarts).
+mkdir -p /mnt/fileproxy
+if ! mountpoint -q /mnt/fileproxy; then
+  mount -t efs -o tls "$EFS_DNS":/ /mnt/fileproxy
+fi
+# Persist across reboots (grep prevents duplicate fstab entries).
+if ! grep -q "$EFS_DNS" /etc/fstab; then
+  echo "$EFS_DNS:/ /mnt/fileproxy efs _netdev,tls 0 0" >> /etc/fstab
+fi
+
 # Stop and remove previous containers
-docker stop fileproxy-worker fileproxy redis 2>/dev/null || true
-docker rm   fileproxy-worker fileproxy redis 2>/dev/null || true
-
-# Recreate the internal network so containers can reach each other by name.
-docker network rm fileproxy-net 2>/dev/null || true
-docker network create fileproxy-net
-
-# Start Redis on the internal network only (not published to the host).
-docker run -d \
-  --name redis \
-  --network fileproxy-net \
-  --restart unless-stopped \
-  redis:7-alpine
+docker stop fileproxy-worker fileproxy 2>/dev/null || true
+docker rm   fileproxy-worker fileproxy 2>/dev/null || true
 
 # Pull latest app image (only changed layers downloaded on warm pool restarts)
 docker pull "$ECR_URL:latest"
 
-# App container: mount write-cache dir so the worker can read temp files.
+# App container: mount shared EFS write-cache dir.
 docker run -d \
   --name fileproxy \
-  --network fileproxy-net \
   --restart unless-stopped \
   -p 8000:8000 \
-  -v /tmp/fileproxy:/tmp/fileproxy \
+  -v /mnt/fileproxy:/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
   "$ECR_URL:latest"
 
-# Celery worker: same image, same network and volume.
+# Celery worker: same image, same shared volume.
+# CELERY_BROKER_URL (fetched from SSM) points to ElastiCache — not localhost.
 docker run -d \
   --name fileproxy-worker \
-  --network fileproxy-net \
   --restart unless-stopped \
-  -v /tmp/fileproxy:/tmp/fileproxy \
+  -v /mnt/fileproxy:/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
   "$ECR_URL:latest" \
   celery -A config worker -l info
