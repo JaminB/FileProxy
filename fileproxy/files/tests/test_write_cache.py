@@ -338,6 +338,31 @@ class UploadToBackendTaskTests(APITestCase):
         stored = self._fake_s3._buckets[self.bucket].get("task/upload.txt")
         self.assertEqual(stored, data)
 
+    def test_task_done_does_not_overwrite_cancellation(self):
+        """If the upload is cancelled mid-flight, the task's DONE save is skipped."""
+        data = b"cancelled payload"
+        pending = self._create_pending(data=data, path="task/cancelled.txt")
+        temp_path = pending.temp_file_path
+
+        # Simulate cancellation happening between write_stream and the DONE update.
+        def _cancel_mid_flight(path, stream):
+            PendingUpload.objects.filter(id=pending.id).update(
+                status=PendingUpload.Status.CANCELLED
+            )
+
+        with patch("files.tasks.get_backend_for_connection") as mock_backend_fn:
+            mock_backend = MagicMock()
+            mock_backend.write_stream.side_effect = _cancel_mid_flight
+            mock_backend_fn.return_value = mock_backend
+            upload_to_backend.apply(args=(str(pending.id),))
+
+        pending.refresh_from_db()
+        # Status must still be CANCELLED, not DONE.
+        self.assertEqual(pending.status, PendingUpload.Status.CANCELLED)
+        # Cleanup temp file (task deletes it before the conditional update).
+        if Path(temp_path).exists():
+            os.unlink(temp_path)
+
     def test_task_skips_already_cancelled(self):
         pending = self._create_pending()
         pending.status = PendingUpload.Status.CANCELLED
@@ -373,6 +398,19 @@ class UploadToBackendTaskTests(APITestCase):
         """Task should log and return gracefully for unknown IDs."""
         result = upload_to_backend.apply(args=(str(uuid.uuid4()),))
         self.assertIsNone(result.result)
+
+    def test_task_fails_immediately_on_missing_user(self):
+        """User.DoesNotExist is a permanent error — task marks FAILED without retrying."""
+        pending = self._create_pending(path="task/no_user.txt")
+        # Use a user_id that doesn't exist.
+        PendingUpload.objects.filter(id=pending.id).update(user_id=999999)
+
+        with patch("files.tasks.get_backend_for_connection") as mock_fn:
+            upload_to_backend.apply(args=(str(pending.id),))
+            mock_fn.assert_not_called()
+
+        pending.refresh_from_db()
+        self.assertEqual(pending.status, PendingUpload.Status.FAILED)
 
     def test_task_marks_failed_after_max_retries(self):
         """When max retries are exhausted via apply(), status is set to FAILED."""
@@ -425,9 +463,10 @@ class RecoverPendingUploadsTests(TestCase):
         )
 
     def test_no_pending_records_produces_no_dispatches(self):
-        with patch("files.tasks.upload_to_backend.delay") as mock_delay:
+        _patch = "files.management.commands.recover_pending_uploads.upload_to_backend"
+        with patch(_patch) as mock_task:
             call_command("recover_pending_uploads", verbosity=0)
-        mock_delay.assert_not_called()
+        mock_task.delay.assert_not_called()
 
     @patch("files.management.commands.recover_pending_uploads.upload_to_backend")
     def test_pending_records_are_dispatched(self, mock_task):

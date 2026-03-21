@@ -83,16 +83,22 @@ def enqueue_upload(
     else:
         temp_path = _write_stream_to_temp(stream, upload_id)
 
-    backend.write(path, b"")
-
-    pending = PendingUpload.objects.create(
-        id=upload_id,
-        user_id=user_id,
-        connection_name=connection_name,
-        path=path,
-        temp_file_path=str(temp_path),
-        expected_size=size,
-    )
+    try:
+        backend.write(path, b"")
+        pending = PendingUpload.objects.create(
+            id=upload_id,
+            user_id=user_id,
+            connection_name=connection_name,
+            path=path,
+            temp_file_path=str(temp_path),
+            expected_size=size,
+        )
+    except Exception:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not delete temp file after enqueue failure: %s", temp_path)
+        raise
 
     result = upload_to_backend.delay(str(upload_id))
     pending.celery_task_id = result.id

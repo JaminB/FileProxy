@@ -222,7 +222,7 @@ class FilesViewSet(viewsets.ViewSet):
                         user=request.user,
                         connection_name=connection_name,
                         path=path,
-                        data=file_obj.read(),
+                        stream=file_obj,
                         size=bytes_written,
                         backend=backend,
                     )

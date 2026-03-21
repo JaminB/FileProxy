@@ -46,7 +46,6 @@ CELERY_RESULT_BACKEND = None  # State is tracked in PendingUpload model
 # Write cache — buffer large uploads to local disk before sending to backend
 WRITE_CACHE_DIR = env("WRITE_CACHE_DIR", default="/tmp/fileproxy/write_cache")
 WRITE_CACHE_THRESHOLD_BYTES = int(env("WRITE_CACHE_THRESHOLD_BYTES", default="1048576"))
-WRITE_CACHE_MAX_RETRIES = int(env("WRITE_CACHE_MAX_RETRIES", default="3"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

@@ -40,29 +40,37 @@ echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.file
 docker stop fileproxy-worker fileproxy redis 2>/dev/null || true
 docker rm   fileproxy-worker fileproxy redis 2>/dev/null || true
 
-# Start Redis
+# Recreate the internal network so containers can reach each other by name.
+docker network rm fileproxy-net 2>/dev/null || true
+docker network create fileproxy-net
+
+# Start Redis on the internal network only (not published to the host).
 docker run -d \
   --name redis \
+  --network fileproxy-net \
   --restart unless-stopped \
-  -p 6379:6379 \
   redis:7-alpine
 
 # Pull latest app image (only changed layers downloaded on warm pool restarts)
 docker pull "$ECR_URL:latest"
 
+# App container: mount write-cache dir so the worker can read temp files.
 docker run -d \
   --name fileproxy \
+  --network fileproxy-net \
   --restart unless-stopped \
   -p 8000:8000 \
+  -v /tmp/fileproxy:/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
   "$ECR_URL:latest"
 
-# Start Celery worker
+# Celery worker: same image, same network and volume.
 docker run -d \
   --name fileproxy-worker \
+  --network fileproxy-net \
   --restart unless-stopped \
-  --env-file /etc/fileproxy.env \
   -v /tmp/fileproxy:/tmp/fileproxy \
+  --env-file /etc/fileproxy.env \
   "$ECR_URL:latest" \
   celery -A config worker -l info
 
