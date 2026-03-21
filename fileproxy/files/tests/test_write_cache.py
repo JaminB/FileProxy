@@ -482,15 +482,16 @@ class RecoverPendingUploadsTests(TestCase):
         self.assertIn(str(p2.id), dispatched_ids)
 
     @patch("files.management.commands.recover_pending_uploads.upload_to_backend")
-    def test_uploading_records_reset_to_pending_then_dispatched(self, mock_task):
-        mock_task.delay.return_value = MagicMock(id="fake-id")
+    def test_uploading_records_are_not_touched(self, mock_task):
+        # UPLOADING records are left alone — another worker on a different instance
+        # may still be actively uploading; resetting would cause duplicate uploads.
         p = self._create_pending(status=PendingUpload.Status.UPLOADING)
 
         call_command("recover_pending_uploads", verbosity=0)
 
         p.refresh_from_db()
-        self.assertEqual(p.status, PendingUpload.Status.PENDING)
-        mock_task.delay.assert_called_once_with(str(p.id))
+        self.assertEqual(p.status, PendingUpload.Status.UPLOADING)
+        mock_task.delay.assert_not_called()
 
     @patch("files.management.commands.recover_pending_uploads.upload_to_backend")
     def test_done_and_failed_records_are_not_dispatched(self, mock_task):

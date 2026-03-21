@@ -14,14 +14,10 @@ class Command(BaseCommand):
     help = "Re-dispatch any pending or uploading PendingUpload records to Celery."
 
     def handle(self, *args, **options) -> None:
-        stuck_qs = PendingUpload.objects.filter(
-            status__in=(PendingUpload.Status.PENDING, PendingUpload.Status.UPLOADING)
-        )
-        # Reset any mid-flight records to PENDING so the task's CAS can reclaim them.
-        stuck_qs.filter(status=PendingUpload.Status.UPLOADING).update(
-            status=PendingUpload.Status.PENDING
-        )
-        records = list(stuck_qs)
+        # Only re-dispatch PENDING records. UPLOADING records are left alone because
+        # in a multi-instance deployment another worker may still be actively uploading;
+        # resetting them to PENDING would cause duplicate uploads.
+        records = list(PendingUpload.objects.filter(status=PendingUpload.Status.PENDING))
         if not records:
             self.stdout.write("No pending uploads to recover.")
             return

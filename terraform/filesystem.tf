@@ -36,10 +36,3 @@ resource "aws_efs_mount_target" "write_cache" {
   security_groups = [aws_security_group.efs.id]
 }
 
-resource "aws_ssm_parameter" "efs_dns" {
-  name  = "/fileproxy/prod/efs_dns"
-  type  = "String"
-  value = aws_efs_file_system.write_cache.dns_name
-
-  tags = { Name = "efs_dns" }
-}
