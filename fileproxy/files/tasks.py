@@ -25,9 +25,7 @@ def upload_to_backend(self, upload_id: str) -> None:
         return
 
     if pending.status not in (PendingUpload.Status.PENDING, PendingUpload.Status.UPLOADING):
-        logger.info(
-            "upload_to_backend: skipping %s (status=%s)", upload_id, pending.status
-        )
+        logger.info("upload_to_backend: skipping %s (status=%s)", upload_id, pending.status)
         return
 
     if pending.status == PendingUpload.Status.PENDING:
@@ -48,9 +46,7 @@ def upload_to_backend(self, upload_id: str) -> None:
     temp_path = Path(pending.temp_file_path)
 
     if not temp_path.exists():
-        logger.error(
-            "upload_to_backend: temp file missing for %s: %s", upload_id, temp_path
-        )
+        logger.error("upload_to_backend: temp file missing for %s: %s", upload_id, temp_path)
         pending.status = PendingUpload.Status.FAILED
         pending.error_message = f"Temp file not found: {temp_path}"
         pending.save(update_fields=["status", "error_message"])
@@ -62,9 +58,7 @@ def upload_to_backend(self, upload_id: str) -> None:
         with open(temp_path, "rb") as f:
             backend.write_stream(pending.path, f)
     except FileNotFoundError:
-        logger.error(
-            "upload_to_backend: temp file vanished mid-upload for %s", upload_id
-        )
+        logger.error("upload_to_backend: temp file vanished mid-upload for %s", upload_id)
         pending.status = PendingUpload.Status.FAILED
         pending.error_message = "Temp file disappeared during upload"
         pending.save(update_fields=["status", "error_message"])
