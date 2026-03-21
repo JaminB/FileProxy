@@ -37,6 +37,17 @@ GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET")
 DROPBOX_APP_KEY = env("DROPBOX_APP_KEY", default="")
 DROPBOX_APP_SECRET = env("DROPBOX_APP_SECRET", default="")
 
+# Celery — async background task processing
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_RESULT_BACKEND = None  # State is tracked in PendingUpload model
+
+# Write cache — buffer large uploads to local disk before sending to backend
+WRITE_CACHE_DIR = env("WRITE_CACHE_DIR", default="/tmp/fileproxy/write_cache")
+WRITE_CACHE_THRESHOLD_BYTES = int(env("WRITE_CACHE_THRESHOLD_BYTES", default="1048576"))
+WRITE_CACHE_MAX_RETRIES = int(env("WRITE_CACHE_MAX_RETRIES", default="3"))
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 

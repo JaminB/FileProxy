@@ -36,11 +36,18 @@ PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP,fileproxy.io,www.fileproxy.io" >> /etc/fileproxy.env
 echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.fileproxy.io" >> /etc/fileproxy.env
 
-# Stop and remove previous container
-docker stop fileproxy 2>/dev/null || true
-docker rm   fileproxy 2>/dev/null || true
+# Stop and remove previous containers
+docker stop fileproxy-worker fileproxy redis 2>/dev/null || true
+docker rm   fileproxy-worker fileproxy redis 2>/dev/null || true
 
-# Pull latest image (only changed layers downloaded on warm pool restarts)
+# Start Redis
+docker run -d \
+  --name redis \
+  --restart unless-stopped \
+  -p 6379:6379 \
+  redis:7-alpine
+
+# Pull latest app image (only changed layers downloaded on warm pool restarts)
 docker pull "$ECR_URL:latest"
 
 docker run -d \
@@ -49,6 +56,15 @@ docker run -d \
   -p 8000:8000 \
   --env-file /etc/fileproxy.env \
   "$ECR_URL:latest"
+
+# Start Celery worker
+docker run -d \
+  --name fileproxy-worker \
+  --restart unless-stopped \
+  --env-file /etc/fileproxy.env \
+  -v /tmp/fileproxy:/tmp/fileproxy \
+  "$ECR_URL:latest" \
+  celery -A config worker -l info
 
 # Wait until the app is serving before declaring success.
 # This gates systemd (Type=oneshot) so the ASG only counts the instance

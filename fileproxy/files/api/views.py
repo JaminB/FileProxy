@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import urllib.parse
 
+from django.conf import settings
 from django.http import StreamingHttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -22,6 +23,7 @@ from core.backends.base import (
 )
 from subscription.service import SubscriptionLimitExceeded, check_limit
 
+from .. import write_cache
 from ..serializers import (
     ConnectionMetaSerializer,
     EnumeratePageSerializer,
@@ -201,6 +203,7 @@ class FilesViewSet(viewsets.ViewSet):
         ok = False
         path = ""
         bytes_written = 0
+        threshold = settings.WRITE_CACHE_THRESHOLD_BYTES
         try:
             backend = self._backend(request, connection_name)
             content_type = request.content_type or ""
@@ -214,6 +217,20 @@ class FilesViewSet(viewsets.ViewSet):
                     raise ValidationError({"file": "This field is required."})
                 bytes_written = file_obj.size or 0
                 check_limit(request.user, "write", bytes_count=bytes_written)
+                if bytes_written >= threshold:
+                    write_cache.enqueue_upload(
+                        user=request.user,
+                        connection_name=connection_name,
+                        path=path,
+                        data=file_obj.read(),
+                        size=bytes_written,
+                        backend=backend,
+                    )
+                    ok = True
+                    return Response(
+                        {"status": "pending", "path": path},
+                        status=status.HTTP_202_ACCEPTED,
+                    )
                 backend.write_stream(path, file_obj)
                 ok = True
                 return Response({"detail": "OK", "path": path})
@@ -233,6 +250,22 @@ class FilesViewSet(viewsets.ViewSet):
 
                 check_limit(request.user, "write", bytes_count=content_length)
 
+                if content_length >= threshold:
+                    write_cache.enqueue_upload(
+                        user=request.user,
+                        connection_name=connection_name,
+                        path=path,
+                        stream=request.stream,
+                        size=content_length,
+                        backend=backend,
+                    )
+                    bytes_written = content_length
+                    ok = True
+                    return Response(
+                        {"status": "pending", "path": path},
+                        status=status.HTTP_202_ACCEPTED,
+                    )
+
                 counting_stream = _ByteCountingStream(request.stream)
                 backend.write_stream(path, counting_stream)
                 bytes_written = counting_stream.bytes_read
@@ -249,12 +282,26 @@ class FilesViewSet(viewsets.ViewSet):
                 s.is_valid(raise_exception=True)
                 path = s.validated_data["path"]
                 raw = base64.b64decode(s.validated_data["data_base64"])
+                bytes_written = len(raw)
+                check_limit(request.user, "write", bytes_count=bytes_written)
+                if bytes_written >= threshold:
+                    write_cache.enqueue_upload(
+                        user=request.user,
+                        connection_name=connection_name,
+                        path=path,
+                        data=raw,
+                        size=bytes_written,
+                        backend=backend,
+                    )
+                    ok = True
+                    return Response(
+                        {"status": "pending", "path": path},
+                        status=status.HTTP_202_ACCEPTED,
+                    )
+                backend.write(path, raw)
+                ok = True
+                return Response({"detail": "OK", "path": path})
 
-            bytes_written = len(raw)
-            check_limit(request.user, "write", bytes_count=bytes_written)
-            backend.write(path, raw)
-            ok = True
-            return Response({"detail": "OK", "path": path})
         except Exception as e:  # noqa: BLE001
             return self._error(e)
         finally:

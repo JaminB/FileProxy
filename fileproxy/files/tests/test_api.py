@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from botocore.exceptions import ClientError
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 User = get_user_model()
@@ -675,6 +676,7 @@ class FilesObjectsPaginationTests(_BaseFilesTest):
 
 
 class FilesWriteStreamTests(_BaseFilesTest):
+    @override_settings(WRITE_CACHE_THRESHOLD_BYTES=2 * 1024 * 1024)
     def test_write_stream_via_multipart_roundtrip(self):
         """Large binary data written via multipart (write_stream) round-trips cleanly."""
         path = "stream/large.bin"
