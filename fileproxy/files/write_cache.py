@@ -83,9 +83,11 @@ def enqueue_upload(
     else:
         temp_path = _write_stream_to_temp(stream, upload_id)
 
+    placeholder_written = False
     pending = None
     try:
         backend.write(path, b"")
+        placeholder_written = True
         pending = PendingUpload.objects.create(
             id=upload_id,
             user_id=user_id,
@@ -103,19 +105,20 @@ def enqueue_upload(
         except OSError:
             logger.warning("Could not delete temp file after enqueue failure: %s", temp_path)
         if pending is not None:
-            # Dispatch failed after the DB row was created — delete the row and the
-            # 0-byte placeholder so they don't linger with no task to drive them.
             try:
                 pending.delete()
             except Exception:
                 logger.warning(
                     "Could not delete PendingUpload %s after dispatch failure", upload_id
                 )
+        if placeholder_written:
+            # Best-effort: remove the 0-byte placeholder regardless of whether the
+            # DB row was created, so the backend doesn't accumulate orphaned objects.
             try:
                 backend.delete(path)
             except Exception:
                 logger.warning(
-                    "Could not delete backend placeholder after dispatch failure: %s", path
+                    "Could not delete backend placeholder after enqueue failure: %s", path
                 )
         raise
 

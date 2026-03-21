@@ -11,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Re-dispatch any pending or uploading PendingUpload records to Celery."
+    help = (
+        "Re-dispatch PENDING PendingUpload records to Celery. "
+        "UPLOADING records are left alone to avoid duplicate uploads in multi-instance deployments."
+    )
 
     def handle(self, *args, **options) -> None:
         # Only re-dispatch PENDING records. UPLOADING records are left alone because
