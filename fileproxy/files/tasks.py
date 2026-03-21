@@ -73,9 +73,7 @@ def upload_to_backend(self, upload_id: str) -> None:
     # for the same (user, connection, path) may have cancelled this record after
     # we claimed it (PENDING → UPLOADING) but before we started uploading.
     current_status = (
-        PendingUpload.objects.filter(id=pending.id)
-        .values_list("status", flat=True)
-        .first()
+        PendingUpload.objects.filter(id=pending.id).values_list("status", flat=True).first()
     )
     if current_status != PendingUpload.Status.UPLOADING:
         logger.info(
