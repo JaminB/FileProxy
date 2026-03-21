@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from pathlib import Path
 
 from celery import shared_task
@@ -40,20 +41,33 @@ def upload_to_backend(self, upload_id: str) -> None:
         logger.info("upload_to_backend: skipping %s (status=%s)", upload_id, pending.status)
         return
 
+    _stale_cutoff = timezone.now() - timedelta(minutes=10)
+
     if pending.status == PendingUpload.Status.PENDING:
-        # First attempt: CAS PENDING → UPLOADING so only one worker proceeds.
+        # First attempt: CAS PENDING → UPLOADING and stamp claimed_at.
         updated = PendingUpload.objects.filter(
             id=upload_id, status=PendingUpload.Status.PENDING
-        ).update(status=PendingUpload.Status.UPLOADING)
+        ).update(status=PendingUpload.Status.UPLOADING, claimed_at=timezone.now())
         if not updated:
             # Another worker claimed it between the get() and now.
             logger.info("upload_to_backend: could not claim %s, skipping", upload_id)
             return
     elif self.request.retries == 0:
-        # UPLOADING but this is not a retry → another task owns this record.
-        logger.info("upload_to_backend: %s already claimed by another worker, skipping", upload_id)
-        return
-    # Else: UPLOADING and self.request.retries > 0 → we own it from a previous attempt.
+        # UPLOADING on first delivery. Check if the existing claim is still fresh.
+        if pending.claimed_at is not None and pending.claimed_at >= _stale_cutoff:
+            # Fresh claim — another worker is likely active; skip.
+            logger.info(
+                "upload_to_backend: %s has a fresh claim (%s), skipping",
+                upload_id,
+                pending.claimed_at,
+            )
+            return
+        # Stale or missing claim — re-claim and proceed.
+        logger.info("upload_to_backend: re-claiming stale record %s", upload_id)
+        PendingUpload.objects.filter(
+            id=upload_id, status=PendingUpload.Status.UPLOADING
+        ).update(claimed_at=timezone.now())
+    # Else: UPLOADING and retries > 0 → we own it from a previous backend-failure retry.
 
     temp_path = Path(pending.temp_file_path)
 

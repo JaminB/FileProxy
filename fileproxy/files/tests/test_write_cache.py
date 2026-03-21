@@ -429,10 +429,11 @@ class UploadToBackendTaskTests(APITestCase):
         self.assertTrue(Path(temp_path).exists())
         os.unlink(temp_path)
 
-    def test_task_cas_prevents_double_processing(self):
-        """UPLOADING status with retries=0 means another task already owns it."""
+    def test_task_skips_uploading_with_fresh_claim(self):
+        """UPLOADING + retries=0 + fresh claimed_at → another task owns it, skip."""
         pending = self._create_pending()
         pending.status = PendingUpload.Status.UPLOADING
+        pending.claimed_at = timezone.now()
         pending.save()
 
         with patch("files.tasks.get_backend_for_connection") as mock_fn:
@@ -441,6 +442,23 @@ class UploadToBackendTaskTests(APITestCase):
 
         pending.refresh_from_db()
         self.assertEqual(pending.status, PendingUpload.Status.UPLOADING)
+
+    def test_task_reclaims_uploading_with_stale_claim(self):
+        """UPLOADING + retries=0 + stale claimed_at → worker died, re-claim and proceed."""
+        from datetime import timedelta
+
+        data = b"stale claim payload"
+        pending = self._create_pending(data=data, path="task/stale.txt")
+        PendingUpload.objects.filter(id=pending.id).update(
+            status=PendingUpload.Status.UPLOADING,
+            claimed_at=timezone.now() - timedelta(minutes=15),
+        )
+        pending.refresh_from_db()
+
+        upload_to_backend.apply(args=(str(pending.id),))
+
+        pending.refresh_from_db()
+        self.assertEqual(pending.status, PendingUpload.Status.DONE)
 
 
 # ---------------------------------------------------------------------------
@@ -482,16 +500,46 @@ class RecoverPendingUploadsTests(TestCase):
         self.assertIn(str(p2.id), dispatched_ids)
 
     @patch("files.management.commands.recover_pending_uploads.upload_to_backend")
-    def test_uploading_records_are_not_touched(self, mock_task):
-        # UPLOADING records are left alone — another worker on a different instance
-        # may still be actively uploading; resetting would cause duplicate uploads.
+    def test_fresh_uploading_records_are_not_touched(self, mock_task):
+        # UPLOADING with a fresh claimed_at → another worker is active; leave it alone.
         p = self._create_pending(status=PendingUpload.Status.UPLOADING)
+        PendingUpload.objects.filter(id=p.id).update(claimed_at=timezone.now())
 
         call_command("recover_pending_uploads", verbosity=0)
 
         p.refresh_from_db()
         self.assertEqual(p.status, PendingUpload.Status.UPLOADING)
         mock_task.delay.assert_not_called()
+
+    @patch("files.management.commands.recover_pending_uploads.upload_to_backend")
+    def test_stale_uploading_records_reset_and_dispatched(self, mock_task):
+        # UPLOADING with a stale claimed_at (worker died) → reset to PENDING + dispatch.
+        from datetime import timedelta
+
+        mock_task.delay.return_value = MagicMock(id="fake-id")
+        p = self._create_pending(status=PendingUpload.Status.UPLOADING)
+        PendingUpload.objects.filter(id=p.id).update(
+            claimed_at=timezone.now() - timedelta(minutes=15)
+        )
+
+        call_command("recover_pending_uploads", verbosity=0)
+
+        p.refresh_from_db()
+        self.assertEqual(p.status, PendingUpload.Status.PENDING)
+        mock_task.delay.assert_called_once_with(str(p.id))
+
+    @patch("files.management.commands.recover_pending_uploads.upload_to_backend")
+    def test_uploading_with_null_claimed_at_reset_and_dispatched(self, mock_task):
+        # UPLOADING with no claimed_at (legacy or enqueue failure) → reset + dispatch.
+        mock_task.delay.return_value = MagicMock(id="fake-id")
+        p = self._create_pending(status=PendingUpload.Status.UPLOADING)
+        # claimed_at is None by default.
+
+        call_command("recover_pending_uploads", verbosity=0)
+
+        p.refresh_from_db()
+        self.assertEqual(p.status, PendingUpload.Status.PENDING)
+        mock_task.delay.assert_called_once_with(str(p.id))
 
     @patch("files.management.commands.recover_pending_uploads.upload_to_backend")
     def test_done_and_failed_records_are_not_dispatched(self, mock_task):

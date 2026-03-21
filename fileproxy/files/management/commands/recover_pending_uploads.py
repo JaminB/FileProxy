@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from django.core.management.base import BaseCommand
+from django.db.models import Q
+from django.utils import timezone
 
 from files.models import PendingUpload
 from files.tasks import upload_to_backend
@@ -16,10 +19,20 @@ class Command(BaseCommand):
         "UPLOADING records are left alone to avoid duplicate uploads in multi-instance deployments."
     )
 
+    _stale_timeout = timedelta(minutes=10)
+
     def handle(self, *args, **options) -> None:
-        # Only re-dispatch PENDING records. UPLOADING records are left alone because
-        # in a multi-instance deployment another worker may still be actively uploading;
-        # resetting them to PENDING would cause duplicate uploads.
+        # Reset UPLOADING records whose claimed_at is missing or older than the
+        # stale timeout — these belong to workers that have died. Records with a
+        # fresh claimed_at are left alone (another instance is actively uploading).
+        stale_cutoff = timezone.now() - self._stale_timeout
+        stale_qs = PendingUpload.objects.filter(
+            status=PendingUpload.Status.UPLOADING
+        ).filter(Q(claimed_at__isnull=True) | Q(claimed_at__lt=stale_cutoff))
+        reset_count = stale_qs.update(status=PendingUpload.Status.PENDING)
+        if reset_count:
+            self.stdout.write(f"Reset {reset_count} stale UPLOADING record(s) to PENDING.")
+
         records = list(PendingUpload.objects.filter(status=PendingUpload.Status.PENDING))
         if not records:
             self.stdout.write("No pending uploads to recover.")

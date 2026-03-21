@@ -28,16 +28,18 @@ resource "aws_elasticache_subnet_group" "main" {
   tags = { Name = "${var.project}-${var.env}-redis-subnet-group" }
 }
 
-resource "aws_elasticache_cluster" "main" {
-  cluster_id           = "${var.project}-${var.env}-redis"
-  engine               = "redis"
-  engine_version       = "7.1"
-  node_type            = "cache.t4g.micro"
-  num_cache_nodes      = 1
-  parameter_group_name = "default.redis7"
-  port                 = 6379
-  subnet_group_name    = aws_elasticache_subnet_group.main.name
-  security_group_ids   = [aws_security_group.redis.id]
+resource "aws_elasticache_replication_group" "main" {
+  replication_group_id       = "${var.project}-${var.env}-redis"
+  description                = "Write-cache Celery broker"
+  engine                     = "redis"
+  engine_version             = "7.1"
+  node_type                  = "cache.t4g.micro"
+  num_cache_clusters         = 1
+  parameter_group_name       = "default.redis7"
+  port                       = 6379
+  subnet_group_name          = aws_elasticache_subnet_group.main.name
+  security_group_ids         = [aws_security_group.redis.id]
+  transit_encryption_enabled = true
 
   tags = { Name = "${var.project}-${var.env}-redis" }
 }
@@ -47,7 +49,7 @@ resource "aws_elasticache_cluster" "main" {
 resource "aws_ssm_parameter" "celery_broker_url" {
   name  = "/fileproxy/prod/celery_broker_url"
   type  = "SecureString"
-  value = "redis://${aws_elasticache_cluster.main.cache_nodes[0].address}:6379/0"
+  value = "rediss://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379/0"
 
   tags = { Name = "celery_broker_url" }
 }
