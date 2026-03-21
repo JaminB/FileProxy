@@ -457,7 +457,7 @@ class RecoverPendingUploadsTests(TestCase):
             user_id=self.user.id,
             connection_name="myconn",
             path=path,
-            temp_file_path="/tmp/fake_temp",
+            temp_file_path="/tmp/fake_temp",  # nosec B108
             expected_size=100,
             status=status,
         )
@@ -518,7 +518,7 @@ class PendingUploadModelTests(TestCase):
             user_id=self.user.id,
             connection_name="conn",
             path="model/file.txt",
-            temp_file_path="/tmp/x",
+            temp_file_path="/tmp/x",  # nosec B108
             expected_size=42,
         )
         self.assertEqual(p.status, PendingUpload.Status.PENDING)
@@ -528,7 +528,7 @@ class PendingUploadModelTests(TestCase):
             user_id=self.user.id,
             connection_name="conn",
             path="model/file2.txt",
-            temp_file_path="/tmp/y",
+            temp_file_path="/tmp/y",  # nosec B108
             expected_size=1,
         )
         self.assertIsNotNone(p.id)
@@ -539,7 +539,7 @@ class PendingUploadModelTests(TestCase):
             user_id=self.user.id,
             connection_name="myconn",
             path="model/file3.txt",
-            temp_file_path="/tmp/z",
+            temp_file_path="/tmp/z",  # nosec B108
             expected_size=1,
         )
         s = str(p)

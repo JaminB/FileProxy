@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -44,7 +46,10 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_RESULT_BACKEND = None  # State is tracked in PendingUpload model
 
 # Write cache — buffer large uploads to local disk before sending to backend
-WRITE_CACHE_DIR = env("WRITE_CACHE_DIR", default="/tmp/fileproxy/write_cache")
+WRITE_CACHE_DIR = env(
+    "WRITE_CACHE_DIR",
+    default=os.path.join(tempfile.gettempdir(), "fileproxy", "write_cache"),
+)
 WRITE_CACHE_THRESHOLD_BYTES = int(env("WRITE_CACHE_THRESHOLD_BYTES", default="1048576"))
 
 # Quick-start development settings - unsuitable for production
