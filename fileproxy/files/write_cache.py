@@ -93,15 +93,14 @@ def enqueue_upload(
             temp_file_path=str(temp_path),
             expected_size=size,
         )
+        result = upload_to_backend.delay(str(upload_id))
+        pending.celery_task_id = result.id
+        pending.save(update_fields=["celery_task_id"])
     except Exception:
         try:
             temp_path.unlink(missing_ok=True)
         except OSError:
             logger.warning("Could not delete temp file after enqueue failure: %s", temp_path)
         raise
-
-    result = upload_to_backend.delay(str(upload_id))
-    pending.celery_task_id = result.id
-    pending.save(update_fields=["celery_task_id"])
 
     return pending

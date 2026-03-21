@@ -69,6 +69,22 @@ def upload_to_backend(self, upload_id: str) -> None:
         _fail(pending, str(exc))
         return
 
+    # Re-check status right before the backend write. A concurrent enqueue_upload
+    # for the same (user, connection, path) may have cancelled this record after
+    # we claimed it (PENDING → UPLOADING) but before we started uploading.
+    current_status = (
+        PendingUpload.objects.filter(id=pending.id)
+        .values_list("status", flat=True)
+        .first()
+    )
+    if current_status != PendingUpload.Status.UPLOADING:
+        logger.info(
+            "upload_to_backend: aborting %s before backend write (status=%s)",
+            upload_id,
+            current_status,
+        )
+        return
+
     try:
         with temp_path.open("rb") as f:
             backend.write_stream(pending.path, f)

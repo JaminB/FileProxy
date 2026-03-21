@@ -1,10 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-# Install Docker, jq, and amazon-efs-utils if not present (runs once on first boot)
+# Install Docker if not present (runs once on first boot)
 if ! command -v docker &>/dev/null; then
-  dnf install -y docker jq amazon-efs-utils
+  dnf install -y docker
   systemctl enable docker
+fi
+
+# Install jq and amazon-efs-utils independently — these are needed on every boot
+# (warm pool restarts skip the Docker block above but still need mount.efs and jq)
+if ! command -v jq &>/dev/null; then
+  dnf install -y jq
+fi
+if ! command -v mount.efs &>/dev/null; then
+  dnf install -y amazon-efs-utils
 fi
 
 # Write the application startup script (always overwritten so deploys update it)
@@ -65,13 +74,15 @@ docker run -d \
 
 # Celery worker: same image, same shared volume.
 # CELERY_BROKER_URL (fetched from SSM) points to ElastiCache — not localhost.
+# --entrypoint overrides the image's gunicorn ENTRYPOINT so Celery actually runs.
 docker run -d \
   --name fileproxy-worker \
   --restart unless-stopped \
   -v /mnt/fileproxy:/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
+  --entrypoint celery \
   "$ECR_URL:latest" \
-  celery -A config worker -l info
+  -A config worker -l info
 
 # Wait until the app is serving before declaring success.
 # This gates systemd (Type=oneshot) so the ASG only counts the instance
