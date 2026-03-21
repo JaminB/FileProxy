@@ -94,8 +94,12 @@ class WriteCacheJsonViewTests(_BaseFilesTest):
             self.assertEqual(Path(pending.temp_file_path).read_bytes(), _LARGE_PAYLOAD)
 
     @patch("files.write_cache.upload_to_backend")
-    def test_large_json_writes_placeholder_to_backend(self, mock_task):
-        """Backend should have a 0-byte placeholder immediately after 202."""
+    def test_large_json_does_not_write_placeholder_to_backend(self, mock_task):
+        """Async path must not touch the backend until the task completes.
+
+        Writing a 0-byte placeholder at enqueue time would permanently destroy any
+        pre-existing file at that path if the task ultimately fails or is cancelled.
+        """
         mock_task.delay.return_value = MagicMock(id="fake-task-id")
         path = "a/placeholder.bin"
         with tempfile.TemporaryDirectory() as tmp:
@@ -107,8 +111,7 @@ class WriteCacheJsonViewTests(_BaseFilesTest):
                 )
         self.assertEqual(resp.status_code, 202)
         stored = self._fake_s3._buckets[self.bucket].get(path)
-        self.assertIsNotNone(stored, "Placeholder key missing from backend")
-        self.assertEqual(stored, b"")
+        self.assertIsNone(stored, "Enqueue must not write a backend placeholder")
 
     def test_small_json_returns_200(self):
         resp = self.client.post(
@@ -277,6 +280,46 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
                     format="json",
                 )
             self.assertFalse(first_temp.exists(), "First temp file should be deleted")
+
+    @patch("files.write_cache.upload_to_backend")
+    def test_second_upload_not_preempted_when_first_is_fresh_uploading(self, mock_task):
+        """If the first record is actively UPLOADING (fresh claimed_at), the second upload
+        returns the existing record without dispatching a new task or cancelling the first.
+
+        This prevents a race where the first task's write_stream finishes after the second
+        task's and overwrites newer backend content.
+        """
+        mock_task.delay.return_value = MagicMock(id="fake-task-id")
+        path = "dup/in_flight.bin"
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.settings(WRITE_CACHE_DIR=tmp):
+                # Enqueue the first upload.
+                self.client.post(
+                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
+                    format="json",
+                )
+                first = PendingUpload.objects.get()
+                # Simulate a worker claiming it.
+                PendingUpload.objects.filter(id=first.id).update(
+                    status=PendingUpload.Status.UPLOADING,
+                    claimed_at=timezone.now(),
+                )
+
+                # Second upload for the same path while the first is actively UPLOADING.
+                resp = self.client.post(
+                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
+                    format="json",
+                )
+
+        self.assertEqual(resp.status_code, 202)
+        # Only one record; it is still UPLOADING (not cancelled or replaced).
+        self.assertEqual(PendingUpload.objects.count(), 1)
+        first.refresh_from_db()
+        self.assertEqual(first.status, PendingUpload.Status.UPLOADING)
+        # No second task dispatched.
+        mock_task.delay.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

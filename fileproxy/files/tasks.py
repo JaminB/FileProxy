@@ -6,6 +6,7 @@ from pathlib import Path
 
 from celery import shared_task
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import PendingUpload
@@ -62,11 +63,19 @@ def upload_to_backend(self, upload_id: str) -> None:
                 pending.claimed_at,
             )
             return
-        # Stale or missing claim — re-claim and proceed.
+        # Stale or missing claim — re-claim atomically via CAS so only one worker proceeds.
         logger.info("upload_to_backend: re-claiming stale record %s", upload_id)
-        PendingUpload.objects.filter(id=upload_id, status=PendingUpload.Status.UPLOADING).update(
-            claimed_at=timezone.now()
-        )
+        updated = PendingUpload.objects.filter(
+            id=upload_id, status=PendingUpload.Status.UPLOADING
+        ).filter(
+            Q(claimed_at__isnull=True) | Q(claimed_at__lt=_stale_cutoff)
+        ).update(claimed_at=timezone.now())
+        if not updated:
+            # Another worker won the re-claim race.
+            logger.info(
+                "upload_to_backend: could not re-claim %s (already claimed), skipping", upload_id
+            )
+            return
     # Else: UPLOADING and retries > 0 → we own it from a previous backend-failure retry.
 
     temp_path = Path(pending.temp_file_path)
