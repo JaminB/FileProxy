@@ -108,11 +108,15 @@ def enqueue_upload(
             try:
                 pending.delete()
             except Exception:
-                logger.warning("Could not delete PendingUpload %s after dispatch failure", upload_id)
+                logger.warning(
+                    "Could not delete PendingUpload %s after dispatch failure", upload_id
+                )
             try:
                 backend.delete(path)
             except Exception:
-                logger.warning("Could not delete backend placeholder after dispatch failure: %s", path)
+                logger.warning(
+                    "Could not delete backend placeholder after dispatch failure: %s", path
+                )
         raise
 
     return pending
