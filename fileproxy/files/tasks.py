@@ -7,6 +7,7 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from .models import PendingUpload
 from .services import get_backend_for_connection
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,6 @@ User = get_user_model()
 
 @shared_task(bind=True, max_retries=3, name="files.upload_to_backend")
 def upload_to_backend(self, upload_id: str) -> None:
-    from .models import PendingUpload
-
     try:
         pending = PendingUpload.objects.get(id=upload_id)
     except PendingUpload.DoesNotExist:
@@ -39,7 +38,9 @@ def upload_to_backend(self, upload_id: str) -> None:
             return
     elif self.request.retries == 0:
         # UPLOADING but this is not a retry → another task owns this record.
-        logger.info("upload_to_backend: %s already claimed by another worker, skipping", upload_id)
+        logger.info(
+            "upload_to_backend: %s already claimed by another worker, skipping", upload_id
+        )
         return
     # Else: UPLOADING and self.request.retries > 0 → we own it from a previous attempt.
 
@@ -55,7 +56,7 @@ def upload_to_backend(self, upload_id: str) -> None:
     try:
         user = User.objects.get(id=pending.user_id)
         backend = get_backend_for_connection(user=user, connection_name=pending.connection_name)
-        with open(temp_path, "rb") as f:
+        with temp_path.open("rb") as f:
             backend.write_stream(pending.path, f)
     except FileNotFoundError:
         logger.error("upload_to_backend: temp file vanished mid-upload for %s", upload_id)

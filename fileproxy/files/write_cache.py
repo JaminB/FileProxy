@@ -28,11 +28,8 @@ def _write_bytes_to_temp(data: bytes, upload_id: UUID) -> Path:
 
 def _write_stream_to_temp(stream: IO[bytes], upload_id: UUID) -> Path:
     path = _temp_dir() / str(upload_id)
-    with open(path, "wb") as f:
-        while True:
-            chunk = stream.read(65536)
-            if not chunk:
-                break
+    with path.open("wb") as f:
+        for chunk in iter(lambda: stream.read(65536), b""):
             f.write(chunk)
     return path
 
@@ -43,7 +40,7 @@ def _cancel_stale_uploads(user_id: int, connection_name: str, path: str) -> None
         user_id=user_id,
         connection_name=connection_name,
         path=path,
-        status__in=[PendingUpload.Status.PENDING, PendingUpload.Status.UPLOADING],
+        status__in=(PendingUpload.Status.PENDING, PendingUpload.Status.UPLOADING),
     )
     for record in stale:
         try:

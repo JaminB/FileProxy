@@ -9,12 +9,14 @@ import base64
 import io
 import os
 import tempfile
+import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from files.models import PendingUpload
@@ -30,19 +32,8 @@ _LARGE_PAYLOAD = b"x" * 20  # 20 bytes > threshold
 _SMALL_PAYLOAD = b"hi"  # 2 bytes < threshold
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
-
-
-def _make_write_cache_dir():
-    """Return a temporary directory suitable for WRITE_CACHE_DIR."""
-    d = tempfile.mkdtemp(prefix="fp_wc_test_")
-    return d
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +106,6 @@ class WriteCacheJsonViewTests(_BaseFilesTest):
                     format="json",
                 )
         self.assertEqual(resp.status_code, 202)
-        # Fake S3 client should have the key with 0 bytes
         stored = self._fake_s3._buckets[self.bucket].get(path)
         self.assertIsNotNone(stored, "Placeholder key missing from backend")
         self.assertEqual(stored, b"")
@@ -247,7 +237,6 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
         path = "dup/file.bin"
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
-                # First upload
                 self.client.post(
                     f"/api/v1/files/{self.vault_item_name}/write/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
@@ -255,7 +244,6 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
                 )
                 first_id = PendingUpload.objects.get().id
 
-                # Second upload to the same path
                 self.client.post(
                     f"/api/v1/files/{self.vault_item_name}/write/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
@@ -280,8 +268,7 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
-                first = PendingUpload.objects.get()
-                first_temp = Path(first.temp_file_path)
+                first_temp = Path(PendingUpload.objects.get().temp_file_path)
                 self.assertTrue(first_temp.exists(), "First temp file should exist")
 
                 self.client.post(
@@ -313,11 +300,7 @@ class UploadToBackendTaskTests(APITestCase):
 
         resp = self.client.post(
             "/api/v1/connections/s3/",
-            {
-                **_VAULT_ITEM_PAYLOAD,
-                "name": self.connection_name,
-                "bucket": self.bucket,
-            },
+            {**_VAULT_ITEM_PAYLOAD, "name": self.connection_name, "bucket": self.bucket},
             format="json",
         )
         self.assertEqual(resp.status_code, 201, resp.text)
@@ -328,8 +311,8 @@ class UploadToBackendTaskTests(APITestCase):
 
     def _make_temp_file(self, data: bytes) -> str:
         fd, path = tempfile.mkstemp(prefix="fp_task_test_")
-        os.write(fd, data)
         os.close(fd)
+        Path(path).write_bytes(data)
         return path
 
     def _create_pending(self, data: bytes = b"task payload", path: str = "task/file.txt"):
@@ -351,9 +334,7 @@ class UploadToBackendTaskTests(APITestCase):
         pending.refresh_from_db()
         self.assertEqual(pending.status, PendingUpload.Status.DONE)
         self.assertIsNotNone(pending.completed_at)
-        # Temp file should be deleted
         self.assertFalse(Path(pending.temp_file_path).exists())
-        # Data should be in the fake backend
         stored = self._fake_s3._buckets[self.bucket].get("task/upload.txt")
         self.assertEqual(stored, data)
 
@@ -368,8 +349,6 @@ class UploadToBackendTaskTests(APITestCase):
         self.assertEqual(pending.status, PendingUpload.Status.CANCELLED)
 
     def test_task_skips_already_done(self):
-        from django.utils import timezone
-
         pending = self._create_pending()
         pending.status = PendingUpload.Status.DONE
         pending.completed_at = timezone.now()
@@ -382,7 +361,6 @@ class UploadToBackendTaskTests(APITestCase):
 
     def test_task_fails_immediately_if_temp_file_missing(self):
         pending = self._create_pending()
-        # Remove the temp file before the task runs
         os.unlink(pending.temp_file_path)
 
         upload_to_backend.apply(args=(str(pending.id),))
@@ -393,10 +371,7 @@ class UploadToBackendTaskTests(APITestCase):
 
     def test_task_nonexistent_upload_id_does_not_raise(self):
         """Task should log and return gracefully for unknown IDs."""
-        import uuid
-
         result = upload_to_backend.apply(args=(str(uuid.uuid4()),))
-        # No exception propagated
         self.assertIsNone(result.result)
 
     def test_task_marks_failed_after_max_retries(self):
@@ -408,13 +383,11 @@ class UploadToBackendTaskTests(APITestCase):
             mock_backend = MagicMock()
             mock_backend.write_stream.side_effect = RuntimeError("backend down")
             mock_backend_fn.return_value = mock_backend
-            # apply() runs eagerly and handles retries synchronously.
             upload_to_backend.apply(args=(str(pending.id),))
 
         pending.refresh_from_db()
         self.assertEqual(pending.status, PendingUpload.Status.FAILED)
         self.assertIn("backend down", pending.error_message)
-        # Temp file is kept for inspection on final failure.
         self.assertTrue(Path(temp_path).exists())
         os.unlink(temp_path)
 
@@ -424,7 +397,6 @@ class UploadToBackendTaskTests(APITestCase):
         pending.status = PendingUpload.Status.UPLOADING
         pending.save()
 
-        # retries=0 + UPLOADING → exit early without calling the backend.
         with patch("files.tasks.get_backend_for_connection") as mock_fn:
             upload_to_backend.apply(args=(str(pending.id),))
             mock_fn.assert_not_called()

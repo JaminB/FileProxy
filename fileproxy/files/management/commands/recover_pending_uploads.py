@@ -10,21 +10,22 @@ class Command(BaseCommand):
     help = "Re-dispatch any pending or uploading PendingUpload records to Celery."
 
     def handle(self, *args, **options) -> None:
-        stuck = PendingUpload.objects.filter(
-            status__in=[PendingUpload.Status.PENDING, PendingUpload.Status.UPLOADING]
+        stuck_qs = PendingUpload.objects.filter(
+            status__in=(PendingUpload.Status.PENDING, PendingUpload.Status.UPLOADING)
         )
-        count = stuck.count()
-        if count == 0:
+        # Reset any mid-flight records to PENDING so the task's CAS can reclaim them.
+        stuck_qs.filter(status=PendingUpload.Status.UPLOADING).update(
+            status=PendingUpload.Status.PENDING
+        )
+        records = list(stuck_qs)
+        if not records:
             self.stdout.write("No pending uploads to recover.")
             return
 
-        # Reset uploading → pending so the task's CAS can claim them.
-        stuck.filter(status=PendingUpload.Status.UPLOADING).update(
-            status=PendingUpload.Status.PENDING
-        )
-
-        for record in stuck:
+        for record in records:
             upload_to_backend.delay(str(record.id))
-            self.stdout.write(f"Re-dispatched {record.id} ({record.connection_name}/{record.path})")
+            self.stdout.write(
+                f"Re-dispatched {record.id} ({record.connection_name}/{record.path})"
+            )
 
-        self.stdout.write(self.style.SUCCESS(f"Recovered {count} pending upload(s)."))
+        self.stdout.write(self.style.SUCCESS(f"Recovered {len(records)} pending upload(s)."))
