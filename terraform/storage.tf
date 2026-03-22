@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "app" {
-  name                 = "${var.project}"
+  name                 = var.project
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -71,11 +71,11 @@ resource "aws_cloudfront_distribution" "static" {
   }
 
   default_cache_behavior {
-    target_origin_id          = "s3-static"
-    viewer_protocol_policy    = "redirect-to-https"
-    allowed_methods           = ["GET", "HEAD"]
-    cached_methods            = ["GET", "HEAD"]
-    compress                  = true
+    target_origin_id           = "s3-static"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
     response_headers_policy_id = aws_cloudfront_response_headers_policy.static_cors.id
 
     forwarded_values {

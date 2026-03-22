@@ -11,18 +11,18 @@ resource "random_password" "db" {
 }
 
 resource "aws_rds_cluster" "main" {
-  cluster_identifier      = "${var.project}-${var.env}"
-  engine                  = "aurora-postgresql"
-  engine_mode             = "provisioned"
-  engine_version          = "16.6"
-  database_name           = "fileproxy"
-  master_username         = "fileproxy"
-  master_password         = random_password.db.result
-  db_subnet_group_name    = aws_db_subnet_group.main.name
-  vpc_security_group_ids  = [aws_security_group.rds.id]
-  skip_final_snapshot     = false
+  cluster_identifier        = "${var.project}-${var.env}"
+  engine                    = "aurora-postgresql"
+  engine_mode               = "provisioned"
+  engine_version            = "16.6"
+  database_name             = "fileproxy"
+  master_username           = "fileproxy"
+  master_password           = random_password.db.result
+  db_subnet_group_name      = aws_db_subnet_group.main.name
+  vpc_security_group_ids    = [aws_security_group.rds.id]
+  skip_final_snapshot       = false
   final_snapshot_identifier = "${var.project}-${var.env}-final"
-  storage_encrypted       = true
+  storage_encrypted         = true
 
   serverlessv2_scaling_configuration {
     min_capacity = 1

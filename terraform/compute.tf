@@ -40,7 +40,6 @@ resource "aws_launch_template" "app" {
     aws_region = var.aws_region
     ecr_url    = aws_ecr_repository.app.repository_url
     alb_dns    = aws_lb.main.dns_name
-    efs_dns    = aws_efs_file_system.write_cache.dns_name
   }))
 
   tag_specifications {
@@ -56,9 +55,9 @@ resource "aws_launch_template" "app" {
 }
 
 resource "aws_autoscaling_group" "app" {
-  name                = "${var.project}-${var.env}-asg"
-  vpc_zone_identifier = aws_subnet.public[*].id
-  target_group_arns   = [aws_lb_target_group.app.arn]
+  name                      = "${var.project}-${var.env}-asg"
+  vpc_zone_identifier       = aws_subnet.public[*].id
+  target_group_arns         = [aws_lb_target_group.app.arn]
   health_check_type         = "ELB"
   health_check_grace_period = 240
 
