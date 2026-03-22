@@ -81,7 +81,7 @@ const state: State = {
 };
 
 let pendingEntries: PendingEntry[] = [];
-let pendingPollTimer: ReturnType<typeof setInterval> | null = null;
+let pendingPollTimer: ReturnType<typeof setTimeout> | null = null;
 
 /* ----------------------------- Small utils ----------------------------- */
 
