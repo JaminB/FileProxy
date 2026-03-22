@@ -5,10 +5,11 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
 
-  # 120 s gives the gunicorn worker time to finish buffering large uploads
-  # to the write-cache dir before returning 202.  Default (60 s) was too short
-  # and caused 504s on files over ~60 MB when the cache was on EFS.
-  idle_timeout = 120
+  # Must exceed GUNICORN_TIMEOUT (300 s) so the ALB does not drop the
+  # backend connection before gunicorn can respond.  The previous 120 s
+  # value was set for the EFS write-cache era; now that the cache is on a
+  # local Docker volume the bottleneck is client upload speed, not disk I/O.
+  idle_timeout = 305
 
   tags = { Name = "${var.project}-${var.env}-alb" }
 }
