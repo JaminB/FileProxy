@@ -31,7 +31,12 @@ from ..serializers import (
     ReadFileQuerySerializer,
     WriteFileSerializer,
 )
-from ..services import ConnectionNotFound, connections_for_user, get_backend_for_connection, user_scope
+from ..services import (
+    ConnectionNotFound,
+    connections_for_user,
+    get_backend_for_connection,
+    user_scope,
+)
 from .parsers import OctetStreamParser, _ByteCountingStream
 
 
