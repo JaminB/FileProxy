@@ -761,6 +761,10 @@ class FilesPendingUploadsTests(_BaseFilesTest):
         self.assertEqual(record["expected_size"], 1024)
         self.assertEqual(record["status"], "pending")
 
+    def test_unknown_connection_returns_404(self):
+        resp = self.client.get("/api/v1/files/no-such-connection/pending/")
+        self.assertEqual(resp.status_code, 404)
+
     def test_unauthenticated_returns_401(self):
         self.client.logout()
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")

@@ -384,9 +384,14 @@ function renderWithPending(tbody) {
             row.remove();
         }
     }
+    // Only show pending entries whose path is under the currently-browsed prefix
+    // (mirrors the toEntries() prefix filter so uploads elsewhere don't pollute the view).
+    const visible = pendingEntries.filter((p) => p.path.startsWith(state.prefix));
+    if (visible.length === 0)
+        return;
     // Prepend pending rows
     const frag = document.createDocumentFragment();
-    for (const p of pendingEntries) {
+    for (const p of visible) {
         const row = makePendingRow(p);
         row.setAttribute('data-pending', p.id);
         frag.appendChild(row);

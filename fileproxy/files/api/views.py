@@ -31,7 +31,7 @@ from ..serializers import (
     ReadFileQuerySerializer,
     WriteFileSerializer,
 )
-from ..services import ConnectionNotFound, connections_for_user, get_backend_for_connection
+from ..services import ConnectionNotFound, connections_for_user, get_backend_for_connection, user_scope
 from .parsers import OctetStreamParser, _ByteCountingStream
 
 
@@ -370,6 +370,11 @@ class FilesViewSet(viewsets.ViewSet):
     def pending_uploads(self, request: Request, connection_name: str = ""):
         """GET /api/v1/files/{connection_name}/pending/ — active pending uploads."""
         from ..models import PendingUpload
+
+        if not Connection.objects.filter(
+            scope=user_scope(request.user), name=connection_name
+        ).exists():
+            return self._error(ConnectionNotFound(f"Connection not found: {connection_name}"))
 
         qs = PendingUpload.objects.filter(
             user_id=request.user.id,
