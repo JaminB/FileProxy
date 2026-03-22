@@ -22,6 +22,8 @@ const el = {
     uploadBtn: () => mustGet('#upload'),
     uploadHint: () => mustGet('#upload-hint'),
     uploadStatus: () => mustGet('#upload-status'),
+    uploadProgressWrap: () => mustGet('#upload-progress-wrap'),
+    uploadProgressBar: () => mustGet('#upload-progress-bar'),
     pageControls: () => mustGet('#page-controls'),
 };
 /* ----------------------------- State ----------------------------- */
@@ -33,9 +35,11 @@ const state = {
     page: 0,
     hasNextPage: false,
 };
+let pendingEntries = [];
+let pendingPollTimer = null;
 /* ----------------------------- Small utils ----------------------------- */
 function fmtBytes(n) {
-    if (n == null)
+    if (n == null || n === 0)
         return '';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let v = n;
@@ -204,7 +208,81 @@ function toEntries(objects, prefix) {
     });
     return out;
 }
+/* ----------------------------- Pending uploads ----------------------------- */
+async function fetchPending() {
+    if (!state.vault)
+        return [];
+    try {
+        const data = await apiJson(`/api/v1/files/${encodeURIComponent(state.vault)}/pending/`);
+        pendingEntries = data;
+        return data;
+    }
+    catch {
+        return pendingEntries; // keep stale on error
+    }
+}
+function stopPendingPoll() {
+    if (pendingPollTimer !== null) {
+        clearInterval(pendingPollTimer);
+        pendingPollTimer = null;
+    }
+}
+function startPendingPoll() {
+    if (pendingPollTimer !== null)
+        return; // already running
+    // Track which paths were pending so we can refresh when they complete
+    let prevPaths = new Set(pendingEntries.map((p) => p.path));
+    pendingPollTimer = setInterval(() => {
+        void (async () => {
+            const current = await fetchPending();
+            const currentPaths = new Set(current.map((p) => p.path));
+            // Find paths that completed (were pending, now gone)
+            const completed = [...prevPaths].filter((path) => !currentPaths.has(path));
+            prevPaths = currentPaths;
+            // Re-render pending rows on every tick
+            const tbody = el.entries();
+            // Remove old pending rows and re-render all
+            renderWithPending(tbody);
+            // If any file completed, refresh the main listing to show it
+            if (completed.length > 0) {
+                void refresh();
+            }
+            // Stop polling when nothing is pending
+            if (current.length === 0) {
+                stopPendingPoll();
+            }
+        })();
+    }, 4000);
+}
 /* ----------------------------- Rendering ----------------------------- */
+function makePendingRow(p) {
+    const tr = document.createElement('tr');
+    const isFailed = p.status === 'failed';
+    tr.className = isFailed ? 'table-danger' : 'table-warning';
+    const filename = p.path.split('/').pop() || p.path;
+    const tdName = document.createElement('td');
+    const icon = isFailed
+        ? `<i class="bi bi-exclamation-triangle me-2 text-danger opacity-75"></i>`
+        : `<i class="bi bi-hourglass-split me-2 text-warning opacity-75"></i>`;
+    tdName.innerHTML = `${icon}<em class="text-muted">${filename}</em>`;
+    const tdPath = document.createElement('td');
+    tdPath.innerHTML = `<span class="text-muted">${p.path}</span>`;
+    const tdSize = document.createElement('td');
+    tdSize.textContent = fmtBytes(p.expected_size);
+    const tdAct = document.createElement('td');
+    tdAct.className = 'text-end';
+    if (isFailed) {
+        tdAct.innerHTML = `<span class="badge bg-danger">Failed</span>`;
+    }
+    else {
+        tdAct.innerHTML = `<span class="badge bg-warning text-dark">Pending</span>`;
+    }
+    tr.appendChild(tdName);
+    tr.appendChild(tdPath);
+    tr.appendChild(tdSize);
+    tr.appendChild(tdAct);
+    return tr;
+}
 function makeFileActions(entry) {
     const dd = document.createElement('div');
     dd.className = 'dropdown dropup';
@@ -264,6 +342,20 @@ function makeFileActions(entry) {
     dd.appendChild(menu);
     return dd;
 }
+function renderWithPending(tbody) {
+    // Remove existing pending rows (rows with data-pending attribute)
+    for (const row of Array.from(tbody.querySelectorAll('tr[data-pending]'))) {
+        row.remove();
+    }
+    // Prepend pending rows
+    const frag = document.createDocumentFragment();
+    for (const p of pendingEntries) {
+        const row = makePendingRow(p);
+        row.setAttribute('data-pending', p.id);
+        frag.appendChild(row);
+    }
+    tbody.insertBefore(frag, tbody.firstChild);
+}
 function render(entries) {
     const tbody = el.entries();
     tbody.innerHTML = '';
@@ -271,7 +363,7 @@ function render(entries) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-muted small">Choose a vault from the left to start browsing.</td></tr>`;
         return;
     }
-    if (!entries.length) {
+    if (!entries.length && !pendingEntries.length) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-muted small">This folder is empty.</td></tr>`;
         return;
     }
@@ -309,6 +401,8 @@ function render(entries) {
         tr.appendChild(tdAct);
         tbody.appendChild(tr);
     }
+    // Prepend pending rows on top
+    renderWithPending(tbody);
 }
 function renderPagination() {
     const host = el.pageControls();
@@ -398,7 +492,7 @@ async function refresh() {
     el.up().disabled = state.prefix === '';
     updateUploadButtonState();
 }
-function uploadWithProgress(url, formData) {
+function uploadWithProgress(url, formData, onProgress) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         const csrf = getCsrfToken();
@@ -406,9 +500,21 @@ function uploadWithProgress(url, formData) {
         if (csrf)
             xhr.setRequestHeader('X-CSRFToken', csrf);
         xhr.withCredentials = true;
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                onProgress((e.loaded / e.total) * 100);
+            }
+        };
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-                resolve();
+                let body = null;
+                try {
+                    body = JSON.parse(xhr.responseText);
+                }
+                catch {
+                    /* ignore parse errors */
+                }
+                resolve({ status: xhr.status, body });
             }
             else {
                 let detail = `Request failed (${xhr.status})`;
@@ -439,20 +545,46 @@ async function doUpload() {
         return;
     }
     const path = `${state.prefix}${name}`;
+    // Show progress bar
+    el.uploadProgressWrap().style.display = '';
+    el.uploadProgressBar().style.width = '0%';
+    el.uploadProgressBar().setAttribute('aria-valuenow', '0');
     el.uploadStatus().textContent = 'Uploading…';
     el.uploadBtn().disabled = true;
     try {
         const form = new FormData();
         form.append('path', path);
         form.append('file', file);
-        await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form);
-        el.uploadStatus().textContent = 'Uploaded.';
-        setFlash('Upload complete.', 'success');
-        el.uploadFile().value = '';
-        el.uploadName().value = '';
-        await refresh();
+        const result = await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form, (pct) => {
+            const pctStr = pct.toFixed(0);
+            el.uploadProgressBar().style.width = `${pctStr}%`;
+            el.uploadProgressBar().setAttribute('aria-valuenow', pctStr);
+        });
+        el.uploadProgressWrap().style.display = 'none';
+        el.uploadProgressBar().style.width = '0%';
+        if (result.status === 202) {
+            // Async path: file is queued, Celery will write to backend
+            el.uploadStatus().textContent = 'Queued — writing to backend…';
+            el.uploadFile().value = '';
+            el.uploadName().value = '';
+            // Fetch pending immediately so the row appears without waiting for the first poll tick
+            await fetchPending();
+            render([]); // re-render with current entries will be overwritten by next refresh
+            void refresh();
+            startPendingPoll();
+        }
+        else {
+            // Sync path: write completed immediately
+            el.uploadStatus().textContent = 'Uploaded.';
+            setFlash('Upload complete.', 'success');
+            el.uploadFile().value = '';
+            el.uploadName().value = '';
+            await refresh();
+        }
     }
     catch (e) {
+        el.uploadProgressWrap().style.display = 'none';
+        el.uploadProgressBar().style.width = '0%';
         el.uploadStatus().textContent = '';
         setFlash(e instanceof Error ? e.message : 'Upload failed.', 'error');
     }
@@ -504,7 +636,17 @@ async function loadVaults() {
             state.vault = it.name;
             state.prefix = '';
             resetPagination();
-            void refresh();
+            // Reset pending state when switching vaults
+            stopPendingPoll();
+            pendingEntries = [];
+            void (async () => {
+                // Fetch pending uploads for this vault before refreshing so they show immediately
+                await fetchPending();
+                void refresh();
+                if (pendingEntries.length > 0) {
+                    startPendingPoll();
+                }
+            })();
             for (const elItem of Array.from(host.querySelectorAll('.list-group-item'))) {
                 elItem.classList.remove('active');
             }
