@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -36,6 +38,25 @@ GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET")
 
 DROPBOX_APP_KEY = env("DROPBOX_APP_KEY", default="")
 DROPBOX_APP_SECRET = env("DROPBOX_APP_SECRET", default="")
+
+# Celery — async background task processing
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_RESULT_BACKEND = None  # State is tracked in PendingUpload model
+
+# Write cache — buffer large uploads to local disk before sending to backend
+WRITE_CACHE_DIR = env(
+    "WRITE_CACHE_DIR",
+    default=os.path.join(tempfile.gettempdir(), "fileproxy", "write_cache"),
+)
+WRITE_CACHE_THRESHOLD_BYTES = int(env("WRITE_CACHE_THRESHOLD_BYTES", default="1048576"))
+# Minutes before an UPLOADING record with no claimed_at update is considered stale.
+# Must be greater than the longest expected backend write for a single file.
+WRITE_CACHE_STALE_UPLOAD_MINUTES = int(env("WRITE_CACHE_STALE_UPLOAD_MINUTES", default="10"))
+# Age in days after which terminal (DONE/CANCELLED/FAILED) PendingUpload rows and
+# associated temp files are eligible for deletion by cleanup_pending_uploads.
+WRITE_CACHE_CLEANUP_DAYS = int(env("WRITE_CACHE_CLEANUP_DAYS", default="7"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

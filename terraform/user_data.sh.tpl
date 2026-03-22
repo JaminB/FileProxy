@@ -1,10 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-# Install Docker + jq if not present (runs once on first boot; skipped on warm pool restarts)
+# Install Docker if not present (runs once on first boot)
 if ! command -v docker &>/dev/null; then
-  dnf install -y docker jq
+  dnf install -y docker
   systemctl enable docker
+fi
+
+# Install jq and amazon-efs-utils independently — these are needed on every boot
+# (warm pool restarts skip the Docker block above but still need mount.efs and jq)
+if ! command -v jq &>/dev/null; then
+  dnf install -y jq
+fi
+if ! command -v mount.efs &>/dev/null; then
+  dnf install -y amazon-efs-utils
 fi
 
 # Write the application startup script (always overwritten so deploys update it)
@@ -15,6 +24,7 @@ set -euo pipefail
 ECR_URL="${ecr_url}"
 AWS_REGION="${aws_region}"
 ALB_DNS="${alb_dns}"
+EFS_DNS="${efs_dns}"
 
 # ECR login
 aws ecr get-login-password --region "$AWS_REGION" \
@@ -36,19 +46,43 @@ PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP,fileproxy.io,www.fileproxy.io" >> /etc/fileproxy.env
 echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.fileproxy.io" >> /etc/fileproxy.env
 
-# Stop and remove previous container
-docker stop fileproxy 2>/dev/null || true
-docker rm   fileproxy 2>/dev/null || true
+# Mount shared EFS write-cache volume (idempotent across warm pool restarts).
+mkdir -p /mnt/fileproxy
+if ! mountpoint -q /mnt/fileproxy; then
+  mount -t efs -o tls "$EFS_DNS":/ /mnt/fileproxy
+fi
+# Persist across reboots (grep prevents duplicate fstab entries).
+if ! grep -q "$EFS_DNS" /etc/fstab; then
+  echo "$EFS_DNS:/ /mnt/fileproxy efs _netdev,tls 0 0" >> /etc/fstab
+fi
 
-# Pull latest image (only changed layers downloaded on warm pool restarts)
+# Stop and remove previous containers
+docker stop fileproxy-worker fileproxy 2>/dev/null || true
+docker rm   fileproxy-worker fileproxy 2>/dev/null || true
+
+# Pull latest app image (only changed layers downloaded on warm pool restarts)
 docker pull "$ECR_URL:latest"
 
+# App container: mount shared EFS write-cache dir.
 docker run -d \
   --name fileproxy \
   --restart unless-stopped \
   -p 8000:8000 \
+  -v /mnt/fileproxy:/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
   "$ECR_URL:latest"
+
+# Celery worker: same image, same shared volume.
+# CELERY_BROKER_URL (fetched from SSM) points to ElastiCache — not localhost.
+# --entrypoint overrides the image's gunicorn ENTRYPOINT so Celery actually runs.
+docker run -d \
+  --name fileproxy-worker \
+  --restart unless-stopped \
+  -v /mnt/fileproxy:/tmp/fileproxy \
+  --env-file /etc/fileproxy.env \
+  --entrypoint celery \
+  "$ECR_URL:latest" \
+  -A config worker -l info
 
 # Wait until the app is serving before declaring success.
 # This gates systemd (Type=oneshot) so the ASG only counts the instance
