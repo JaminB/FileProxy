@@ -7,10 +7,9 @@ from pathlib import Path
 from typing import IO
 from uuid import UUID, uuid4
 
-from django.core.files.uploadedfile import TemporaryUploadedFile
-
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
+from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.utils import timezone
 
 from .models import PendingUpload
