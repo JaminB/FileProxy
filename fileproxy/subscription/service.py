@@ -4,7 +4,6 @@ import calendar
 
 from django.db import transaction
 from django.utils import timezone
-
 from files.services import user_scope
 from usage.models import OperationKind
 

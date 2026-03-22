@@ -6,12 +6,11 @@ import os
 import uuid
 from typing import Any, Dict, Mapping, Tuple, cast
 
+from core.backends.base import BackendConfig
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
-
-from core.backends.base import BackendConfig
 
 
 def _b64e(b: bytes) -> str:

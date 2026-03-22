@@ -10,19 +10,12 @@ import google.oauth2.credentials
 from django.conf import settings as django_settings
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaInMemoryUpload, MediaIoBaseDownload, MediaIoBaseUpload
+from googleapiclient.http import (MediaInMemoryUpload, MediaIoBaseDownload,
+                                  MediaIoBaseUpload)
 
-from .base import (
-    Backend,
-    BackendConfig,
-    BackendDeleteError,
-    BackendEnumerateError,
-    BackendError,
-    BackendReadError,
-    BackendTestError,
-    BackendWriteError,
-    EnumeratePage,
-)
+from .base import (Backend, BackendConfig, BackendDeleteError,
+                   BackendEnumerateError, BackendError, BackendReadError,
+                   BackendTestError, BackendWriteError, EnumeratePage)
 
 
 @dataclass(frozen=True, slots=True)

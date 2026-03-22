@@ -1,12 +1,11 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from accounts.models import APIKey
+from accounts.tokens import APIKeyToken
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APITestCase
-
-from accounts.models import APIKey
-from accounts.tokens import APIKeyToken
 
 
 class APIKeyTests(APITestCase):

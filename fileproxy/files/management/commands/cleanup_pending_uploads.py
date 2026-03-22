@@ -7,7 +7,6 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-
 from files.models import PendingUpload
 
 logger = logging.getLogger(__name__)
