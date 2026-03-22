@@ -3,15 +3,6 @@ from __future__ import annotations
 import base64
 import urllib.parse
 
-from django.conf import settings
-from django.http import StreamingHttpResponse
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.request import Request
-from rest_framework.response import Response
-
 from connections.models import Connection
 from core.backends.base import (
     BackendConnectionError,
@@ -21,6 +12,14 @@ from core.backends.base import (
     BackendTestError,
     BackendWriteError,
 )
+from django.conf import settings
+from django.http import StreamingHttpResponse
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.request import Request
+from rest_framework.response import Response
 from subscription.service import SubscriptionLimitExceeded, check_limit
 
 from .. import write_cache
@@ -57,7 +56,9 @@ class FilesViewSet(viewsets.ViewSet):
     lookup_value_regex = r"[^/]+"
 
     def _backend(self, request, connection_name: str):
-        return get_backend_for_connection(user=request.user, connection_name=connection_name)
+        return get_backend_for_connection(
+            user=request.user, connection_name=connection_name
+        )
 
     def _record_event(
         self,
@@ -72,7 +73,11 @@ class FilesViewSet(viewsets.ViewSet):
 
         scope = f"user:{request.user.id}"
         try:
-            kind = Connection.objects.only("kind").get(scope=scope, name=connection_name).kind
+            kind = (
+                Connection.objects.only("kind")
+                .get(scope=scope, name=connection_name)
+                .kind
+            )
         except Exception:  # noqa: BLE001
             kind = ""
         record_event(
@@ -195,7 +200,9 @@ class FilesViewSet(viewsets.ViewSet):
                 content_type="application/octet-stream",
             )
         except Exception as e:  # noqa: BLE001
-            self._record_event(request, connection_name, "read", object_path=path, ok=False)
+            self._record_event(
+                request, connection_name, "read", object_path=path, ok=False
+            )
             return self._error(e)
 
     @action(
@@ -246,7 +253,9 @@ class FilesViewSet(viewsets.ViewSet):
 
                 raw_content_length = request.META.get("CONTENT_LENGTH")
                 if raw_content_length is None:
-                    return Response({"detail": "Content-Length header is required."}, status=411)
+                    return Response(
+                        {"detail": "Content-Length header is required."}, status=411
+                    )
                 try:
                     content_length = int(raw_content_length)
                 except (ValueError, TypeError):
@@ -335,7 +344,9 @@ class FilesViewSet(viewsets.ViewSet):
         except Exception as e:  # noqa: BLE001
             return self._error(e)
         finally:
-            self._record_event(request, connection_name, "delete", object_path=path, ok=ok)
+            self._record_event(
+                request, connection_name, "delete", object_path=path, ok=ok
+            )
 
     @action(detail=True, methods=["get"], url_path="download")
     def download(self, request, connection_name: str = ""):
@@ -368,7 +379,9 @@ class FilesViewSet(viewsets.ViewSet):
             )
             return resp
         except Exception as e:  # noqa: BLE001
-            self._record_event(request, connection_name, "read", object_path=path, ok=False)
+            self._record_event(
+                request, connection_name, "read", object_path=path, ok=False
+            )
             return self._error(e)
 
     @action(detail=True, methods=["get"], url_path="pending")
@@ -379,7 +392,9 @@ class FilesViewSet(viewsets.ViewSet):
         if not Connection.objects.filter(
             scope=user_scope(request.user), name=connection_name
         ).exists():
-            return self._error(ConnectionNotFound(f"Connection not found: {connection_name}"))
+            return self._error(
+                ConnectionNotFound(f"Connection not found: {connection_name}")
+            )
 
         qs = PendingUpload.objects.filter(
             user_id=request.user.id,
