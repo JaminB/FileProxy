@@ -82,6 +82,7 @@ const state: State = {
 
 let pendingEntries: PendingEntry[] = [];
 let pendingPollTimer: ReturnType<typeof setTimeout> | null = null;
+let pollGeneration = 0;
 
 /* ----------------------------- Small utils ----------------------------- */
 
@@ -293,10 +294,17 @@ function stopPendingPoll(): void {
     clearTimeout(pendingPollTimer);
     pendingPollTimer = null;
   }
+  // Increment generation so any in-flight poll() tick sees it is stale
+  // and does not re-arm the timer after stop/vault-switch.
+  pollGeneration++;
 }
 
 function startPendingPoll(): void {
   if (pendingPollTimer !== null) return; // already running
+
+  // Capture the current generation — in-flight ticks from a previous poll
+  // loop will have a different (older) generation and will bail out.
+  const myGen = ++pollGeneration;
 
   // Track which paths were pending so we can refresh when they complete
   let prevPaths = new Set(pendingEntries.map((p) => p.path));
@@ -304,7 +312,12 @@ function startPendingPoll(): void {
   // Use recursive setTimeout so the next tick only fires after the previous
   // one fully completes — prevents overlapping fetches if the request is slow.
   async function poll(): Promise<void> {
+    if (pollGeneration !== myGen) return; // stale — vault switched or poll stopped
+
     const current = await fetchPending();
+
+    if (pollGeneration !== myGen) return; // vault changed while request was in-flight
+
     const currentPaths = new Set(current.map((p) => p.path));
 
     // Find paths that completed (were pending, now gone)
@@ -325,8 +338,8 @@ function startPendingPoll(): void {
       return;
     }
 
-    // Schedule the next poll only if polling is still active
-    if (pendingPollTimer !== null) {
+    // Schedule the next poll only if this generation is still active
+    if (pollGeneration === myGen) {
       pendingPollTimer = setTimeout(() => void poll(), 4000);
     }
   }
@@ -459,6 +472,16 @@ function renderWithPending(tbody: HTMLTableSectionElement): void {
   // Remove existing pending rows (rows with data-pending attribute)
   for (const row of Array.from(tbody.querySelectorAll('tr[data-pending]'))) {
     row.remove();
+  }
+
+  if (pendingEntries.length === 0) return;
+
+  // Remove the "empty folder" placeholder row if present — it should not
+  // coexist with pending rows (the folder is not actually empty).
+  for (const row of Array.from(tbody.querySelectorAll('tr'))) {
+    if ((row as HTMLTableRowElement).querySelector('td[colspan]')) {
+      row.remove();
+    }
   }
 
   // Prepend pending rows
