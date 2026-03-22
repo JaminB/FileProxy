@@ -686,7 +686,7 @@ class FilesPendingUploadsTests(_BaseFilesTest):
             user_id=uid,
             connection_name=self.vault_item_name,
             path=path,
-            temp_file_path=f"/tmp/fake_{path.replace('/', '_')}",
+            temp_file_path=f"/tmp/fake_{path.replace('/', '_')}",  # nosec B108
             expected_size=1024,
             status=status,
         )
@@ -738,7 +738,7 @@ class FilesPendingUploadsTests(_BaseFilesTest):
             user_id=self.user.id,
             connection_name="other-conn",
             path="other/file.txt",
-            temp_file_path="/tmp/other",
+            temp_file_path="/tmp/other",  # nosec B108
             expected_size=512,
             status="pending",
         )
