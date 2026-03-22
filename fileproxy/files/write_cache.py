@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from datetime import timedelta
 from pathlib import Path
 from typing import IO
 from uuid import UUID, uuid4
+
+from django.core.files.uploadedfile import TemporaryUploadedFile
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
@@ -26,6 +29,20 @@ def _write_bytes_to_temp(data: bytes, upload_id: UUID) -> Path:
     path = _temp_dir() / str(upload_id)
     path.write_bytes(data)
     return path
+
+
+def _move_uploaded_file(uploaded_file: TemporaryUploadedFile, upload_id: UUID) -> Path:
+    """Move Django's on-disk temp file into the write-cache dir.
+
+    On the same filesystem this is an O(1) rename; shutil.move falls back to
+    a full copy only when the source and destination are on different filesystems.
+    Either way it is at least as fast as _write_stream_to_temp and avoids the
+    redundant disk read that _write_stream_to_temp would otherwise perform.
+    """
+    src = uploaded_file.temporary_file_path()
+    dest = _temp_dir() / str(upload_id)
+    shutil.move(src, dest)
+    return dest
 
 
 def _write_stream_to_temp(stream: IO[bytes], upload_id: UUID) -> Path:
@@ -115,6 +132,8 @@ def enqueue_upload(
 
     if data is not None:
         temp_path = _write_bytes_to_temp(data, upload_id)
+    elif isinstance(stream, TemporaryUploadedFile):
+        temp_path = _move_uploaded_file(stream, upload_id)
     else:
         temp_path = _write_stream_to_temp(stream, upload_id)
 

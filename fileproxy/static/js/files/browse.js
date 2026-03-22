@@ -268,11 +268,11 @@ function startPendingPoll() {
         }
         // Schedule the next poll only if this generation is still active
         if (pollGeneration === myGen) {
-            pendingPollTimer = setTimeout(() => void poll(), 4000);
+            pendingPollTimer = setTimeout(() => void poll(), 2000);
         }
     }
     // Mark as active before the first async tick
-    pendingPollTimer = setTimeout(() => void poll(), 4000);
+    pendingPollTimer = setTimeout(() => void poll(), 2000);
 }
 /* ----------------------------- Rendering ----------------------------- */
 function makePendingRow(p) {
