@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from connections.models import Connection
-from core.backends.base import Backend
-from core.backends.factory import backend_from_config
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import QuerySet
+
+from connections.models import Connection
+from core.backends.base import Backend
+from core.backends.factory import backend_from_config
 
 
 class FilesError(RuntimeError):

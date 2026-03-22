@@ -9,9 +9,17 @@ import dropbox.exceptions
 import dropbox.files
 from django.conf import settings as django_settings
 
-from .base import (Backend, BackendConfig, BackendDeleteError,
-                   BackendEnumerateError, BackendError, BackendReadError,
-                   BackendTestError, BackendWriteError, EnumeratePage)
+from .base import (
+    Backend,
+    BackendConfig,
+    BackendDeleteError,
+    BackendEnumerateError,
+    BackendError,
+    BackendReadError,
+    BackendTestError,
+    BackendWriteError,
+    EnumeratePage,
+)
 
 
 @dataclass(frozen=True, slots=True)

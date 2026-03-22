@@ -1,9 +1,14 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import (MyAvailablePlansView, MySubscriptionCancelView,
-                    MySubscriptionSwitchView, MySubscriptionUsageView,
-                    MySubscriptionView, SubscriptionPlanViewSet)
+from .views import (
+                    MyAvailablePlansView,
+                    MySubscriptionCancelView,
+                    MySubscriptionSwitchView,
+                    MySubscriptionUsageView,
+                    MySubscriptionView,
+                    SubscriptionPlanViewSet,
+)
 
 router = DefaultRouter()
 router.register("subscription/plans", SubscriptionPlanViewSet, basename="subscription-plan")

@@ -4,14 +4,21 @@ import uuid
 from dataclasses import dataclass
 from typing import BinaryIO, Iterator
 
-from azure.core.exceptions import (AzureError, HttpResponseError,
-                                   ResourceNotFoundError)
+from azure.core.exceptions import AzureError, HttpResponseError, ResourceNotFoundError
 from azure.identity import ClientSecretCredential
 from azure.storage.blob import BlobServiceClient
 
-from .base import (Backend, BackendConfig, BackendDeleteError,
-                   BackendEnumerateError, BackendError, BackendReadError,
-                   BackendTestError, BackendWriteError, EnumeratePage)
+from .base import (
+    Backend,
+    BackendConfig,
+    BackendDeleteError,
+    BackendEnumerateError,
+    BackendError,
+    BackendReadError,
+    BackendTestError,
+    BackendWriteError,
+    EnumeratePage,
+)
 
 
 @dataclass(frozen=True, slots=True)

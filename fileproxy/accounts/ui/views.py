@@ -1,8 +1,9 @@
-from accounts.forms import NotificationPreferencesForm, ProfileUpdateForm
-from accounts.models import NotificationPreferences
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
+
+from accounts.forms import NotificationPreferencesForm, ProfileUpdateForm
+from accounts.models import NotificationPreferences
 
 
 @login_required

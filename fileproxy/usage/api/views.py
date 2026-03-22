@@ -12,8 +12,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
 from ..models import OperationKind, UsageEvent
-from .serializers import (ByConnectionSerializer, SummarySerializer,
-                          TimelineSerializer)
+from .serializers import ByConnectionSerializer, SummarySerializer, TimelineSerializer
 
 
 def _user_scope(request) -> str:

@@ -3,10 +3,6 @@ from __future__ import annotations
 import base64
 import urllib.parse
 
-from connections.models import Connection
-from core.backends.base import (BackendConnectionError, BackendDeleteError,
-                                BackendEnumerateError, BackendReadError,
-                                BackendTestError, BackendWriteError)
 from django.conf import settings
 from django.http import StreamingHttpResponse
 from rest_framework import status, viewsets
@@ -15,14 +11,32 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+from connections.models import Connection
+from core.backends.base import (
+    BackendConnectionError,
+    BackendDeleteError,
+    BackendEnumerateError,
+    BackendReadError,
+    BackendTestError,
+    BackendWriteError,
+)
 from subscription.service import SubscriptionLimitExceeded, check_limit
 
 from .. import write_cache
-from ..serializers import (ConnectionMetaSerializer, EnumeratePageSerializer,
-                           EnumerateQuerySerializer, ReadFileQuerySerializer,
-                           WriteFileSerializer)
-from ..services import (ConnectionNotFound, connections_for_user,
-                        get_backend_for_connection, user_scope)
+from ..serializers import (
+    ConnectionMetaSerializer,
+    EnumeratePageSerializer,
+    EnumerateQuerySerializer,
+    ReadFileQuerySerializer,
+    WriteFileSerializer,
+)
+from ..services import (
+    ConnectionNotFound,
+    connections_for_user,
+    get_backend_for_connection,
+    user_scope,
+)
 from .parsers import OctetStreamParser, _ByteCountingStream
 
 

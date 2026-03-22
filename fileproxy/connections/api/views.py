@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import secrets as secrets_mod
 
-from core.backends.base import BackendConnectionError
-from core.backends.factory import backend_from_config
 from django.conf import settings as django_settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import Http404
@@ -14,11 +12,18 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from core.backends.base import BackendConnectionError
+from core.backends.factory import backend_from_config
+
 from ..models import Connection
-from .serializers import (AzureBlobCreateSerializer, ConnectionListSerializer,
-                          ConnectionRenameSerializer, DropboxCreateSerializer,
-                          GDriveCreateSerializer,
-                          S3CredentialsCreateSerializer)
+from .serializers import (
+    AzureBlobCreateSerializer,
+    ConnectionListSerializer,
+    ConnectionRenameSerializer,
+    DropboxCreateSerializer,
+    GDriveCreateSerializer,
+    S3CredentialsCreateSerializer,
+)
 
 
 def _get_or_404(queryset, **kwargs):

@@ -1,7 +1,8 @@
-from connections.models import Connection, ConnectionKind
-from connections.service import load_s3_credentials
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
+
+from connections.models import Connection, ConnectionKind
+from connections.service import load_s3_credentials
 
 User = get_user_model()
 
