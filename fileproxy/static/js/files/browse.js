@@ -210,10 +210,14 @@ function toEntries(objects, prefix) {
 }
 /* ----------------------------- Pending uploads ----------------------------- */
 async function fetchPending() {
-    if (!state.vault)
+    const vault = state.vault;
+    if (!vault)
         return [];
     try {
-        const data = await apiJson(`/api/v1/files/${encodeURIComponent(state.vault)}/pending/`);
+        const data = await apiJson(`/api/v1/files/${encodeURIComponent(vault)}/pending/`);
+        // Discard result if the user switched vaults while the request was in-flight
+        if (state.vault !== vault)
+            return pendingEntries;
         pendingEntries = data;
         return data;
     }
@@ -223,7 +227,7 @@ async function fetchPending() {
 }
 function stopPendingPoll() {
     if (pendingPollTimer !== null) {
-        clearInterval(pendingPollTimer);
+        clearTimeout(pendingPollTimer);
         pendingPollTimer = null;
     }
 }
@@ -232,27 +236,32 @@ function startPendingPoll() {
         return; // already running
     // Track which paths were pending so we can refresh when they complete
     let prevPaths = new Set(pendingEntries.map((p) => p.path));
-    pendingPollTimer = setInterval(() => {
-        void (async () => {
-            const current = await fetchPending();
-            const currentPaths = new Set(current.map((p) => p.path));
-            // Find paths that completed (were pending, now gone)
-            const completed = [...prevPaths].filter((path) => !currentPaths.has(path));
-            prevPaths = currentPaths;
-            // Re-render pending rows on every tick
-            const tbody = el.entries();
-            // Remove old pending rows and re-render all
-            renderWithPending(tbody);
-            // If any file completed, refresh the main listing to show it
-            if (completed.length > 0) {
-                void refresh();
-            }
-            // Stop polling when nothing is pending
-            if (current.length === 0) {
-                stopPendingPoll();
-            }
-        })();
-    }, 4000);
+    // Use recursive setTimeout so the next tick only fires after the previous
+    // one fully completes — prevents overlapping fetches if the request is slow.
+    async function poll() {
+        const current = await fetchPending();
+        const currentPaths = new Set(current.map((p) => p.path));
+        // Find paths that completed (were pending, now gone)
+        const completed = [...prevPaths].filter((path) => !currentPaths.has(path));
+        prevPaths = currentPaths;
+        // Re-render pending rows
+        renderWithPending(el.entries());
+        // If any file completed, refresh the main listing to show it
+        if (completed.length > 0) {
+            void refresh();
+        }
+        // Stop polling when nothing is pending
+        if (current.length === 0) {
+            stopPendingPoll();
+            return;
+        }
+        // Schedule the next poll only if polling is still active
+        if (pendingPollTimer !== null) {
+            pendingPollTimer = setTimeout(() => void poll(), 4000);
+        }
+    }
+    // Mark as active before the first async tick
+    pendingPollTimer = setTimeout(() => void poll(), 4000);
 }
 /* ----------------------------- Rendering ----------------------------- */
 function makePendingRow(p) {
@@ -261,12 +270,20 @@ function makePendingRow(p) {
     tr.className = isFailed ? 'table-danger' : 'table-warning';
     const filename = p.path.split('/').pop() || p.path;
     const tdName = document.createElement('td');
-    const icon = isFailed
-        ? `<i class="bi bi-exclamation-triangle me-2 text-danger opacity-75"></i>`
-        : `<i class="bi bi-hourglass-split me-2 text-warning opacity-75"></i>`;
-    tdName.innerHTML = `${icon}<em class="text-muted">${filename}</em>`;
+    const iconEl = document.createElement('i');
+    iconEl.className = isFailed
+        ? 'bi bi-exclamation-triangle me-2 text-danger opacity-75'
+        : 'bi bi-hourglass-split me-2 text-warning opacity-75';
+    const filenameEl = document.createElement('em');
+    filenameEl.className = 'text-muted';
+    filenameEl.textContent = filename;
+    tdName.appendChild(iconEl);
+    tdName.appendChild(filenameEl);
     const tdPath = document.createElement('td');
-    tdPath.innerHTML = `<span class="text-muted">${p.path}</span>`;
+    const pathSpan = document.createElement('span');
+    pathSpan.className = 'text-muted';
+    pathSpan.textContent = p.path;
+    tdPath.appendChild(pathSpan);
     const tdSize = document.createElement('td');
     tdSize.textContent = fmtBytes(p.expected_size);
     const tdAct = document.createElement('td');
