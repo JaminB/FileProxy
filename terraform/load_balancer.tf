@@ -5,11 +5,10 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
 
-  # Must exceed GUNICORN_TIMEOUT (300 s) so the ALB does not drop the
-  # backend connection before gunicorn can respond.  The previous 120 s
-  # value was set for the EFS write-cache era; now that the cache is on a
-  # local Docker volume the bottleneck is client upload speed, not disk I/O.
-  idle_timeout = 305
+  # Derived from local.alb_idle_timeout in compute.tf (gunicorn_timeout + 5 s).
+  # Must exceed GUNICORN_TIMEOUT so the ALB does not drop the backend connection
+  # before gunicorn can respond.  Change the local in compute.tf and re-apply.
+  idle_timeout = local.alb_idle_timeout
 
   tags = { Name = "${var.project}-${var.env}-alb" }
 }

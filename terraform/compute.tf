@@ -1,3 +1,23 @@
+# gunicorn_timeout drives two things that must stay in sync:
+#   1. The SSM parameter picked up by docker-entrypoint.sh as --timeout <N>
+#   2. The ALB idle_timeout, which must exceed the gunicorn timeout so the ALB
+#      does not drop the backend connection before gunicorn can respond.
+# To extend support beyond ~112 MB at 3 Mbps, raise this value and re-apply.
+locals {
+  gunicorn_timeout     = 300
+  alb_idle_timeout     = local.gunicorn_timeout + 5
+}
+
+# Gunicorn worker timeout passed to the container via docker-entrypoint.sh.
+# Managed by Terraform (not manually set); change the local above and re-apply.
+resource "aws_ssm_parameter" "gunicorn_timeout" {
+  name  = "/fileproxy/prod/gunicorn_timeout"
+  type  = "String"
+  value = tostring(local.gunicorn_timeout)
+
+  tags = { Name = "gunicorn_timeout" }
+}
+
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
   owners      = ["amazon"]

@@ -81,15 +81,3 @@ resource "aws_ssm_parameter" "static_url" {
 
   tags = { Name = "static_url" }
 }
-
-# Gunicorn worker timeout in seconds.  Must be long enough to receive the full
-# request body from the browser before gunicorn kills the sync worker.  For a
-# 100 MB file at 3 Mbps (common residential upstream) the transfer alone takes
-# ~267 s, so 300 s gives comfortable headroom for real-world upload speeds.
-resource "aws_ssm_parameter" "gunicorn_timeout" {
-  name  = "/fileproxy/prod/gunicorn_timeout"
-  type  = "String"
-  value = "300"
-
-  tags = { Name = "gunicorn_timeout" }
-}
