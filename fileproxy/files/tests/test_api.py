@@ -675,6 +675,102 @@ class FilesObjectsPaginationTests(_BaseFilesTest):
         self.assertIn("next_cursor", resp.data)
 
 
+class FilesPendingUploadsTests(_BaseFilesTest):
+    """Tests for GET /api/v1/files/{name}/pending/"""
+
+    def _create_pending(self, path: str, status: str = "pending", user=None) -> None:
+        from files.models import PendingUpload
+
+        uid = (user or self.user).id
+        PendingUpload.objects.create(
+            user_id=uid,
+            connection_name=self.vault_item_name,
+            path=path,
+            temp_file_path=f"/tmp/fake_{path.replace('/', '_')}",  # nosec B108
+            expected_size=1024,
+            status=status,
+        )
+
+    def test_returns_empty_list_when_no_pending(self):
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data, [])
+
+    def test_returns_pending_and_uploading_records(self):
+        self._create_pending("a/pending.txt", "pending")
+        self._create_pending("b/uploading.txt", "uploading")
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")
+        self.assertEqual(resp.status_code, 200)
+        paths = {r["path"] for r in resp.data}
+        self.assertIn("a/pending.txt", paths)
+        self.assertIn("b/uploading.txt", paths)
+
+    def test_returns_failed_records(self):
+        self._create_pending("c/failed.txt", "failed")
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")
+        self.assertEqual(resp.status_code, 200)
+        paths = {r["path"] for r in resp.data}
+        self.assertIn("c/failed.txt", paths)
+
+    def test_excludes_done_and_cancelled_records(self):
+        self._create_pending("done.txt", "done")
+        self._create_pending("cancelled.txt", "cancelled")
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")
+        self.assertEqual(resp.status_code, 200)
+        paths = {r["path"] for r in resp.data}
+        self.assertNotIn("done.txt", paths)
+        self.assertNotIn("cancelled.txt", paths)
+
+    def test_scoped_to_requesting_user(self):
+        other = User.objects.create_user(username="other", password="pw")
+        self._create_pending("mine.txt", "pending")
+        self._create_pending("theirs.txt", "pending", user=other)
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")
+        self.assertEqual(resp.status_code, 200)
+        paths = {r["path"] for r in resp.data}
+        self.assertIn("mine.txt", paths)
+        self.assertNotIn("theirs.txt", paths)
+
+    def test_scoped_to_connection_name(self):
+        from files.models import PendingUpload
+
+        PendingUpload.objects.create(
+            user_id=self.user.id,
+            connection_name="other-conn",
+            path="other/file.txt",
+            temp_file_path="/tmp/other",  # nosec B108
+            expected_size=512,
+            status="pending",
+        )
+        self._create_pending("mine.txt", "pending")
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")
+        self.assertEqual(resp.status_code, 200)
+        paths = {r["path"] for r in resp.data}
+        self.assertIn("mine.txt", paths)
+        self.assertNotIn("other/file.txt", paths)
+
+    def test_response_shape(self):
+        self._create_pending("shape.txt", "pending")
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        record = resp.data[0]
+        for field in ("id", "path", "expected_size", "status", "created_at"):
+            self.assertIn(field, record)
+        self.assertEqual(record["path"], "shape.txt")
+        self.assertEqual(record["expected_size"], 1024)
+        self.assertEqual(record["status"], "pending")
+
+    def test_unknown_connection_returns_404(self):
+        resp = self.client.get("/api/v1/files/no-such-connection/pending/")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_unauthenticated_returns_401(self):
+        self.client.logout()
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/pending/")
+        self.assertIn(resp.status_code, (401, 403))
+
+
 class FilesWriteStreamTests(_BaseFilesTest):
     @override_settings(WRITE_CACHE_THRESHOLD_BYTES=2 * 1024 * 1024)
     def test_write_stream_via_multipart_roundtrip(self):

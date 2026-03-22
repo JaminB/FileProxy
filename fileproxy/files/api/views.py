@@ -31,7 +31,12 @@ from ..serializers import (
     ReadFileQuerySerializer,
     WriteFileSerializer,
 )
-from ..services import ConnectionNotFound, connections_for_user, get_backend_for_connection
+from ..services import (
+    ConnectionNotFound,
+    connections_for_user,
+    get_backend_for_connection,
+    user_scope,
+)
 from .parsers import OctetStreamParser, _ByteCountingStream
 
 
@@ -365,3 +370,34 @@ class FilesViewSet(viewsets.ViewSet):
         except Exception as e:  # noqa: BLE001
             self._record_event(request, connection_name, "read", object_path=path, ok=False)
             return self._error(e)
+
+    @action(detail=True, methods=["get"], url_path="pending")
+    def pending_uploads(self, request: Request, connection_name: str = ""):
+        """GET /api/v1/files/{connection_name}/pending/ — active pending uploads."""
+        from ..models import PendingUpload
+
+        if not Connection.objects.filter(
+            scope=user_scope(request.user), name=connection_name
+        ).exists():
+            return self._error(ConnectionNotFound(f"Connection not found: {connection_name}"))
+
+        qs = PendingUpload.objects.filter(
+            user_id=request.user.id,
+            connection_name=connection_name,
+            status__in=[
+                PendingUpload.Status.PENDING,
+                PendingUpload.Status.UPLOADING,
+                PendingUpload.Status.FAILED,
+            ],
+        ).order_by("created_at")
+        data = [
+            {
+                "id": str(p.id),
+                "path": p.path,
+                "expected_size": p.expected_size,
+                "status": p.status,
+                "created_at": p.created_at.isoformat(),
+            }
+            for p in qs
+        ]
+        return Response(data)
