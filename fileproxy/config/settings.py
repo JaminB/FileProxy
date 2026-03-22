@@ -51,6 +51,12 @@ WRITE_CACHE_DIR = env(
     default=os.path.join(tempfile.gettempdir(), "fileproxy", "write_cache"),
 )
 WRITE_CACHE_THRESHOLD_BYTES = int(env("WRITE_CACHE_THRESHOLD_BYTES", default="1048576"))
+# Minutes before an UPLOADING record with no claimed_at update is considered stale.
+# Must be greater than the longest expected backend write for a single file.
+WRITE_CACHE_STALE_UPLOAD_MINUTES = int(env("WRITE_CACHE_STALE_UPLOAD_MINUTES", default="10"))
+# Age in days after which terminal (DONE/CANCELLED/FAILED) PendingUpload rows and
+# associated temp files are eligible for deletion by cleanup_pending_uploads.
+WRITE_CACHE_CLEANUP_DAYS = int(env("WRITE_CACHE_CLEANUP_DAYS", default="7"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

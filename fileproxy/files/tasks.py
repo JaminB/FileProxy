@@ -5,6 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from celery import shared_task
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.utils import timezone
@@ -42,7 +43,7 @@ def upload_to_backend(self, upload_id: str) -> None:
         logger.info("upload_to_backend: skipping %s (status=%s)", upload_id, pending.status)
         return
 
-    _stale_cutoff = timezone.now() - timedelta(minutes=10)
+    _stale_cutoff = timezone.now() - timedelta(minutes=settings.WRITE_CACHE_STALE_UPLOAD_MINUTES)
 
     if pending.status == PendingUpload.Status.PENDING:
         # First attempt: CAS PENDING → UPLOADING and stamp claimed_at.
@@ -124,16 +125,17 @@ def upload_to_backend(self, upload_id: str) -> None:
         _fail(pending, str(exc))
         return
 
-    # Success — only transition from UPLOADING to avoid overwriting a concurrent cancellation.
-    try:
-        temp_path.unlink(missing_ok=True)
-    except OSError:
-        logger.warning("Could not delete temp file: %s", temp_path)
-
+    # Success — CAS UPLOADING → DONE first, then delete the temp file.
+    # Updating status before unlinking ensures we never delete the temp file
+    # without a committed DONE record (e.g. if a concurrent cancellation raced us).
     updated = PendingUpload.objects.filter(
         id=pending.id, status=PendingUpload.Status.UPLOADING
     ).update(status=PendingUpload.Status.DONE, completed_at=timezone.now())
     if updated:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not delete temp file: %s", temp_path)
         logger.info("upload_to_backend: completed %s (%s bytes)", upload_id, pending.expected_size)
     else:
         logger.info("upload_to_backend: skipped final DONE save for %s (status changed)", upload_id)

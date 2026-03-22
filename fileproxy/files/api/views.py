@@ -224,7 +224,6 @@ class FilesViewSet(viewsets.ViewSet):
                         path=path,
                         stream=file_obj,
                         size=bytes_written,
-                        backend=backend,
                     )
                     ok = True
                     return Response(
@@ -257,7 +256,6 @@ class FilesViewSet(viewsets.ViewSet):
                         path=path,
                         stream=request.stream,
                         size=content_length,
-                        backend=backend,
                     )
                     bytes_written = content_length
                     ok = True
@@ -291,7 +289,6 @@ class FilesViewSet(viewsets.ViewSet):
                         path=path,
                         data=raw,
                         size=bytes_written,
-                        backend=backend,
                     )
                     ok = True
                     return Response(

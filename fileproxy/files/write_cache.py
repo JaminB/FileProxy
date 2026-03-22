@@ -42,7 +42,7 @@ def _cancel_stale_uploads(user_id: int, connection_name: str, path: str) -> None
     Fresh UPLOADING records (``claimed_at`` within the last 10 minutes) are left alone;
     ``enqueue_upload`` returns early in that case before this function is called.
     """
-    stale_cutoff = timezone.now() - timedelta(minutes=10)
+    stale_cutoff = timezone.now() - timedelta(minutes=settings.WRITE_CACHE_STALE_UPLOAD_MINUTES)
     stale = (
         PendingUpload.objects.filter(
             user_id=user_id,
@@ -73,7 +73,6 @@ def enqueue_upload(
     user: AbstractBaseUser,
     connection_name: str,
     path: str,
-    backend,
     data: bytes | None = None,
     stream: IO[bytes] | None = None,
     size: int,
@@ -82,14 +81,14 @@ def enqueue_upload(
     Buffer a file locally and dispatch a Celery task to upload it to the backend.
 
     Exactly one of ``data`` (bytes) or ``stream`` (file-like) must be provided.
-    Creates a 0-byte placeholder in the backend immediately, then returns a
-    ``PendingUpload`` record after dispatching the background task.
+    Returns a ``PendingUpload`` record after dispatching the background task.
+    The backend is not touched until the Celery task runs successfully.
     """
     if (data is None) == (stream is None):
         raise ValueError("Provide exactly one of data or stream")
 
     user_id = user.id
-    _stale_cutoff = timezone.now() - timedelta(minutes=10)
+    _stale_cutoff = timezone.now() - timedelta(minutes=settings.WRITE_CACHE_STALE_UPLOAD_MINUTES)
 
     # If a fresh UPLOADING record exists for this (user, connection, path), don't preempt
     # it: the in-flight write_stream call could finish after any new task's and overwrite
@@ -133,10 +132,10 @@ def enqueue_upload(
         pending.celery_task_id = result.id
         pending.save(update_fields=["celery_task_id"])
     except Exception:
-        try:
-            temp_path.unlink(missing_ok=True)
-        except OSError:
-            logger.warning("Could not delete temp file after enqueue failure: %s", temp_path)
+        # Delete the DB record first so that if temp_path.unlink fails we don't
+        # leave a record pointing at a missing file (recovery would re-dispatch
+        # a task that immediately fails).  If record deletion itself fails, the
+        # temp file is left intact so recovery can still attempt the upload.
         if pending is not None:
             try:
                 pending.delete()
@@ -144,6 +143,11 @@ def enqueue_upload(
                 logger.warning(
                     "Could not delete PendingUpload %s after dispatch failure", upload_id
                 )
+                raise
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not delete temp file after enqueue failure: %s", temp_path)
         raise
 
     return pending

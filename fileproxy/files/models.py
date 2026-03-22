@@ -27,7 +27,7 @@ class PendingUpload(models.Model):
         db_index=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    claimed_at = models.DateTimeField(null=True, blank=True)
+    claimed_at = models.DateTimeField(null=True, blank=True, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     retry_count = models.IntegerField(default=0)
     error_message = models.TextField(blank=True, default="")

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import sys
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils import timezone
@@ -19,13 +21,12 @@ class Command(BaseCommand):
         "UPLOADING records are left alone to avoid duplicate uploads in multi-instance deployments."
     )
 
-    _stale_timeout = timedelta(minutes=10)
-
     def handle(self, *args, **options) -> None:
+        _stale_timeout = timedelta(minutes=settings.WRITE_CACHE_STALE_UPLOAD_MINUTES)
         # Reset UPLOADING records whose claimed_at is missing or older than the
         # stale timeout — these belong to workers that have died. Records with a
         # fresh claimed_at are left alone (another instance is actively uploading).
-        stale_cutoff = timezone.now() - self._stale_timeout
+        stale_cutoff = timezone.now() - _stale_timeout
         stale_qs = PendingUpload.objects.filter(status=PendingUpload.Status.UPLOADING).filter(
             Q(claimed_at__isnull=True) | Q(claimed_at__lt=stale_cutoff)
         )
@@ -39,6 +40,7 @@ class Command(BaseCommand):
             return
 
         dispatched = 0
+        failed = 0
         for record in records:
             try:
                 upload_to_backend.delay(str(record.id))
@@ -49,7 +51,10 @@ class Command(BaseCommand):
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Could not dispatch %s: %s", record.id, exc)
                 self.stderr.write(f"Warning: could not dispatch {record.id}: {exc}")
+                failed += 1
 
         self.stdout.write(
             self.style.SUCCESS(f"Recovered {dispatched}/{len(records)} pending upload(s).")
         )
+        if failed:
+            sys.exit(1)
