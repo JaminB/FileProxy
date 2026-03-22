@@ -24,7 +24,6 @@ set -euo pipefail
 ECR_URL="${ecr_url}"
 AWS_REGION="${aws_region}"
 ALB_DNS="${alb_dns}"
-EFS_DNS="${efs_dns}"
 
 # ECR login
 aws ecr get-login-password --region "$AWS_REGION" \
@@ -46,16 +45,6 @@ PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP,fileproxy.io,www.fileproxy.io" >> /etc/fileproxy.env
 echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.fileproxy.io" >> /etc/fileproxy.env
 
-# Mount shared EFS write-cache volume (idempotent across warm pool restarts).
-mkdir -p /mnt/fileproxy
-if ! mountpoint -q /mnt/fileproxy; then
-  mount -t efs -o tls "$EFS_DNS":/ /mnt/fileproxy
-fi
-# Persist across reboots (grep prevents duplicate fstab entries).
-if ! grep -q "$EFS_DNS" /etc/fstab; then
-  echo "$EFS_DNS:/ /mnt/fileproxy efs _netdev,tls 0 0" >> /etc/fstab
-fi
-
 # Stop and remove previous containers
 docker stop fileproxy-worker fileproxy 2>/dev/null || true
 docker rm   fileproxy-worker fileproxy 2>/dev/null || true
@@ -63,22 +52,24 @@ docker rm   fileproxy-worker fileproxy 2>/dev/null || true
 # Pull latest app image (only changed layers downloaded on warm pool restarts)
 docker pull "$ECR_URL:latest"
 
-# App container: mount shared EFS write-cache dir.
+# App container: write-cache on a local Docker named volume (fast EBS-backed
+# local storage, ~500 MB/s vs ~1 MB/s for EFS bursting with minimal stored data).
+# Both containers share the same named volume since they run on the same host.
 docker run -d \
   --name fileproxy \
   --restart unless-stopped \
   -p 8000:8000 \
-  -v /mnt/fileproxy:/tmp/fileproxy \
+  -v fileproxy-write-cache:/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
   "$ECR_URL:latest"
 
-# Celery worker: same image, same shared volume.
+# Celery worker: same image, same named volume.
 # CELERY_BROKER_URL (fetched from SSM) points to ElastiCache — not localhost.
 # --entrypoint overrides the image's gunicorn ENTRYPOINT so Celery actually runs.
 docker run -d \
   --name fileproxy-worker \
   --restart unless-stopped \
-  -v /mnt/fileproxy:/tmp/fileproxy \
+  -v fileproxy-write-cache:/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
   --entrypoint celery \
   "$ECR_URL:latest" \
