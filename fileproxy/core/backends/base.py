@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import (Any, BinaryIO, Iterable, Iterator, Mapping, Protocol,
-                    runtime_checkable)
+from typing import Any, BinaryIO, Iterable, Iterator, Mapping, Protocol, runtime_checkable
 
 
 class BackendError(RuntimeError):

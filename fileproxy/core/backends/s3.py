@@ -7,9 +7,17 @@ import boto3
 from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
-from .base import (Backend, BackendConfig, BackendDeleteError,
-                   BackendEnumerateError, BackendError, BackendReadError,
-                   BackendTestError, BackendWriteError, EnumeratePage)
+from .base import (
+    Backend,
+    BackendConfig,
+    BackendDeleteError,
+    BackendEnumerateError,
+    BackendError,
+    BackendReadError,
+    BackendTestError,
+    BackendWriteError,
+    EnumeratePage,
+)
 
 
 @dataclass(frozen=True, slots=True)

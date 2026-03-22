@@ -5,8 +5,12 @@ from typing import Any, Dict, Mapping, cast
 from django.db import transaction
 
 from .models import Connection, ConnectionKind
-from .schemas import (AzureBlobCredentials, DropboxOAuth2Credentials,
-                      GoogleDriveOAuth2Credentials, S3StaticCredentials)
+from .schemas import (
+    AzureBlobCredentials,
+    DropboxOAuth2Credentials,
+    GoogleDriveOAuth2Credentials,
+    S3StaticCredentials,
+)
 
 
 @transaction.atomic

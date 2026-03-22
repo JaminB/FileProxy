@@ -15,10 +15,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from ..models import Connection
-from .serializers import (AzureBlobCreateSerializer, ConnectionListSerializer,
-                          ConnectionRenameSerializer, DropboxCreateSerializer,
-                          GDriveCreateSerializer,
-                          S3CredentialsCreateSerializer)
+from .serializers import (
+    AzureBlobCreateSerializer,
+    ConnectionListSerializer,
+    ConnectionRenameSerializer,
+    DropboxCreateSerializer,
+    GDriveCreateSerializer,
+    S3CredentialsCreateSerializer,
+)
 
 
 def _get_or_404(queryset, **kwargs):

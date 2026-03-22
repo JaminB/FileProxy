@@ -21,8 +21,7 @@ from files.models import PendingUpload
 from files.tasks import upload_to_backend
 from rest_framework.test import APITestCase
 
-from .test_api import (_VAULT_ITEM_PAYLOAD, _BaseFilesTest,
-                       _make_fake_s3_client, _start_patches)
+from .test_api import _VAULT_ITEM_PAYLOAD, _BaseFilesTest, _make_fake_s3_client, _start_patches
 
 User = get_user_model()
 
