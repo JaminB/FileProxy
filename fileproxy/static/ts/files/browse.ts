@@ -718,8 +718,8 @@ async function doUpload(): Promise<void> {
 
   // Show progress bar
   el.uploadProgressWrap().style.display = '';
-  el.uploadProgressBar().style.width = '0%';
-  el.uploadProgressBar().setAttribute('aria-valuenow', '0');
+  el.uploadProgressBar().style.width = '5%';
+  el.uploadProgressBar().setAttribute('aria-valuenow', '5');
   el.uploadStatus().textContent = 'Uploading…';
   setUploadEnabled(false);
 
@@ -738,6 +738,9 @@ async function doUpload(): Promise<void> {
       },
     );
 
+    el.uploadProgressBar().style.width = '100%';
+    el.uploadProgressBar().setAttribute('aria-valuenow', '100');
+    await new Promise<void>((r) => setTimeout(r, 300));
     el.uploadProgressWrap().style.display = 'none';
     el.uploadProgressBar().style.width = '0%';
     el.uploadProgressBar().setAttribute('aria-valuenow', '0');
@@ -761,6 +764,9 @@ async function doUpload(): Promise<void> {
       await refresh();
     }
   } catch (e) {
+    el.uploadProgressBar().style.width = '100%';
+    el.uploadProgressBar().setAttribute('aria-valuenow', '100');
+    await new Promise<void>((r) => setTimeout(r, 300));
     el.uploadProgressWrap().style.display = 'none';
     el.uploadProgressBar().style.width = '0%';
     el.uploadProgressBar().setAttribute('aria-valuenow', '0');
