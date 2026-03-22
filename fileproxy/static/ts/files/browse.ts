@@ -693,7 +693,7 @@ async function doUpload(): Promise<void> {
   el.uploadProgressBar().style.width = '0%';
   el.uploadProgressBar().setAttribute('aria-valuenow', '0');
   el.uploadStatus().textContent = 'Uploading…';
-  el.uploadBtn().disabled = true;
+  setUploadEnabled(false);
 
   try {
     const form = new FormData();
@@ -712,6 +712,7 @@ async function doUpload(): Promise<void> {
 
     el.uploadProgressWrap().style.display = 'none';
     el.uploadProgressBar().style.width = '0%';
+    el.uploadProgressBar().setAttribute('aria-valuenow', '0');
 
     if (result.status === 202) {
       // Async path: file is queued, Celery will write to backend
@@ -720,7 +721,7 @@ async function doUpload(): Promise<void> {
       el.uploadName().value = '';
       // Fetch pending immediately so the row appears without waiting for the first poll tick
       await fetchPending();
-      render([]); // re-render with current entries will be overwritten by next refresh
+      renderWithPending(el.entries());
       void refresh();
       startPendingPoll();
     } else {
@@ -734,9 +735,11 @@ async function doUpload(): Promise<void> {
   } catch (e) {
     el.uploadProgressWrap().style.display = 'none';
     el.uploadProgressBar().style.width = '0%';
+    el.uploadProgressBar().setAttribute('aria-valuenow', '0');
     el.uploadStatus().textContent = '';
     setFlash(e instanceof Error ? e.message : 'Upload failed.', 'error');
   } finally {
+    setUploadEnabled(true);
     updateUploadButtonState();
   }
 }
