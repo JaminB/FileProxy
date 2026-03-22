@@ -95,9 +95,7 @@ class Command(BaseCommand):
         if not cache_dir.exists():
             return
 
-        known_paths = set(
-            PendingUpload.objects.values_list("temp_file_path", flat=True)
-        )
+        known_paths = set(PendingUpload.objects.values_list("temp_file_path", flat=True))
 
         orphaned = 0
         for f in cache_dir.iterdir():
