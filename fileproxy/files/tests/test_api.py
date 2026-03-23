@@ -251,6 +251,25 @@ class FilesApiS3Tests(APITestCase):
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
 
+    def test_objects_response_includes_last_modified_field(self):
+        """objects/ endpoint must include last_modified on every returned object."""
+        path = "docs/readme.txt"
+        self._fake_s3._buckets[self.bucket][path] = b"content"
+
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
+        self.assertEqual(resp.status_code, 200, resp.text)
+        objects = resp.data["objects"]
+        self.assertTrue(len(objects) > 0, "Expected at least one object in response")
+        for obj in objects:
+            self.assertIn(
+                "last_modified",
+                obj,
+                "last_modified field missing from object in /objects/ response",
+            )
+            # The fake S3 client does not set LastModified, so expect null here;
+            # the key must still be present in the serialized output.
+            self.assertIsNone(obj["last_modified"])
+
 
 class _BaseFilesTest(APITestCase):
     """Shared setUp/tearDown for files API tests."""

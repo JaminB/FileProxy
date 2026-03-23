@@ -80,17 +80,18 @@
           <!-- Entries -->
           <div class="table-responsive files-table-wrap">
             <table class="table table-sm align-middle mb-0">
-              <thead>
+              <thead id="entries-head">
                 <tr>
-                  <th style="width: 50%;">Name</th>
-                  <th style="width: 30%;">Path</th>
-                  <th style="width: 10%;">Size</th>
+                  <th data-sort="name" style="width: 35%; cursor: pointer;">Name</th>
+                  <th data-sort="path" style="width: 25%; cursor: pointer;">Path</th>
+                  <th data-sort="size" style="width: 10%; cursor: pointer;">Size</th>
+                  <th data-sort="modified" style="width: 20%; cursor: pointer;">Modified</th>
                   <th style="width: 10%;" class="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody id="entries">
                 <tr>
-                  <td colspan="4" class="text-muted small">
+                  <td colspan="5" class="text-muted small">
                     Choose a vault from the left to start browsing.
                   </td>
                 </tr>
@@ -107,9 +108,9 @@
           <div class="d-flex align-items-end gap-2 files-upload-row">
             <div class="flex-grow-1">
               <label class="form-label mb-1 small">Upload to current folder</label>
-              <input id="upload-file" class="form-control form-control-sm" type="file" disabled />
+              <input id="upload-file" class="form-control form-control-sm" type="file" multiple disabled />
             </div>
-            <div class="files-upload-name">
+            <div id="upload-name-wrap" class="files-upload-name">
               <label class="form-label mb-1 small">Name</label>
               <input
                 id="upload-name"

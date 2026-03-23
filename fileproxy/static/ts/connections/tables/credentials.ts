@@ -24,9 +24,12 @@ type Connection = {
   id?: string | number;
   name?: string | null;
   kind?: string | null;
-  updated?: string | null;
-  rotated?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  rotated_at?: string | null;
 };
+
+type SortCol = 'name' | 'kind' | 'created_at' | 'updated_at' | 'rotated_at';
 
 type ConnectionListResponse = Connection[] | { results: Connection[] };
 
@@ -50,6 +53,43 @@ function fmtDate(value?: string | null): string {
   });
 }
 
+/* ----------------------------- Sort state ----------------------------- */
+
+let sortCol: SortCol = 'updated_at';
+let sortDir: 'asc' | 'desc' = 'desc';
+let allItems: Connection[] = [];
+
+function sortItems(items: Connection[]): Connection[] {
+  return [...items].sort((a, b) => {
+    const av = a[sortCol] ?? '';
+    const bv = b[sortCol] ?? '';
+    // Nulls/empty always sort to the end regardless of direction
+    if (!av && !bv) return 0;
+    if (!av) return 1;
+    if (!bv) return -1;
+    const cmp = av.localeCompare(bv);
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function updateSortIndicators(): void {
+  const thead = document.getElementById('connection-head');
+  if (!thead) return;
+  for (const th of Array.from(thead.querySelectorAll<HTMLElement>('th[data-sort]'))) {
+    const col = th.getAttribute('data-sort') as SortCol;
+    const indicator = th.querySelector('.sort-indicator');
+    if (col === sortCol) {
+      th.setAttribute('aria-sort', sortDir === 'asc' ? 'ascending' : 'descending');
+      if (indicator) indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
+    } else {
+      th.setAttribute('aria-sort', 'none');
+      if (indicator) indicator.textContent = '';
+    }
+  }
+}
+
+/* ----------------------------- DOM helpers ----------------------------- */
+
 function clear(tbody: HTMLTableSectionElement): void {
   tbody.innerHTML = '';
 }
@@ -57,7 +97,7 @@ function clear(tbody: HTMLTableSectionElement): void {
 function messageRow(tbody: HTMLTableSectionElement, text: string): void {
   const tr = document.createElement('tr');
   const td = document.createElement('td');
-  td.colSpan = 5;
+  td.colSpan = 6;
   td.className = 'text-secondary';
   td.textContent = text;
   tr.appendChild(td);
@@ -98,7 +138,7 @@ function renderItems(tbody: HTMLTableSectionElement, items: Connection[]): void 
     return;
   }
 
-  for (const item of items) {
+  for (const item of sortItems(items)) {
     const tr = document.createElement('tr');
 
     const nameTd = document.createElement('td');
@@ -120,11 +160,14 @@ function renderItems(tbody: HTMLTableSectionElement, items: Connection[]): void 
       kindTd.textContent = item.kind ?? '—';
     }
 
+    const createdTd = document.createElement('td');
+    createdTd.textContent = fmtDate(item.created_at);
+
     const updatedTd = document.createElement('td');
-    updatedTd.textContent = fmtDate(item.updated);
+    updatedTd.textContent = fmtDate(item.updated_at);
 
     const rotatedTd = document.createElement('td');
-    rotatedTd.textContent = fmtDate(item.rotated);
+    rotatedTd.textContent = fmtDate(item.rotated_at);
 
     const actionsTd = document.createElement('td');
     actionsTd.className = 'text-end';
@@ -158,6 +201,7 @@ function renderItems(tbody: HTMLTableSectionElement, items: Connection[]): void 
         }
 
         tr.remove();
+        allItems = allItems.filter((c) => c.id !== id);
         setFlash('Deleted.', 'info');
 
         // If we removed the last row, show empty state
@@ -176,6 +220,7 @@ function renderItems(tbody: HTMLTableSectionElement, items: Connection[]): void 
 
     tr.appendChild(nameTd);
     tr.appendChild(kindTd);
+    tr.appendChild(createdTd);
     tr.appendChild(updatedTd);
     tr.appendChild(rotatedTd);
     tr.appendChild(actionsTd);
@@ -184,9 +229,53 @@ function renderItems(tbody: HTMLTableSectionElement, items: Connection[]): void 
   }
 }
 
+function initSortHeaders(tbody: HTMLTableSectionElement): void {
+  const thead = document.getElementById('connection-head');
+  if (!thead) return;
+
+  for (const th of Array.from(thead.querySelectorAll<HTMLElement>('th[data-sort]'))) {
+    // Add sort indicator span
+    const indicator = document.createElement('span');
+    indicator.className = 'sort-indicator';
+    indicator.setAttribute('aria-hidden', 'true');
+    const col = th.getAttribute('data-sort') as SortCol;
+    th.setAttribute('tabindex', '0');
+    th.setAttribute(
+      'aria-sort',
+      col === sortCol ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none',
+    );
+    if (col === sortCol) {
+      indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
+    }
+    th.appendChild(indicator);
+
+    const activate = () => {
+      const c = th.getAttribute('data-sort') as SortCol;
+      if (c === sortCol) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortCol = c;
+        sortDir = 'asc';
+      }
+      updateSortIndicators();
+      renderItems(tbody, allItems);
+    };
+
+    th.addEventListener('click', activate);
+    th.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        activate();
+      }
+    });
+  }
+}
+
 export async function loadConnectionsTable(): Promise<void> {
   const tbody = qs<HTMLTableSectionElement>('#connection-rows');
   if (!tbody) return;
+
+  initSortHeaders(tbody);
 
   try {
     const resp = await fetch('/api/v1/connections/', {
@@ -202,7 +291,8 @@ export async function loadConnectionsTable(): Promise<void> {
     }
 
     const data = (await resp.json()) as ConnectionListResponse;
-    renderItems(tbody, toItems(data));
+    allItems = toItems(data);
+    renderItems(tbody, allItems);
   } catch (err) {
     const msg = `Network error loading connections: ${String(err)}`;
     setFlash(msg, 'error');

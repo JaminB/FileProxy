@@ -27,18 +27,19 @@
     <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-sm table-hover align-middle mb-0">
-        <thead>
+        <thead id="connection-head">
           <tr>
-            <th>Name</th>
-            <th>Kind</th>
-            <th>Updated</th>
-            <th>Rotated</th>
+            <th data-sort="name" style="cursor: pointer;">Name</th>
+            <th data-sort="kind" style="cursor: pointer;">Kind</th>
+            <th data-sort="created_at" style="cursor: pointer;">Created</th>
+            <th data-sort="updated_at" style="cursor: pointer;">Updated</th>
+            <th data-sort="rotated_at" style="cursor: pointer;">Rotated</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody id="connection-rows">
           <tr>
-            <td colspan="5" class="text-secondary">Loading…</td>
+            <td colspan="6" class="text-secondary">Loading…</td>
           </tr>
         </tbody>
       </table>

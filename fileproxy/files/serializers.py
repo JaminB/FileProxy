@@ -7,6 +7,7 @@ class BackendObjectSerializer(serializers.Serializer):
     name = serializers.CharField()
     path = serializers.CharField()
     size = serializers.IntegerField(required=False, allow_null=True)
+    last_modified = serializers.DateTimeField(required=False, allow_null=True)
 
 
 class EnumerateQuerySerializer(serializers.Serializer):

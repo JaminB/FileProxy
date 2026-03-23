@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 import google.auth.exceptions
@@ -30,6 +31,7 @@ class GDriveObject:
     name: str
     path: str
     size: int | None
+    last_modified: datetime | None
 
 
 class GDriveBackend(Backend):
@@ -132,7 +134,7 @@ class GDriveBackend(Backend):
             q = f"'{folder_id}' in parents and trashed = false"
             kwargs: dict[str, Any] = {
                 "q": q,
-                "fields": "nextPageToken, files(id, name, mimeType, size)",
+                "fields": "nextPageToken, files(id, name, mimeType, size, modifiedTime)",
                 "pageSize": min(page_size, 1000),
             }
             if cursor:
@@ -154,12 +156,23 @@ class GDriveBackend(Backend):
             is_folder = f.get("mimeType") == self._FOLDER_MIME
             size_raw = f.get("size")
             size = int(size_raw) if size_raw is not None else None
+            modified_raw = f.get("modifiedTime")
+            last_modified: datetime | None = None
+            if modified_raw:
+                try:
+                    last_modified = datetime.fromisoformat(
+                        modified_raw.replace("Z", "+00:00")
+                    ).astimezone(timezone.utc)
+                except ValueError:
+                    pass
             if is_folder:
                 obj_path = f"{base_prefix}{name}/"
                 size = None
             else:
                 obj_path = f"{base_prefix}{name}"
-            objects.append(GDriveObject(name=name, path=obj_path, size=size))
+            objects.append(
+                GDriveObject(name=name, path=obj_path, size=size, last_modified=last_modified)
+            )
 
         return EnumeratePage(
             objects=objects,

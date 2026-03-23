@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, BinaryIO, Iterable, Iterator, Mapping, Protocol, runtime_checkable
 
 
@@ -49,6 +50,7 @@ class BackendObject(Protocol):
     name: str
     path: str
     size: int | None
+    last_modified: datetime | None
 
 
 @dataclass(frozen=True, slots=True)
