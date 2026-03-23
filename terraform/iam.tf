@@ -79,6 +79,12 @@ resource "aws_iam_role_policy" "github_actions" {
           "autoscaling:DescribeAutoScalingGroups"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "CloudFrontInvalidation"
+        Effect = "Allow"
+        Action = "cloudfront:CreateInvalidation"
+        Resource = aws_cloudfront_distribution.static.arn
       }
     ]
   })
