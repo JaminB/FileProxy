@@ -144,4 +144,4 @@ jobs:
           done
           aws autoscaling start-instance-refresh \
             --auto-scaling-group-name fileproxy-prod-asg \
-            --preferences '{"MinHealthyPercentage": 100, "InstanceWarmup": 240}'
+            --preferences '{"MinHealthyPercentage": 100, "InstanceWarmup": 600}'

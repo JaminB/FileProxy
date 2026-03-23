@@ -14,10 +14,11 @@ resource "aws_lb" "main" {
 }
 
 resource "aws_lb_target_group" "app" {
-  name     = "${var.project}-${var.env}-tg"
-  port     = 8000
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  name                 = "${var.project}-${var.env}-tg"
+  port                 = 8000
+  protocol             = "HTTP"
+  vpc_id               = aws_vpc.main.id
+  deregistration_delay = 30
 
   health_check {
     path                = "/health/"
