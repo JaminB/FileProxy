@@ -51,9 +51,21 @@ echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.file
 # Mount EFS write cache — shared across all instances so any Celery worker can
 # read temp files written by any app server.  One Zone Elastic: no burst credits,
 # consistent throughput regardless of how little data is stored.
+# Retry loop handles transient DNS propagation and mount-target warm-up delays.
 mkdir -p "$EFS_MOUNT"
 if ! mountpoint -q "$EFS_MOUNT"; then
-  mount -t efs -o tls "$EFS_ID":/ "$EFS_MOUNT"
+  MAX_RETRIES=5
+  SLEEP_SECONDS=5
+  attempt=1
+  while [ "$attempt" -le "$MAX_RETRIES" ]; do
+    echo "Attempting EFS mount (attempt $attempt/$MAX_RETRIES)..."
+    mount -t efs -o tls,_netdev,timeo=30,retrans=5 "$EFS_ID":/ "$EFS_MOUNT" && break
+    echo "EFS mount failed on attempt $attempt, retrying in ${SLEEP_SECONDS}s..."
+    attempt=$((attempt + 1))
+    sleep "$SLEEP_SECONDS"
+  done
+  # set -e will abort startup if the mount never succeeded
+  mountpoint -q "$EFS_MOUNT"
 fi
 
 # Stop and remove previous containers

@@ -6,8 +6,18 @@
 resource "aws_efs_file_system" "write_cache" {
   availability_zone_name = local.azs[0]
   throughput_mode        = "elastic"
+  encrypted              = true
 
   tags = { Name = "${var.project}-${var.env}-write-cache" }
+}
+
+# Temp files are ephemeral — disable automatic backups to avoid AWS Backup costs.
+resource "aws_efs_backup_policy" "write_cache" {
+  file_system_id = aws_efs_file_system.write_cache.id
+
+  backup_policy {
+    status = "DISABLED"
+  }
 }
 
 resource "aws_security_group" "efs" {

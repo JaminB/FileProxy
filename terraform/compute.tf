@@ -70,6 +70,10 @@ resource "aws_launch_template" "app" {
     }
   }
 
+  # Ensure the EFS mount target is available before any instance that uses this
+  # launch template attempts to mount it during boot.
+  depends_on = [aws_efs_mount_target.write_cache]
+
   lifecycle {
     create_before_destroy = true
   }
