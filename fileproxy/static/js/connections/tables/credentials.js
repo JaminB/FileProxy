@@ -56,13 +56,15 @@ function updateSortIndicators() {
     for (const th of Array.from(thead.querySelectorAll('th[data-sort]'))) {
         const col = th.getAttribute('data-sort');
         const indicator = th.querySelector('.sort-indicator');
-        if (indicator) {
-            if (col === sortCol) {
+        if (col === sortCol) {
+            th.setAttribute('aria-sort', sortDir === 'asc' ? 'ascending' : 'descending');
+            if (indicator)
                 indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
-            }
-            else {
+        }
+        else {
+            th.setAttribute('aria-sort', 'none');
+            if (indicator)
                 indicator.textContent = '';
-            }
         }
     }
 }
@@ -188,21 +190,31 @@ function initSortHeaders(tbody) {
         const indicator = document.createElement('span');
         indicator.className = 'sort-indicator';
         indicator.setAttribute('aria-hidden', 'true');
-        if (th.getAttribute('data-sort') === sortCol) {
+        const col = th.getAttribute('data-sort');
+        th.setAttribute('tabindex', '0');
+        th.setAttribute('aria-sort', col === sortCol ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+        if (col === sortCol) {
             indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
         }
         th.appendChild(indicator);
-        th.addEventListener('click', () => {
-            const col = th.getAttribute('data-sort');
-            if (col === sortCol) {
+        const activate = () => {
+            const c = th.getAttribute('data-sort');
+            if (c === sortCol) {
                 sortDir = sortDir === 'asc' ? 'desc' : 'asc';
             }
             else {
-                sortCol = col;
+                sortCol = c;
                 sortDir = 'asc';
             }
             updateSortIndicators();
             renderItems(tbody, allItems);
+        };
+        th.addEventListener('click', activate);
+        th.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                activate();
+            }
         });
     }
 }

@@ -71,15 +71,15 @@ function sortItems(items: Connection[]): Connection[] {
 function updateSortIndicators(): void {
   const thead = document.getElementById('connection-head');
   if (!thead) return;
-  for (const th of Array.from(thead.querySelectorAll('th[data-sort]'))) {
+  for (const th of Array.from(thead.querySelectorAll<HTMLElement>('th[data-sort]'))) {
     const col = th.getAttribute('data-sort') as SortCol;
     const indicator = th.querySelector('.sort-indicator');
-    if (indicator) {
-      if (col === sortCol) {
-        indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
-      } else {
-        indicator.textContent = '';
-      }
+    if (col === sortCol) {
+      th.setAttribute('aria-sort', sortDir === 'asc' ? 'ascending' : 'descending');
+      if (indicator) indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
+    } else {
+      th.setAttribute('aria-sort', 'none');
+      if (indicator) indicator.textContent = '';
     }
   }
 }
@@ -229,26 +229,37 @@ function initSortHeaders(tbody: HTMLTableSectionElement): void {
   const thead = document.getElementById('connection-head');
   if (!thead) return;
 
-  for (const th of Array.from(thead.querySelectorAll('th[data-sort]'))) {
+  for (const th of Array.from(thead.querySelectorAll<HTMLElement>('th[data-sort]'))) {
     // Add sort indicator span
     const indicator = document.createElement('span');
     indicator.className = 'sort-indicator';
     indicator.setAttribute('aria-hidden', 'true');
-    if ((th.getAttribute('data-sort') as SortCol) === sortCol) {
+    const col = th.getAttribute('data-sort') as SortCol;
+    th.setAttribute('tabindex', '0');
+    th.setAttribute('aria-sort', col === sortCol ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+    if (col === sortCol) {
       indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
     }
     th.appendChild(indicator);
 
-    th.addEventListener('click', () => {
-      const col = th.getAttribute('data-sort') as SortCol;
-      if (col === sortCol) {
+    const activate = () => {
+      const c = th.getAttribute('data-sort') as SortCol;
+      if (c === sortCol) {
         sortDir = sortDir === 'asc' ? 'desc' : 'asc';
       } else {
-        sortCol = col;
+        sortCol = c;
         sortDir = 'asc';
       }
       updateSortIndicators();
       renderItems(tbody, allItems);
+    };
+
+    th.addEventListener('click', activate);
+    th.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        activate();
+      }
     });
   }
 }

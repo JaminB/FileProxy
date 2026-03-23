@@ -243,12 +243,34 @@ function sortEntries(entries, sort) {
             case 'path':
                 cmp = a.path.localeCompare(b.path);
                 break;
-            case 'size':
-                cmp = (a.size ?? -1) - (b.size ?? -1);
+            case 'size': {
+                const aN = a.size == null;
+                const bN = b.size == null;
+                if (aN && bN) {
+                    cmp = 0;
+                    break;
+                }
+                if (aN)
+                    return 1; // nulls always sort to the end regardless of direction
+                if (bN)
+                    return -1;
+                cmp = a.size - b.size;
                 break;
-            case 'modified':
-                cmp = (a.last_modified ?? '').localeCompare(b.last_modified ?? '');
+            }
+            case 'modified': {
+                const aN = !a.last_modified;
+                const bN = !b.last_modified;
+                if (aN && bN) {
+                    cmp = 0;
+                    break;
+                }
+                if (aN)
+                    return 1; // nulls always sort to the end regardless of direction
+                if (bN)
+                    return -1;
+                cmp = a.last_modified.localeCompare(b.last_modified);
                 break;
+            }
         }
         return sort.dir === 'asc' ? cmp : -cmp;
     });
@@ -484,7 +506,11 @@ function render(entries) {
         }
         else {
             const icon = fileIcon(entry.name);
-            tdName.innerHTML = `<i class="bi ${icon} me-2 opacity-75"></i>${entry.name}`;
+            const iconEl = document.createElement('i');
+            iconEl.className = `bi ${icon} me-2 opacity-75`;
+            iconEl.setAttribute('aria-hidden', 'true');
+            tdName.appendChild(iconEl);
+            tdName.appendChild(document.createTextNode(entry.name));
             tdPath.textContent = entry.path;
             tdSize.textContent = fmtBytes(entry.size);
             tdModified.textContent = fmtDate(entry.last_modified);
@@ -504,12 +530,30 @@ function initFileSortHeaders() {
     const thead = document.getElementById('entries-head');
     if (!thead)
         return;
+    const updateHeaderAriaSort = () => {
+        for (const t of Array.from(thead.querySelectorAll('th[data-sort]'))) {
+            const col = t.getAttribute('data-sort');
+            const ind = t.querySelector('.sort-indicator');
+            if (col === state.sort?.col) {
+                t.setAttribute('aria-sort', state.sort.dir === 'asc' ? 'ascending' : 'descending');
+                if (ind)
+                    ind.textContent = state.sort.dir === 'asc' ? ' ▲' : ' ▼';
+            }
+            else {
+                t.setAttribute('aria-sort', 'none');
+                if (ind)
+                    ind.textContent = '';
+            }
+        }
+    };
     for (const th of Array.from(thead.querySelectorAll('th[data-sort]'))) {
         const indicator = document.createElement('span');
         indicator.className = 'sort-indicator';
         indicator.setAttribute('aria-hidden', 'true');
         th.appendChild(indicator);
-        th.addEventListener('click', () => {
+        th.setAttribute('tabindex', '0');
+        th.setAttribute('aria-sort', 'none');
+        const activate = () => {
             const col = th.getAttribute('data-sort');
             if (state.sort?.col === col) {
                 state.sort = { col, dir: state.sort.dir === 'asc' ? 'desc' : 'asc' };
@@ -517,16 +561,15 @@ function initFileSortHeaders() {
             else {
                 state.sort = { col, dir: 'asc' };
             }
-            // Update all sort indicators
-            for (const t of Array.from(thead.querySelectorAll('th[data-sort]'))) {
-                const ind = t.querySelector('.sort-indicator');
-                if (ind) {
-                    ind.textContent = t.getAttribute('data-sort') === state.sort.col
-                        ? (state.sort.dir === 'asc' ? ' ▲' : ' ▼')
-                        : '';
-                }
-            }
+            updateHeaderAriaSort();
             render(currentEntries);
+        };
+        th.addEventListener('click', activate);
+        th.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                activate();
+            }
         });
     }
 }
