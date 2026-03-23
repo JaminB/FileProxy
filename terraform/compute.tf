@@ -60,6 +60,7 @@ resource "aws_launch_template" "app" {
     aws_region = var.aws_region
     ecr_url    = aws_ecr_repository.app.repository_url
     alb_dns    = aws_lb.main.dns_name
+    efs_id     = aws_efs_file_system.write_cache.id
   }))
 
   tag_specifications {
@@ -68,6 +69,10 @@ resource "aws_launch_template" "app" {
       Name = "${var.project}-${var.env}-app"
     }
   }
+
+  # Ensure the EFS mount target is available before any instance that uses this
+  # launch template attempts to mount it during boot.
+  depends_on = [aws_efs_mount_target.write_cache]
 
   lifecycle {
     create_before_destroy = true

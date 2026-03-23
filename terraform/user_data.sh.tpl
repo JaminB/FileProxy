@@ -24,6 +24,8 @@ set -euo pipefail
 ECR_URL="${ecr_url}"
 AWS_REGION="${aws_region}"
 ALB_DNS="${alb_dns}"
+EFS_ID="${efs_id}"
+EFS_MOUNT="/mnt/fileproxy-write-cache"
 
 # ECR login
 aws ecr get-login-password --region "$AWS_REGION" \
@@ -46,6 +48,26 @@ PRIVATE_IP=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.1
 echo "DJANGO_ALLOWED_HOSTS=$ALB_DNS,$PRIVATE_IP,fileproxy.io,www.fileproxy.io" >> /etc/fileproxy.env
 echo "CSRF_TRUSTED_ORIGINS=http://$ALB_DNS,https://fileproxy.io,https://www.fileproxy.io" >> /etc/fileproxy.env
 
+# Mount EFS write cache — shared across all instances so any Celery worker can
+# read temp files written by any app server.  One Zone Elastic: no burst credits,
+# consistent throughput regardless of how little data is stored.
+# Retry loop handles transient DNS propagation and mount-target warm-up delays.
+mkdir -p "$EFS_MOUNT"
+if ! mountpoint -q "$EFS_MOUNT"; then
+  MAX_RETRIES=5
+  SLEEP_SECONDS=5
+  attempt=1
+  while [ "$attempt" -le "$MAX_RETRIES" ]; do
+    echo "Attempting EFS mount (attempt $attempt/$MAX_RETRIES)..."
+    mount -t efs -o tls,_netdev,timeo=30,retrans=5 "$EFS_ID":/ "$EFS_MOUNT" && break
+    echo "EFS mount failed on attempt $attempt, retrying in $${SLEEP_SECONDS}s..."
+    attempt=$((attempt + 1))
+    sleep "$SLEEP_SECONDS"
+  done
+  # set -e will abort startup if the mount never succeeded
+  mountpoint -q "$EFS_MOUNT"
+fi
+
 # Stop and remove previous containers
 docker stop fileproxy-worker fileproxy 2>/dev/null || true
 docker rm   fileproxy-worker fileproxy 2>/dev/null || true
@@ -53,24 +75,24 @@ docker rm   fileproxy-worker fileproxy 2>/dev/null || true
 # Pull latest app image (only changed layers downloaded on warm pool restarts)
 docker pull "$ECR_URL:latest"
 
-# App container: write-cache on a local Docker named volume (fast EBS-backed
-# local storage, ~500 MB/s vs ~1 MB/s for EFS bursting with minimal stored data).
-# Both containers share the same named volume since they run on the same host.
+# App container: write-cache on EFS (shared across all instances in the fleet).
+# Bind-mount the EFS directory so any Celery worker — on any host — can read
+# temp files written here.  /tmp/fileproxy is the default WRITE_CACHE_DIR prefix.
 docker run -d \
   --name fileproxy \
   --restart unless-stopped \
   -p 8000:8000 \
-  -v fileproxy-write-cache:/tmp/fileproxy \
+  -v "$EFS_MOUNT":/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
   "$ECR_URL:latest"
 
-# Celery worker: same image, same named volume.
+# Celery worker: same image, same EFS bind mount.
 # CELERY_BROKER_URL (fetched from SSM) points to ElastiCache — not localhost.
 # --entrypoint overrides the image's gunicorn ENTRYPOINT so Celery actually runs.
 docker run -d \
   --name fileproxy-worker \
   --restart unless-stopped \
-  -v fileproxy-write-cache:/tmp/fileproxy \
+  -v "$EFS_MOUNT":/tmp/fileproxy \
   --env-file /etc/fileproxy.env \
   --entrypoint celery \
   "$ECR_URL:latest" \
