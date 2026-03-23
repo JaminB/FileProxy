@@ -170,7 +170,9 @@ class GDriveBackend(Backend):
                 size = None
             else:
                 obj_path = f"{base_prefix}{name}"
-            objects.append(GDriveObject(name=name, path=obj_path, size=size, last_modified=last_modified))
+            objects.append(
+                GDriveObject(name=name, path=obj_path, size=size, last_modified=last_modified)
+            )
 
         return EnumeratePage(
             objects=objects,
