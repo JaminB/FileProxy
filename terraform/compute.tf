@@ -79,7 +79,7 @@ resource "aws_autoscaling_group" "app" {
   vpc_zone_identifier       = aws_subnet.public[*].id
   target_group_arns         = [aws_lb_target_group.app.arn]
   health_check_type         = "ELB"
-  health_check_grace_period = 240
+  health_check_grace_period = 210
 
   min_size         = var.asg_min_size
   max_size         = var.asg_max_size
@@ -94,13 +94,13 @@ resource "aws_autoscaling_group" "app" {
     strategy = "Rolling"
     preferences {
       min_healthy_percentage = 100
-      instance_warmup        = 240
+      instance_warmup        = 600
     }
   }
 
   warm_pool {
     pool_state                  = "Stopped"
-    min_size                    = 0
+    min_size                    = 1
     max_group_prepared_capacity = 1
   }
 
