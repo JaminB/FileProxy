@@ -118,10 +118,32 @@ jobs:
         # G117: secret field name in marshaled struct (API key saved intentionally to 0600 file)
         run: gosec -exclude=G104,G112,G117 ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/... ./winmount/... ./cmd/...
 
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'fileproxy/**/api/**'
+              - 'fileproxy/**/models.py'
+              - 'fileproxy/files/serializers.py'
+              - 'fileproxy/api/urls.py'
+              - 'fileproxy/config/urls.py'
+
   fuzz:
     runs-on: ubuntu-latest
-    needs: [test]
-    if: always() && needs.test.result != 'failure'
+    needs: [test, changes]
+    if: always() && needs.test.result == 'success' && needs.changes.outputs.api == 'true'
     env:
       DJANGO_SUPERUSER_USERNAME: fuzzuser
       DJANGO_SUPERUSER_PASSWORD: fuzz-ci-password-123
