@@ -45,6 +45,13 @@ function sortItems(items) {
     return [...items].sort((a, b) => {
         const av = a[sortCol] ?? '';
         const bv = b[sortCol] ?? '';
+        // Nulls/empty always sort to the end regardless of direction
+        if (!av && !bv)
+            return 0;
+        if (!av)
+            return 1;
+        if (!bv)
+            return -1;
         const cmp = av.localeCompare(bv);
         return sortDir === 'asc' ? cmp : -cmp;
     });

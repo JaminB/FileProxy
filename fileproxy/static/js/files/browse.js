@@ -727,67 +727,74 @@ async function doUpload() {
     el.uploadProgressWrap().style.display = '';
     el.uploadProgressBar().style.width = '5%';
     el.uploadProgressBar().setAttribute('aria-valuenow', '5');
-    let anyQueued = false;
-    let successCount = 0;
-    const errors = [];
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const name = isMulti ? file.name : (el.uploadName().value || file.name).trim();
-        const path = `${state.prefix}${name}`;
-        el.uploadStatus().textContent = isMulti
-            ? `Uploading ${i + 1} of ${files.length}: ${file.name}…`
-            : 'Uploading…';
-        try {
-            const form = new FormData();
-            form.append('path', path);
-            form.append('file', file);
-            const result = await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form, (pct) => {
-                // For multi-file, show overall progress across files
-                const overall = ((i + pct / 100) / files.length) * 100;
-                const pctStr = (isMulti ? overall : pct).toFixed(0);
-                el.uploadProgressBar().style.width = `${pctStr}%`;
-                el.uploadProgressBar().setAttribute('aria-valuenow', pctStr);
-            });
-            if (result.status === 202) {
-                anyQueued = true;
+    try {
+        let anyQueued = false;
+        let successCount = 0;
+        const errors = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const name = isMulti ? file.name : (el.uploadName().value || file.name).trim();
+            const path = `${state.prefix}${name}`;
+            el.uploadStatus().textContent = isMulti
+                ? `Uploading ${i + 1} of ${files.length}: ${file.name}…`
+                : 'Uploading…';
+            try {
+                const form = new FormData();
+                form.append('path', path);
+                form.append('file', file);
+                const result = await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form, (pct) => {
+                    // For multi-file, show overall progress across files
+                    const overall = ((i + pct / 100) / files.length) * 100;
+                    const pctStr = (isMulti ? overall : pct).toFixed(0);
+                    el.uploadProgressBar().style.width = `${pctStr}%`;
+                    el.uploadProgressBar().setAttribute('aria-valuenow', pctStr);
+                });
+                if (result.status === 202) {
+                    anyQueued = true;
+                }
+                successCount++;
             }
-            successCount++;
+            catch (e) {
+                errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Upload failed'}`);
+            }
         }
-        catch (e) {
-            errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Upload failed'}`);
+        el.uploadProgressBar().style.width = '100%';
+        el.uploadProgressBar().setAttribute('aria-valuenow', '100');
+        await new Promise((r) => setTimeout(r, 300));
+        el.uploadProgressWrap().style.display = 'none';
+        el.uploadProgressBar().style.width = '0%';
+        el.uploadProgressBar().setAttribute('aria-valuenow', '0');
+        el.uploadFile().value = '';
+        el.uploadName().value = '';
+        updateUploadNameVisibility();
+        if (errors.length) {
+            setFlash(errors.join('; '), 'error');
+        }
+        if (anyQueued) {
+            el.uploadStatus().textContent =
+                successCount > 1
+                    ? `${successCount} files queued — writing to backend…`
+                    : 'Queued — writing to backend…';
+            await fetchPending();
+            renderWithPending(el.entries());
+            void refresh();
+            startPendingPoll();
+        }
+        else if (successCount > 0) {
+            el.uploadStatus().textContent =
+                successCount > 1 ? `${successCount} files uploaded.` : 'Uploaded.';
+            if (!errors.length)
+                setFlash('Upload complete.', 'success');
+            await refresh();
         }
     }
-    el.uploadProgressBar().style.width = '100%';
-    el.uploadProgressBar().setAttribute('aria-valuenow', '100');
-    await new Promise((r) => setTimeout(r, 300));
-    el.uploadProgressWrap().style.display = 'none';
-    el.uploadProgressBar().style.width = '0%';
-    el.uploadProgressBar().setAttribute('aria-valuenow', '0');
-    el.uploadFile().value = '';
-    el.uploadName().value = '';
-    updateUploadNameVisibility();
-    if (errors.length) {
-        setFlash(errors.join('; '), 'error');
+    finally {
+        el.uploadProgressWrap().style.display = 'none';
+        el.uploadProgressBar().style.width = '0%';
+        el.uploadProgressBar().setAttribute('aria-valuenow', '0');
+        setUploadEnabled(true);
+        updateUploadButtonState();
     }
-    if (anyQueued) {
-        el.uploadStatus().textContent =
-            successCount > 1
-                ? `${successCount} files queued — writing to backend…`
-                : 'Queued — writing to backend…';
-        await fetchPending();
-        renderWithPending(el.entries());
-        void refresh();
-        startPendingPoll();
-    }
-    else if (successCount > 0) {
-        el.uploadStatus().textContent =
-            successCount > 1 ? `${successCount} files uploaded.` : 'Uploaded.';
-        if (!errors.length)
-            setFlash('Upload complete.', 'success');
-        await refresh();
-    }
-    setUploadEnabled(true);
-    updateUploadButtonState();
 }
 function goUp() {
     if (!state.prefix)
