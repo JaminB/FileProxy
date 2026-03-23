@@ -124,6 +124,8 @@ jobs:
       api: ${{ steps.filter.outputs.api }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -138,7 +140,7 @@ jobs:
   fuzz:
     runs-on: ubuntu-latest
     needs: [test, changes]
-    if: always() && needs.test.result != 'failure' && needs.changes.outputs.api == 'true'
+    if: always() && needs.test.result == 'success' && needs.changes.outputs.api == 'true'
     env:
       DJANGO_SUPERUSER_USERNAME: fuzzuser
       DJANGO_SUPERUSER_PASSWORD: fuzz-ci-password-123
