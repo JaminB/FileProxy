@@ -60,7 +60,7 @@ if ! mountpoint -q "$EFS_MOUNT"; then
   while [ "$attempt" -le "$MAX_RETRIES" ]; do
     echo "Attempting EFS mount (attempt $attempt/$MAX_RETRIES)..."
     mount -t efs -o tls,_netdev,timeo=30,retrans=5 "$EFS_ID":/ "$EFS_MOUNT" && break
-    echo "EFS mount failed on attempt $attempt, retrying in ${SLEEP_SECONDS}s..."
+    echo "EFS mount failed on attempt $attempt, retrying in $${SLEEP_SECONDS}s..."
     attempt=$((attempt + 1))
     sleep "$SLEEP_SECONDS"
   done
