@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import BinaryIO, Iterator
 
 from azure.core.exceptions import AzureError, HttpResponseError, ResourceNotFoundError
@@ -28,6 +29,7 @@ class AzureBlobObject:
     name: str
     path: str
     size: int | None
+    last_modified: datetime | None
 
 
 class AzureBlobBackend(Backend):
@@ -169,6 +171,7 @@ class AzureBlobBackend(Backend):
                     name=name.rsplit("/", 1)[-1],
                     path=name,
                     size=int(size) if size is not None else None,
+                    last_modified=blob.last_modified,
                 )
             )
 

@@ -37,13 +37,43 @@ function fmtDate(value) {
         minute: '2-digit',
     });
 }
+/* ----------------------------- Sort state ----------------------------- */
+let sortCol = 'updated_at';
+let sortDir = 'desc';
+let allItems = [];
+function sortItems(items) {
+    return [...items].sort((a, b) => {
+        const av = a[sortCol] ?? '';
+        const bv = b[sortCol] ?? '';
+        const cmp = av.localeCompare(bv);
+        return sortDir === 'asc' ? cmp : -cmp;
+    });
+}
+function updateSortIndicators() {
+    const thead = document.getElementById('connection-head');
+    if (!thead)
+        return;
+    for (const th of Array.from(thead.querySelectorAll('th[data-sort]'))) {
+        const col = th.getAttribute('data-sort');
+        const indicator = th.querySelector('.sort-indicator');
+        if (indicator) {
+            if (col === sortCol) {
+                indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
+            }
+            else {
+                indicator.textContent = '';
+            }
+        }
+    }
+}
+/* ----------------------------- DOM helpers ----------------------------- */
 function clear(tbody) {
     tbody.innerHTML = '';
 }
 function messageRow(tbody, text) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 5;
+    td.colSpan = 6;
     td.className = 'text-secondary';
     td.textContent = text;
     tr.appendChild(td);
@@ -72,7 +102,7 @@ function renderItems(tbody, items) {
         messageRow(tbody, 'No credentials yet.');
         return;
     }
-    for (const item of items) {
+    for (const item of sortItems(items)) {
         const tr = document.createElement('tr');
         const nameTd = document.createElement('td');
         nameTd.textContent = item.name ?? '—';
@@ -92,10 +122,12 @@ function renderItems(tbody, items) {
         else {
             kindTd.textContent = item.kind ?? '—';
         }
+        const createdTd = document.createElement('td');
+        createdTd.textContent = fmtDate(item.created_at);
         const updatedTd = document.createElement('td');
-        updatedTd.textContent = fmtDate(item.updated);
+        updatedTd.textContent = fmtDate(item.updated_at);
         const rotatedTd = document.createElement('td');
-        rotatedTd.textContent = fmtDate(item.rotated);
+        rotatedTd.textContent = fmtDate(item.rotated_at);
         const actionsTd = document.createElement('td');
         actionsTd.className = 'text-end';
         const group = document.createElement('div');
@@ -123,6 +155,7 @@ function renderItems(tbody, items) {
                     return;
                 }
                 tr.remove();
+                allItems = allItems.filter((c) => c.id !== id);
                 setFlash('Deleted.', 'info');
                 // If we removed the last row, show empty state
                 if (tbody.querySelectorAll('tr').length === 0) {
@@ -139,16 +172,45 @@ function renderItems(tbody, items) {
         actionsTd.appendChild(group);
         tr.appendChild(nameTd);
         tr.appendChild(kindTd);
+        tr.appendChild(createdTd);
         tr.appendChild(updatedTd);
         tr.appendChild(rotatedTd);
         tr.appendChild(actionsTd);
         tbody.appendChild(tr);
     }
 }
+function initSortHeaders(tbody) {
+    const thead = document.getElementById('connection-head');
+    if (!thead)
+        return;
+    for (const th of Array.from(thead.querySelectorAll('th[data-sort]'))) {
+        // Add sort indicator span
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.setAttribute('aria-hidden', 'true');
+        if (th.getAttribute('data-sort') === sortCol) {
+            indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
+        }
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            const col = th.getAttribute('data-sort');
+            if (col === sortCol) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            }
+            else {
+                sortCol = col;
+                sortDir = 'asc';
+            }
+            updateSortIndicators();
+            renderItems(tbody, allItems);
+        });
+    }
+}
 export async function loadConnectionsTable() {
     const tbody = qs('#connection-rows');
     if (!tbody)
         return;
+    initSortHeaders(tbody);
     try {
         const resp = await fetch('/api/v1/connections/', {
             headers: { Accept: 'application/json' },
@@ -161,7 +223,8 @@ export async function loadConnectionsTable() {
             return;
         }
         const data = (await resp.json());
-        renderItems(tbody, toItems(data));
+        allItems = toItems(data);
+        renderItems(tbody, allItems);
     }
     catch (err) {
         const msg = `Network error loading connections: ${String(err)}`;

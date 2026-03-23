@@ -19,6 +19,7 @@ const el = {
     up: () => mustGet('#up'),
     uploadFile: () => mustGet('#upload-file'),
     uploadName: () => mustGet('#upload-name'),
+    uploadNameWrap: () => mustGet('#upload-name-wrap'),
     uploadBtn: () => mustGet('#upload'),
     uploadHint: () => mustGet('#upload-hint'),
     uploadStatus: () => mustGet('#upload-status'),
@@ -34,11 +35,27 @@ const state = {
     cursors: [null],
     page: 0,
     hasNextPage: false,
+    sort: null,
 };
 let pendingEntries = [];
 let pendingPollTimer = null;
 let pollGeneration = 0;
+let currentEntries = [];
 /* ----------------------------- Small utils ----------------------------- */
+function fmtDate(value) {
+    if (!value)
+        return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime()))
+        return '—';
+    return d.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
 function fmtBytes(n) {
     if (n == null || n === 0)
         return '';
@@ -104,8 +121,12 @@ function setUploadEnabled(enabled) {
     el.uploadName().disabled = !enabled;
     el.uploadBtn().disabled = !enabled;
 }
+function updateUploadNameVisibility() {
+    const count = el.uploadFile().files?.length ?? 0;
+    el.uploadNameWrap().style.display = count > 1 ? 'none' : '';
+}
 function updateUploadButtonState() {
-    const hasFile = Boolean(el.uploadFile().files?.[0]);
+    const hasFile = (el.uploadFile().files?.length ?? 0) > 0;
     el.uploadBtn().disabled = !(state.vault && hasFile);
 }
 function setBrowserHeader() {
@@ -199,15 +220,39 @@ function toEntries(objects, prefix) {
             }
             continue;
         }
-        files.push({ kind: 'file', name: rest, path: key, size: obj.size ?? null });
+        files.push({ kind: 'file', name: rest, path: key, size: obj.size ?? null, last_modified: obj.last_modified ?? null });
     }
-    const out = [...folders.values(), ...files];
-    out.sort((a, b) => {
-        if (a.kind !== b.kind)
-            return a.kind === 'folder' ? -1 : 1;
-        return a.name.localeCompare(b.name);
+    return [...folders.values(), ...files];
+}
+function sortEntries(entries, sort) {
+    const folders = entries.filter((e) => e.kind === 'folder');
+    const files = entries.filter((e) => e.kind === 'file');
+    // Default: sort folders and files alphabetically by name
+    if (!sort) {
+        folders.sort((a, b) => a.name.localeCompare(b.name));
+        files.sort((a, b) => a.name.localeCompare(b.name));
+        return [...folders, ...files];
+    }
+    folders.sort((a, b) => a.name.localeCompare(b.name));
+    files.sort((a, b) => {
+        let cmp = 0;
+        switch (sort.col) {
+            case 'name':
+                cmp = a.name.localeCompare(b.name);
+                break;
+            case 'path':
+                cmp = a.path.localeCompare(b.path);
+                break;
+            case 'size':
+                cmp = (a.size ?? -1) - (b.size ?? -1);
+                break;
+            case 'modified':
+                cmp = (a.last_modified ?? '').localeCompare(b.last_modified ?? '');
+                break;
+        }
+        return sort.dir === 'asc' ? cmp : -cmp;
     });
-    return out;
+    return [...folders, ...files];
 }
 /* ----------------------------- Pending uploads ----------------------------- */
 async function fetchPending() {
@@ -297,6 +342,8 @@ function makePendingRow(p) {
     tdPath.appendChild(pathSpan);
     const tdSize = document.createElement('td');
     tdSize.textContent = fmtBytes(p.expected_size);
+    const tdModified = document.createElement('td');
+    tdModified.textContent = '—';
     const tdAct = document.createElement('td');
     tdAct.className = 'text-end';
     if (isFailed) {
@@ -308,6 +355,7 @@ function makePendingRow(p) {
     tr.appendChild(tdName);
     tr.appendChild(tdPath);
     tr.appendChild(tdSize);
+    tr.appendChild(tdModified);
     tr.appendChild(tdAct);
     return tr;
 }
@@ -399,21 +447,24 @@ function renderWithPending(tbody) {
     tbody.insertBefore(frag, tbody.firstChild);
 }
 function render(entries) {
+    currentEntries = entries;
     const tbody = el.entries();
     tbody.innerHTML = '';
     if (!state.vault) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-muted small">Choose a vault from the left to start browsing.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-muted small">Choose a vault from the left to start browsing.</td></tr>`;
         return;
     }
     if (!entries.length && !pendingEntries.length) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-muted small">This folder is empty.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-muted small">This folder is empty.</td></tr>`;
         return;
     }
-    for (const entry of entries) {
+    const sorted = sortEntries(entries, state.sort);
+    for (const entry of sorted) {
         const tr = document.createElement('tr');
         const tdName = document.createElement('td');
         const tdPath = document.createElement('td');
         const tdSize = document.createElement('td');
+        const tdModified = document.createElement('td');
         const tdAct = document.createElement('td');
         tdAct.className = 'text-end';
         if (entry.kind === 'folder') {
@@ -429,22 +480,55 @@ function render(entries) {
             tdName.appendChild(btn);
             tdPath.textContent = entry.path;
             tdSize.textContent = '';
+            tdModified.textContent = '—';
         }
         else {
             const icon = fileIcon(entry.name);
             tdName.innerHTML = `<i class="bi ${icon} me-2 opacity-75"></i>${entry.name}`;
             tdPath.textContent = entry.path;
             tdSize.textContent = fmtBytes(entry.size);
+            tdModified.textContent = fmtDate(entry.last_modified);
             tdAct.appendChild(makeFileActions(entry));
         }
         tr.appendChild(tdName);
         tr.appendChild(tdPath);
         tr.appendChild(tdSize);
+        tr.appendChild(tdModified);
         tr.appendChild(tdAct);
         tbody.appendChild(tr);
     }
     // Prepend pending rows on top
     renderWithPending(tbody);
+}
+function initFileSortHeaders() {
+    const thead = document.getElementById('entries-head');
+    if (!thead)
+        return;
+    for (const th of Array.from(thead.querySelectorAll('th[data-sort]'))) {
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.setAttribute('aria-hidden', 'true');
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            const col = th.getAttribute('data-sort');
+            if (state.sort?.col === col) {
+                state.sort = { col, dir: state.sort.dir === 'asc' ? 'desc' : 'asc' };
+            }
+            else {
+                state.sort = { col, dir: 'asc' };
+            }
+            // Update all sort indicators
+            for (const t of Array.from(thead.querySelectorAll('th[data-sort]'))) {
+                const ind = t.querySelector('.sort-indicator');
+                if (ind) {
+                    ind.textContent = t.getAttribute('data-sort') === state.sort.col
+                        ? (state.sort.dir === 'asc' ? ' ▲' : ' ▼')
+                        : '';
+                }
+            }
+            render(currentEntries);
+        });
+    }
 }
 function renderPagination() {
     const host = el.pageControls();
@@ -578,70 +662,81 @@ function uploadWithProgress(url, formData, onProgress) {
 async function doUpload() {
     if (!state.vault)
         return;
-    const file = el.uploadFile().files?.[0] ?? null;
-    if (!file)
+    const files = Array.from(el.uploadFile().files ?? []);
+    if (!files.length)
         return;
-    const name = (el.uploadName().value || file.name).trim();
-    if (!name) {
-        setFlash('Name is required.', 'error');
-        return;
+    const isMulti = files.length > 1;
+    // For single file, respect the name override; for multi, use each file's name
+    if (!isMulti) {
+        const name = (el.uploadName().value || files[0].name).trim();
+        if (!name) {
+            setFlash('Name is required.', 'error');
+            return;
+        }
     }
-    const path = `${state.prefix}${name}`;
-    // Show progress bar
+    setUploadEnabled(false);
     el.uploadProgressWrap().style.display = '';
     el.uploadProgressBar().style.width = '5%';
     el.uploadProgressBar().setAttribute('aria-valuenow', '5');
-    el.uploadStatus().textContent = 'Uploading…';
-    setUploadEnabled(false);
-    try {
-        const form = new FormData();
-        form.append('path', path);
-        form.append('file', file);
-        const result = await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form, (pct) => {
-            const pctStr = pct.toFixed(0);
-            el.uploadProgressBar().style.width = `${pctStr}%`;
-            el.uploadProgressBar().setAttribute('aria-valuenow', pctStr);
-        });
-        el.uploadProgressBar().style.width = '100%';
-        el.uploadProgressBar().setAttribute('aria-valuenow', '100');
-        await new Promise((r) => setTimeout(r, 300));
-        el.uploadProgressWrap().style.display = 'none';
-        el.uploadProgressBar().style.width = '0%';
-        el.uploadProgressBar().setAttribute('aria-valuenow', '0');
-        if (result.status === 202) {
-            // Async path: file is queued, Celery will write to backend
-            el.uploadStatus().textContent = 'Queued — writing to backend…';
-            el.uploadFile().value = '';
-            el.uploadName().value = '';
-            // Fetch pending immediately so the row appears without waiting for the first poll tick
-            await fetchPending();
-            renderWithPending(el.entries());
-            void refresh();
-            startPendingPoll();
+    let anyQueued = false;
+    let successCount = 0;
+    const errors = [];
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const name = isMulti ? file.name : (el.uploadName().value || file.name).trim();
+        const path = `${state.prefix}${name}`;
+        el.uploadStatus().textContent = isMulti
+            ? `Uploading ${i + 1} of ${files.length}: ${file.name}…`
+            : 'Uploading…';
+        try {
+            const form = new FormData();
+            form.append('path', path);
+            form.append('file', file);
+            const result = await uploadWithProgress(`/api/v1/files/${encodeURIComponent(state.vault)}/write/`, form, (pct) => {
+                // For multi-file, show overall progress across files
+                const overall = ((i + pct / 100) / files.length) * 100;
+                const pctStr = (isMulti ? overall : pct).toFixed(0);
+                el.uploadProgressBar().style.width = `${pctStr}%`;
+                el.uploadProgressBar().setAttribute('aria-valuenow', pctStr);
+            });
+            if (result.status === 202) {
+                anyQueued = true;
+            }
+            successCount++;
         }
-        else {
-            // Sync path: write completed immediately
-            el.uploadStatus().textContent = 'Uploaded.';
+        catch (e) {
+            errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Upload failed'}`);
+        }
+    }
+    el.uploadProgressBar().style.width = '100%';
+    el.uploadProgressBar().setAttribute('aria-valuenow', '100');
+    await new Promise((r) => setTimeout(r, 300));
+    el.uploadProgressWrap().style.display = 'none';
+    el.uploadProgressBar().style.width = '0%';
+    el.uploadProgressBar().setAttribute('aria-valuenow', '0');
+    el.uploadFile().value = '';
+    el.uploadName().value = '';
+    updateUploadNameVisibility();
+    if (errors.length) {
+        setFlash(errors.join('; '), 'error');
+    }
+    if (anyQueued) {
+        el.uploadStatus().textContent = successCount > 1
+            ? `${successCount} files queued — writing to backend…`
+            : 'Queued — writing to backend…';
+        await fetchPending();
+        renderWithPending(el.entries());
+        void refresh();
+        startPendingPoll();
+    }
+    else if (successCount > 0) {
+        el.uploadStatus().textContent = successCount > 1 ? `${successCount} files uploaded.` : 'Uploaded.';
+        if (!errors.length)
             setFlash('Upload complete.', 'success');
-            el.uploadFile().value = '';
-            el.uploadName().value = '';
-            await refresh();
-        }
+        await refresh();
     }
-    catch (e) {
-        el.uploadProgressBar().style.width = '100%';
-        el.uploadProgressBar().setAttribute('aria-valuenow', '100');
-        await new Promise((r) => setTimeout(r, 300));
-        el.uploadProgressWrap().style.display = 'none';
-        el.uploadProgressBar().style.width = '0%';
-        el.uploadProgressBar().setAttribute('aria-valuenow', '0');
-        el.uploadStatus().textContent = '';
-        setFlash(e instanceof Error ? e.message : 'Upload failed.', 'error');
-    }
-    finally {
-        setUploadEnabled(true);
-        updateUploadButtonState();
-    }
+    setUploadEnabled(true);
+    updateUploadButtonState();
 }
 function goUp() {
     if (!state.prefix)
@@ -712,6 +807,7 @@ async function loadVaults() {
 }
 /* ----------------------------- Boot ----------------------------- */
 document.addEventListener('DOMContentLoaded', async () => {
+    initFileSortHeaders();
     await loadVaults();
     setBrowserHeader();
     setCrumbs();
@@ -720,9 +816,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     el.refresh().addEventListener('click', () => void refresh());
     el.up().addEventListener('click', goUp);
     el.uploadFile().addEventListener('change', () => {
-        const f = el.uploadFile().files?.[0];
-        if (f)
-            el.uploadName().value = f.name;
+        const files = el.uploadFile().files;
+        // For single-file selection, pre-fill the name field
+        if (files?.length === 1)
+            el.uploadName().value = files[0].name;
+        updateUploadNameVisibility();
         updateUploadButtonState();
     });
     el.uploadName().addEventListener('input', updateUploadButtonState);

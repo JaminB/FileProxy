@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import BinaryIO, Iterator
 
 import dropbox
@@ -27,6 +28,7 @@ class DropboxObject:
     name: str
     path: str
     size: int | None
+    last_modified: datetime | None
 
 
 def _ensure_abs(path: str) -> str:
@@ -121,10 +123,17 @@ class DropboxBackend(Backend):
         for entry in result.entries:
             if isinstance(entry, dropbox.files.FileMetadata):
                 obj_path = f"{base_prefix}{entry.name}"
-                objects.append(DropboxObject(name=entry.name, path=obj_path, size=entry.size))
+                objects.append(
+                    DropboxObject(
+                        name=entry.name,
+                        path=obj_path,
+                        size=entry.size,
+                        last_modified=entry.server_modified,
+                    )
+                )
             elif isinstance(entry, dropbox.files.FolderMetadata):
                 obj_path = f"{base_prefix}{entry.name}/"
-                objects.append(DropboxObject(name=entry.name, path=obj_path, size=None))
+                objects.append(DropboxObject(name=entry.name, path=obj_path, size=None, last_modified=None))
 
         next_cursor = result.cursor if result.has_more else None
         return EnumeratePage(objects=objects, next_cursor=next_cursor)

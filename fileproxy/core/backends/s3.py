@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, BinaryIO, Iterator, Optional
 
 import boto3
@@ -27,6 +28,7 @@ class S3Object:
     name: str
     path: str
     size: int | None
+    last_modified: datetime | None
 
 
 class S3Backend(Backend):
@@ -200,6 +202,7 @@ class S3Backend(Backend):
                     name=key.rsplit("/", 1)[-1],
                     path=key,
                     size=int(size) if size is not None else None,
+                    last_modified=obj.get("LastModified"),
                 )
             )
 
