@@ -18,7 +18,7 @@ resource "aws_lb_target_group" "app" {
   port                 = 8000
   protocol             = "HTTP"
   vpc_id               = aws_vpc.main.id
-  deregistration_delay = 30
+  deregistration_delay = 300
 
   health_check {
     path                = "/health/"
