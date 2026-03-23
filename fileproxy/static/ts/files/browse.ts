@@ -13,7 +13,12 @@ type ConnectionMeta = {
   rotated_at: string | null;
 };
 
-type BackendObject = { name: string; path: string; size: number | null; last_modified: string | null };
+type BackendObject = {
+  name: string;
+  path: string;
+  size: number | null;
+  last_modified: string | null;
+};
 
 type ObjectPage = { objects: BackendObject[]; next_cursor: string | null };
 
@@ -284,7 +289,13 @@ function toEntries(objects: BackendObject[], prefix: string): Entry[] {
       continue;
     }
 
-    files.push({ kind: 'file', name: rest, path: key, size: obj.size ?? null, last_modified: obj.last_modified ?? null });
+    files.push({
+      kind: 'file',
+      name: rest,
+      path: key,
+      size: obj.size ?? null,
+      last_modified: obj.last_modified ?? null,
+    });
   }
 
   return [...folders.values(), ...files];
@@ -907,15 +918,17 @@ async function doUpload(): Promise<void> {
   }
 
   if (anyQueued) {
-    el.uploadStatus().textContent = successCount > 1
-      ? `${successCount} files queued — writing to backend…`
-      : 'Queued — writing to backend…';
+    el.uploadStatus().textContent =
+      successCount > 1
+        ? `${successCount} files queued — writing to backend…`
+        : 'Queued — writing to backend…';
     await fetchPending();
     renderWithPending(el.entries());
     void refresh();
     startPendingPoll();
   } else if (successCount > 0) {
-    el.uploadStatus().textContent = successCount > 1 ? `${successCount} files uploaded.` : 'Uploaded.';
+    el.uploadStatus().textContent =
+      successCount > 1 ? `${successCount} files uploaded.` : 'Uploaded.';
     if (!errors.length) setFlash('Upload complete.', 'success');
     await refresh();
   }

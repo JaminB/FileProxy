@@ -133,7 +133,9 @@ class DropboxBackend(Backend):
                 )
             elif isinstance(entry, dropbox.files.FolderMetadata):
                 obj_path = f"{base_prefix}{entry.name}/"
-                objects.append(DropboxObject(name=entry.name, path=obj_path, size=None, last_modified=None))
+                objects.append(
+                    DropboxObject(name=entry.name, path=obj_path, size=None, last_modified=None)
+                )
 
         next_cursor = result.cursor if result.has_more else None
         return EnumeratePage(objects=objects, next_cursor=next_cursor)
