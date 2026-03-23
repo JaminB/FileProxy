@@ -236,7 +236,10 @@ function initSortHeaders(tbody: HTMLTableSectionElement): void {
     indicator.setAttribute('aria-hidden', 'true');
     const col = th.getAttribute('data-sort') as SortCol;
     th.setAttribute('tabindex', '0');
-    th.setAttribute('aria-sort', col === sortCol ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+    th.setAttribute(
+      'aria-sort',
+      col === sortCol ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none',
+    );
     if (col === sortCol) {
       indicator.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
     }

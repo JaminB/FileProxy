@@ -325,8 +325,11 @@ function sortEntries(entries: Entry[], sort: SortState | null): Entry[] {
       case 'size': {
         const aN = a.size == null;
         const bN = b.size == null;
-        if (aN && bN) { cmp = 0; break; }
-        if (aN) return 1;  // nulls always sort to the end regardless of direction
+        if (aN && bN) {
+          cmp = 0;
+          break;
+        }
+        if (aN) return 1; // nulls always sort to the end regardless of direction
         if (bN) return -1;
         cmp = a.size! - b.size!;
         break;
@@ -334,8 +337,11 @@ function sortEntries(entries: Entry[], sort: SortState | null): Entry[] {
       case 'modified': {
         const aN = !a.last_modified;
         const bN = !b.last_modified;
-        if (aN && bN) { cmp = 0; break; }
-        if (aN) return 1;  // nulls always sort to the end regardless of direction
+        if (aN && bN) {
+          cmp = 0;
+          break;
+        }
+        if (aN) return 1; // nulls always sort to the end regardless of direction
         if (bN) return -1;
         cmp = a.last_modified!.localeCompare(b.last_modified!);
         break;
