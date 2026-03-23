@@ -235,11 +235,17 @@ STATIC_URL = env("STATIC_URL", "/static/")
 STATIC_ROOT = BASE_DIR / "staticfiles"
 # In development, serve files directly so TS rebuilds are reflected without collectstatic.
 # In production, use content-hashed filenames for aggressive caching.
-STATICFILES_STORAGE = (
-    "django.contrib.staticfiles.storage.StaticFilesStorage"
-    if DEBUG
-    else "whitenoise.storage.CompressedManifestStaticFilesStorage"
-)
+# NOTE: STATICFILES_STORAGE was removed in Django 6.0; use STORAGES instead.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
+    },
+}
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
