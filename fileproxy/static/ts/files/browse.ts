@@ -1031,13 +1031,13 @@ async function loadVaults(): Promise<void> {
       stopPendingPoll();
       pendingEntries = [];
 
-      // Keep only actively-uploading transfers; clear completed/queued for the old vault
-      transfers = transfers.filter((t) => t.status === 'uploading');
+      // Clear all transfers when switching vaults to prevent cross-vault state mixing.
+      // In-flight XHRs still complete in the background but are not shown in the new vault's panel.
+      transfers = [];
       for (const node of Array.from(el.uploadPanelList().querySelectorAll('.upload-item'))) {
         node.remove();
       }
-      el.uploadPanelEmpty().style.display = transfers.length ? 'none' : '';
-      for (const t of transfers) addTransferItem(t);
+      el.uploadPanelEmpty().style.display = '';
 
       void (async () => {
         // Fetch pending uploads for this vault before refreshing so they show immediately
