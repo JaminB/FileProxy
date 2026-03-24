@@ -76,11 +76,17 @@
   font-size: 0.75rem;
 }
 
-/* Upload section */
-#upload-status {
-  min-height: 1rem;
-  font-size: 0.8rem;
+/* Transfers panel */
+.upload-panel-list {
+  overflow-y: auto;
+  min-height: 0;
 }
+
+.upload-item {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.upload-item:last-child { border-bottom: none; }
 
 .files-card hr {
   opacity: 0.1;
@@ -106,13 +112,4 @@
   z-index: 1;
 }
 
-.files-upload-row {
-  position: relative;
-  z-index: 0;
-}
-
-/* Fixed width for the name input column */
-.files-upload-name {
-  min-width: 160px;
-}
 
