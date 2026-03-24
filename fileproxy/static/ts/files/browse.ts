@@ -422,29 +422,62 @@ function startPendingPoll(): void {
 /* ----------------------------- Rendering ----------------------------- */
 
 function newTransferId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function addTransferItem(item: TransferItem): void {
   el.uploadPanelEmpty().style.display = 'none';
+
   const div = document.createElement('div');
   div.className = 'upload-item';
   div.setAttribute('data-transfer-id', item.id);
-  div.innerHTML = `
-    <div class="d-flex align-items-start justify-content-between gap-2">
-      <div class="upload-item-info flex-grow-1 overflow-hidden">
-        <div class="upload-item-name text-truncate small fw-medium" title="${item.fileName}">
-          ${item.fileName}
-        </div>
-        <div class="upload-item-meta text-muted" style="font-size:0.72rem;">${item.fileSizeFmt}</div>
-      </div>
-      <span class="upload-item-badge badge"></span>
-    </div>
-    <div class="progress mt-1" style="height:4px;">
-      <div class="upload-item-bar progress-bar" role="progressbar"
-           style="width:0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-    </div>
-  `;
+
+  // Flex row: info + badge
+  const flexRow = document.createElement('div');
+  flexRow.className = 'd-flex align-items-start justify-content-between gap-2';
+
+  const infoDiv = document.createElement('div');
+  infoDiv.className = 'upload-item-info flex-grow-1 overflow-hidden';
+
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'upload-item-name text-truncate small fw-medium';
+  nameDiv.setAttribute('title', item.fileName);
+  nameDiv.textContent = item.fileName;
+
+  const metaDiv = document.createElement('div');
+  metaDiv.className = 'upload-item-meta text-muted';
+  metaDiv.style.fontSize = '0.72rem';
+  metaDiv.textContent = item.fileSizeFmt;
+
+  infoDiv.appendChild(nameDiv);
+  infoDiv.appendChild(metaDiv);
+
+  const badge = document.createElement('span');
+  badge.className = 'upload-item-badge badge';
+
+  flexRow.appendChild(infoDiv);
+  flexRow.appendChild(badge);
+
+  // Progress bar
+  const progressOuter = document.createElement('div');
+  progressOuter.className = 'progress mt-1';
+  progressOuter.style.height = '4px';
+
+  const bar = document.createElement('div');
+  bar.className = 'upload-item-bar progress-bar';
+  bar.setAttribute('role', 'progressbar');
+  bar.style.width = '0%';
+  bar.setAttribute('aria-valuenow', '0');
+  bar.setAttribute('aria-valuemin', '0');
+  bar.setAttribute('aria-valuemax', '100');
+
+  progressOuter.appendChild(bar);
+  div.appendChild(flexRow);
+  div.appendChild(progressOuter);
+
   // Prepend so newest appears at the top
   el.uploadPanelList().insertBefore(div, el.uploadPanelList().firstChild);
   updateTransferItem(item);
@@ -913,6 +946,10 @@ async function startUpload(files: File[], nameOverride: string): Promise<void> {
 
   el.uploadFile().value = '';
   el.uploadTriggerBtn().disabled = !state.vault;
+
+  // If the user switched vaults while these uploads were in flight, skip
+  // post-upload work (fetchPending/refresh) so we don't affect the new vault.
+  if (state.vault !== vault) return;
 
   if (anyQueued) {
     await fetchPending();
