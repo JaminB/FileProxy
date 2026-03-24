@@ -496,8 +496,7 @@ function syncPendingToTransfers(): void {
   for (const item of transfers) {
     if (item.status !== 'queued' && item.status !== 'failed') continue;
     const serverEntry =
-      (item.serverId ? serverById.get(item.serverId) : undefined) ??
-      serverByPath.get(item.path);
+      (item.serverId ? serverById.get(item.serverId) : undefined) ?? serverByPath.get(item.path);
 
     if (!serverEntry) {
       item.status = 'done';
@@ -604,7 +603,6 @@ function makeFileActions(entry: Extract<Entry, { kind: 'file' }>): HTMLElement {
   return dd;
 }
 
-
 function render(entries: Entry[]): void {
   currentEntries = entries;
   const tbody = el.entries();
@@ -667,7 +665,6 @@ function render(entries: Entry[]): void {
     tr.appendChild(tdAct);
     tbody.appendChild(tr);
   }
-
 }
 
 function initFileSortHeaders(): void {
