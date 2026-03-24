@@ -36,6 +36,18 @@ type PendingEntry = {
   created_at: string;
 };
 
+type TransferStatus = 'uploading' | 'queued' | 'done' | 'failed';
+
+type TransferItem = {
+  id: string;
+  serverId?: string;
+  fileName: string;
+  fileSizeFmt: string;
+  path: string;
+  status: TransferStatus;
+  progress: number;
+};
+
 type State = {
   vault: string | null;
   prefix: string;
@@ -66,14 +78,13 @@ const el = {
   vaultRefresh: () => mustGet<HTMLButtonElement>('#vault-refresh'),
   up: () => mustGet<HTMLButtonElement>('#up'),
 
+  uploadTriggerBtn: () => mustGet<HTMLButtonElement>('#upload-trigger-btn'),
   uploadFile: () => mustGet<HTMLInputElement>('#upload-file'),
-  uploadName: () => mustGet<HTMLInputElement>('#upload-name'),
+  uploadPanelList: () => mustGet<HTMLElement>('#upload-panel-list'),
+  uploadPanelEmpty: () => mustGet<HTMLElement>('#upload-panel-empty'),
   uploadNameWrap: () => mustGet<HTMLElement>('#upload-name-wrap'),
-  uploadBtn: () => mustGet<HTMLButtonElement>('#upload'),
-  uploadHint: () => mustGet<HTMLElement>('#upload-hint'),
-  uploadStatus: () => mustGet<HTMLElement>('#upload-status'),
-  uploadProgressWrap: () => mustGet<HTMLElement>('#upload-progress-wrap'),
-  uploadProgressBar: () => mustGet<HTMLElement>('#upload-progress-bar'),
+  uploadName: () => mustGet<HTMLInputElement>('#upload-name'),
+  uploadConfirmBtn: () => mustGet<HTMLButtonElement>('#upload-confirm-btn'),
 
   pageControls: () => mustGet<HTMLElement>('#page-controls'),
 };
@@ -94,6 +105,7 @@ let pendingEntries: PendingEntry[] = [];
 let pendingPollTimer: ReturnType<typeof setTimeout> | null = null;
 let pollGeneration = 0;
 let currentEntries: Entry[] = [];
+let transfers: TransferItem[] = [];
 
 /* ----------------------------- Small utils ----------------------------- */
 
@@ -167,44 +179,21 @@ function resetPagination(): void {
 
 /* ----------------------------- UI state ----------------------------- */
 
-function setUploadEnabled(enabled: boolean): void {
-  el.uploadFile().disabled = !enabled;
-  el.uploadName().disabled = !enabled;
-  el.uploadBtn().disabled = !enabled;
-}
-
-function updateUploadNameVisibility(): void {
-  const count = el.uploadFile().files?.length ?? 0;
-  el.uploadNameWrap().style.display = count > 1 ? 'none' : '';
-}
-
-function updateUploadButtonState(): void {
-  const hasFile = (el.uploadFile().files?.length ?? 0) > 0;
-  el.uploadBtn().disabled = !(state.vault && hasFile);
-}
-
 function setBrowserHeader(): void {
   const hasVault = Boolean(state.vault);
 
   el.up().disabled = !hasVault || state.prefix === '';
   el.refresh().disabled = !hasVault;
+  el.uploadTriggerBtn().disabled = !hasVault;
 
   if (!hasVault) {
     el.title().textContent = 'Select a vault';
     el.subtitle().textContent = '';
-    el.uploadHint().textContent = 'Select a vault to enable upload.';
-    el.uploadStatus().textContent = '';
-    setUploadEnabled(false);
     return;
   }
 
   el.title().textContent = state.vault!;
   el.subtitle().textContent = state.prefix ? `/${state.prefix}` : '/';
-  el.uploadHint().textContent = state.prefix
-    ? `Uploading into /${state.prefix}`
-    : 'Uploading into /';
-  setUploadEnabled(true);
-  updateUploadButtonState();
 }
 
 function setCrumbs(): void {
@@ -406,8 +395,8 @@ function startPendingPoll(): void {
     const completed = [...prevPaths].filter((path) => !currentPaths.has(path));
     prevPaths = currentPaths;
 
-    // Re-render pending rows
-    renderWithPending(el.entries());
+    // Update the transfer panel
+    syncPendingToTransfers();
 
     // If any file completed, refresh the main listing to show it
     if (completed.length > 0) {
@@ -432,50 +421,111 @@ function startPendingPoll(): void {
 
 /* ----------------------------- Rendering ----------------------------- */
 
-function makePendingRow(p: PendingEntry): HTMLTableRowElement {
-  const tr = document.createElement('tr');
-  const isFailed = p.status === 'failed';
-  tr.className = isFailed ? 'table-danger' : 'table-warning';
+function newTransferId(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
 
-  const filename = p.path.split('/').pop() || p.path;
+function addTransferItem(item: TransferItem): void {
+  el.uploadPanelEmpty().style.display = 'none';
+  const div = document.createElement('div');
+  div.className = 'upload-item';
+  div.setAttribute('data-transfer-id', item.id);
+  div.innerHTML = `
+    <div class="d-flex align-items-start justify-content-between gap-2">
+      <div class="upload-item-info flex-grow-1 overflow-hidden">
+        <div class="upload-item-name text-truncate small fw-medium" title="${item.fileName}">
+          ${item.fileName}
+        </div>
+        <div class="upload-item-meta text-muted" style="font-size:0.72rem;">${item.fileSizeFmt}</div>
+      </div>
+      <span class="upload-item-badge badge"></span>
+    </div>
+    <div class="progress mt-1" style="height:4px;">
+      <div class="upload-item-bar progress-bar" role="progressbar"
+           style="width:0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+  `;
+  // Prepend so newest appears at the top
+  el.uploadPanelList().insertBefore(div, el.uploadPanelList().firstChild);
+  updateTransferItem(item);
+}
 
-  const tdName = document.createElement('td');
-  const iconEl = document.createElement('i');
-  iconEl.className = isFailed
-    ? 'bi bi-exclamation-triangle me-2 text-danger opacity-75'
-    : 'bi bi-hourglass-split me-2 text-warning opacity-75';
-  const filenameEl = document.createElement('em');
-  filenameEl.className = 'text-muted';
-  filenameEl.textContent = filename;
-  tdName.appendChild(iconEl);
-  tdName.appendChild(filenameEl);
+function updateTransferItem(item: TransferItem): void {
+  const node = el.uploadPanelList().querySelector<HTMLElement>(`[data-transfer-id="${item.id}"]`);
+  if (!node) return;
+  const badge = node.querySelector<HTMLElement>('.upload-item-badge')!;
+  const bar = node.querySelector<HTMLElement>('.upload-item-bar')!;
 
-  const tdPath = document.createElement('td');
-  const pathSpan = document.createElement('span');
-  pathSpan.className = 'text-muted';
-  pathSpan.textContent = p.path;
-  tdPath.appendChild(pathSpan);
+  const pct = `${Math.round(item.progress)}%`;
+  bar.style.width = pct;
+  bar.setAttribute('aria-valuenow', String(Math.round(item.progress)));
 
-  const tdSize = document.createElement('td');
-  tdSize.textContent = fmtBytes(p.expected_size);
+  badge.className = 'upload-item-badge badge';
+  bar.className = 'upload-item-bar progress-bar';
 
-  const tdModified = document.createElement('td');
-  tdModified.textContent = '—';
-
-  const tdAct = document.createElement('td');
-  tdAct.className = 'text-end';
-  if (isFailed) {
-    tdAct.innerHTML = `<span class="badge bg-danger">Failed</span>`;
-  } else {
-    tdAct.innerHTML = `<span class="badge bg-warning text-dark">Pending</span>`;
+  switch (item.status) {
+    case 'uploading':
+      badge.classList.add('bg-primary');
+      badge.textContent = 'Uploading';
+      break;
+    case 'queued':
+      badge.classList.add('bg-warning', 'text-dark');
+      badge.textContent = 'Queued';
+      bar.classList.add('bg-warning');
+      bar.style.width = '100%';
+      break;
+    case 'done':
+      badge.classList.add('bg-success');
+      badge.textContent = 'Done';
+      bar.classList.add('bg-success');
+      bar.style.width = '100%';
+      break;
+    case 'failed':
+      badge.classList.add('bg-danger');
+      badge.textContent = 'Failed';
+      bar.classList.add('bg-danger');
+      bar.style.width = '100%';
+      break;
   }
+}
 
-  tr.appendChild(tdName);
-  tr.appendChild(tdPath);
-  tr.appendChild(tdSize);
-  tr.appendChild(tdModified);
-  tr.appendChild(tdAct);
-  return tr;
+function syncPendingToTransfers(): void {
+  const serverById = new Map(pendingEntries.map((p) => [p.id, p]));
+  const serverByPath = new Map(pendingEntries.map((p) => [p.path, p]));
+
+  for (const item of transfers) {
+    if (item.status !== 'queued' && item.status !== 'failed') continue;
+    const serverEntry =
+      (item.serverId ? serverById.get(item.serverId) : undefined) ??
+      serverByPath.get(item.path);
+
+    if (!serverEntry) {
+      item.status = 'done';
+    } else {
+      item.serverId = serverEntry.id;
+      item.status = serverEntry.status === 'failed' ? 'failed' : 'queued';
+    }
+    updateTransferItem(item);
+  }
+}
+
+function addPendingAsTransfers(): void {
+  const knownPaths = new Set(transfers.map((t) => t.path));
+  for (const p of pendingEntries) {
+    if (!knownPaths.has(p.path)) {
+      const item: TransferItem = {
+        id: newTransferId(),
+        serverId: p.id,
+        fileName: p.path.split('/').pop() || p.path,
+        fileSizeFmt: fmtBytes(p.expected_size) || '—',
+        path: p.path,
+        status: p.status === 'failed' ? 'failed' : 'queued',
+        progress: 100,
+      };
+      transfers.push(item);
+      addTransferItem(item);
+    }
+  }
 }
 
 function makeFileActions(entry: Extract<Entry, { kind: 'file' }>): HTMLElement {
@@ -554,36 +604,6 @@ function makeFileActions(entry: Extract<Entry, { kind: 'file' }>): HTMLElement {
   return dd;
 }
 
-function renderWithPending(tbody: HTMLTableSectionElement): void {
-  // Remove existing pending rows (rows with data-pending attribute)
-  for (const row of Array.from(tbody.querySelectorAll('tr[data-pending]'))) {
-    row.remove();
-  }
-
-  if (pendingEntries.length === 0) return;
-
-  // Remove the "empty folder" placeholder row if present — it should not
-  // coexist with pending rows (the folder is not actually empty).
-  for (const row of Array.from(tbody.querySelectorAll('tr'))) {
-    if ((row as HTMLTableRowElement).querySelector('td[colspan]')) {
-      row.remove();
-    }
-  }
-
-  // Only show pending entries whose path is under the currently-browsed prefix
-  // (mirrors the toEntries() prefix filter so uploads elsewhere don't pollute the view).
-  const visible = pendingEntries.filter((p) => p.path.startsWith(state.prefix));
-  if (visible.length === 0) return;
-
-  // Prepend pending rows
-  const frag = document.createDocumentFragment();
-  for (const p of visible) {
-    const row = makePendingRow(p);
-    row.setAttribute('data-pending', p.id);
-    frag.appendChild(row);
-  }
-  tbody.insertBefore(frag, tbody.firstChild);
-}
 
 function render(entries: Entry[]): void {
   currentEntries = entries;
@@ -595,7 +615,7 @@ function render(entries: Entry[]): void {
     return;
   }
 
-  if (!entries.length && !pendingEntries.length) {
+  if (!entries.length) {
     tbody.innerHTML = `<tr><td colspan="5" class="text-muted small">This folder is empty.</td></tr>`;
     return;
   }
@@ -648,8 +668,6 @@ function render(entries: Entry[]): void {
     tbody.appendChild(tr);
   }
 
-  // Prepend pending rows on top
-  renderWithPending(tbody);
 }
 
 function initFileSortHeaders(): void {
@@ -801,7 +819,6 @@ async function refresh(): Promise<void> {
   renderPagination();
 
   el.up().disabled = state.prefix === '';
-  updateUploadButtonState();
 }
 
 function uploadWithProgress(
@@ -847,104 +864,66 @@ function uploadWithProgress(
   });
 }
 
-async function doUpload(): Promise<void> {
+async function startUpload(files: File[], nameOverride: string): Promise<void> {
   if (!state.vault) return;
-
-  const files = Array.from(el.uploadFile().files ?? []);
-  if (!files.length) return;
-
+  const vault = state.vault;
   const isMulti = files.length > 1;
 
-  // For single file, respect the name override; for multi, use each file's name
-  if (!isMulti) {
-    const name = (el.uploadName().value || files[0].name).trim();
-    if (!name) {
-      setFlash('Name is required.', 'error');
-      return;
+  el.uploadNameWrap().style.display = 'none';
+  el.uploadTriggerBtn().disabled = true;
+
+  // Create transfer items and prepend to panel (newest at top)
+  const localItems: TransferItem[] = files.map((file) => {
+    const name = !isMulti && nameOverride ? nameOverride : file.name;
+    const item: TransferItem = {
+      id: newTransferId(),
+      fileName: name,
+      fileSizeFmt: fmtBytes(file.size) || '—',
+      path: `${state.prefix}${name}`,
+      status: 'uploading',
+      progress: 0,
+    };
+    transfers.push(item);
+    addTransferItem(item);
+    return item;
+  });
+
+  let anyQueued = false;
+
+  for (const [idx, file] of files.entries()) {
+    const item = localItems[idx];
+    try {
+      const form = new FormData();
+      form.append('path', item.path);
+      form.append('file', file);
+      const result = await uploadWithProgress(
+        `/api/v1/files/${encodeURIComponent(vault)}/write/`,
+        form,
+        (pct) => {
+          item.progress = pct;
+          updateTransferItem(item);
+        },
+      );
+      item.status = result.status === 202 ? 'queued' : 'done';
+      if (result.status === 202) anyQueued = true;
+    } catch (e) {
+      item.status = 'failed';
+      setFlash(`${item.fileName}: ${e instanceof Error ? e.message : 'Upload failed'}`, 'error');
     }
+    item.progress = 100;
+    updateTransferItem(item);
   }
 
-  setUploadEnabled(false);
-  el.uploadProgressWrap().style.display = '';
-  el.uploadProgressBar().style.width = '5%';
-  el.uploadProgressBar().setAttribute('aria-valuenow', '5');
+  el.uploadFile().value = '';
+  el.uploadTriggerBtn().disabled = !state.vault;
 
-  try {
-    let anyQueued = false;
-    let successCount = 0;
-    const errors: string[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const name = isMulti ? file.name : (el.uploadName().value || file.name).trim();
-      const path = `${state.prefix}${name}`;
-
-      el.uploadStatus().textContent = isMulti
-        ? `Uploading ${i + 1} of ${files.length}: ${file.name}…`
-        : 'Uploading…';
-
-      try {
-        const form = new FormData();
-        form.append('path', path);
-        form.append('file', file);
-
-        const result = await uploadWithProgress(
-          `/api/v1/files/${encodeURIComponent(state.vault)}/write/`,
-          form,
-          (pct) => {
-            // For multi-file, show overall progress across files
-            const overall = ((i + pct / 100) / files.length) * 100;
-            const pctStr = (isMulti ? overall : pct).toFixed(0);
-            el.uploadProgressBar().style.width = `${pctStr}%`;
-            el.uploadProgressBar().setAttribute('aria-valuenow', pctStr);
-          },
-        );
-
-        if (result.status === 202) {
-          anyQueued = true;
-        }
-        successCount++;
-      } catch (e) {
-        errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Upload failed'}`);
-      }
-    }
-
-    el.uploadProgressBar().style.width = '100%';
-    el.uploadProgressBar().setAttribute('aria-valuenow', '100');
-    await new Promise<void>((r) => setTimeout(r, 300));
-    el.uploadProgressWrap().style.display = 'none';
-    el.uploadProgressBar().style.width = '0%';
-    el.uploadProgressBar().setAttribute('aria-valuenow', '0');
-
-    el.uploadFile().value = '';
-    el.uploadName().value = '';
-    updateUploadNameVisibility();
-
-    if (errors.length) {
-      setFlash(errors.join('; '), 'error');
-    }
-
-    if (anyQueued) {
-      el.uploadStatus().textContent =
-        successCount > 1
-          ? `${successCount} files queued — writing to backend…`
-          : 'Queued — writing to backend…';
-      await fetchPending();
-      renderWithPending(el.entries());
-      void refresh();
-      startPendingPoll();
-    } else if (successCount > 0) {
-      el.uploadStatus().textContent =
-        successCount > 1 ? `${successCount} files uploaded.` : 'Uploaded.';
-      if (!errors.length) setFlash('Upload complete.', 'success');
-      await refresh();
-    }
-  } finally {
-    el.uploadProgressWrap().style.display = 'none';
-    el.uploadProgressBar().style.width = '0%';
-    el.uploadProgressBar().setAttribute('aria-valuenow', '0');
-    setUploadEnabled(true);
-    updateUploadButtonState();
+  if (anyQueued) {
+    await fetchPending();
+    syncPendingToTransfers();
+    startPendingPoll();
+  } else if (localItems.every((t) => t.status === 'done')) {
+    setFlash('Upload complete.', 'success');
+    await refresh();
   }
 }
 
@@ -1004,9 +983,18 @@ async function loadVaults(): Promise<void> {
       stopPendingPoll();
       pendingEntries = [];
 
+      // Keep only actively-uploading transfers; clear completed/queued for the old vault
+      transfers = transfers.filter((t) => t.status === 'uploading');
+      for (const node of Array.from(el.uploadPanelList().querySelectorAll('.upload-item'))) {
+        node.remove();
+      }
+      el.uploadPanelEmpty().style.display = transfers.length ? 'none' : '';
+      for (const t of transfers) addTransferItem(t);
+
       void (async () => {
         // Fetch pending uploads for this vault before refreshing so they show immediately
         await fetchPending();
+        addPendingAsTransfers();
         void refresh();
         if (pendingEntries.length > 0) {
           startPendingPoll();
@@ -1034,20 +1022,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadVaults();
   setBrowserHeader();
   setCrumbs();
-  updateUploadButtonState();
 
   el.vaultRefresh().addEventListener('click', () => void loadVaults());
   el.refresh().addEventListener('click', () => void refresh());
   el.up().addEventListener('click', goUp);
 
-  el.uploadFile().addEventListener('change', () => {
-    const files = el.uploadFile().files;
-    // For single-file selection, pre-fill the name field
-    if (files?.length === 1) el.uploadName().value = files[0].name;
-    updateUploadNameVisibility();
-    updateUploadButtonState();
+  el.uploadTriggerBtn().addEventListener('click', () => {
+    if (!state.vault) return;
+    el.uploadFile().click();
   });
 
-  el.uploadName().addEventListener('input', updateUploadButtonState);
-  el.uploadBtn().addEventListener('click', () => void doUpload());
+  el.uploadFile().addEventListener('change', () => {
+    const files = Array.from(el.uploadFile().files ?? []);
+    if (!files.length) return;
+    if (files.length === 1) {
+      el.uploadName().value = files[0].name;
+      el.uploadNameWrap().style.display = '';
+    } else {
+      void startUpload(files, '');
+    }
+  });
+
+  el.uploadConfirmBtn().addEventListener('click', () => {
+    const files = Array.from(el.uploadFile().files ?? []);
+    if (!files.length) return;
+    void startUpload(files, el.uploadName().value.trim() || files[0].name);
+  });
 });
