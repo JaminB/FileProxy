@@ -263,20 +263,25 @@ function sortEntries(entries, sort) {
     return [...folders, ...files];
 }
 /* ----------------------------- Pending uploads ----------------------------- */
+// Returns true when pendingEntries was successfully refreshed, false on error or
+// vault mismatch. Callers must NOT use pendingEntries to make state-transition
+// decisions (queued → done) unless this returns true.
 async function fetchPending() {
     const vault = state.vault;
-    if (!vault)
-        return [];
+    if (!vault) {
+        pendingEntries = [];
+        return true;
+    }
     try {
         const data = await apiJson(`/api/v1/files/${encodeURIComponent(vault)}/pending/`);
         // Discard result if the user switched vaults while the request was in-flight
         if (state.vault !== vault)
-            return pendingEntries;
+            return false;
         pendingEntries = data;
-        return data;
+        return true;
     }
     catch {
-        return pendingEntries; // keep stale on error
+        return false; // keep stale on error; caller must skip sync
     }
 }
 function stopPendingPoll() {
@@ -301,10 +306,17 @@ function startPendingPoll() {
     async function poll() {
         if (pollGeneration !== myGen)
             return; // stale — vault switched or poll stopped
-        const current = await fetchPending();
+        const ok = await fetchPending();
         if (pollGeneration !== myGen)
             return; // vault changed while request was in-flight
-        const currentPaths = new Set(current.map((p) => p.path));
+        if (!ok) {
+            // Fetch failed — skip sync so we don't incorrectly mark queued items done
+            if (pollGeneration === myGen) {
+                pendingPollTimer = setTimeout(() => void poll(), 4000);
+            }
+            return;
+        }
+        const currentPaths = new Set(pendingEntries.map((p) => p.path));
         // Find paths that completed (were pending, now gone)
         const completed = [...prevPaths].filter((path) => !currentPaths.has(path));
         prevPaths = currentPaths;
@@ -315,7 +327,7 @@ function startPendingPoll() {
             void refresh();
         }
         // Stop polling when nothing is pending
-        if (current.length === 0) {
+        if (pendingEntries.length === 0) {
             stopPendingPoll();
             return;
         }
@@ -788,8 +800,9 @@ async function startUpload(files, nameOverride) {
     if (state.vault !== vault)
         return;
     if (anyQueued) {
-        await fetchPending();
-        syncPendingToTransfers();
+        const ok = await fetchPending();
+        if (ok)
+            syncPendingToTransfers();
         startPendingPoll();
     }
     else if (localItems.every((t) => t.status === 'done')) {
@@ -854,8 +867,9 @@ async function loadVaults() {
                 addTransferItem(t);
             void (async () => {
                 // Fetch pending uploads for this vault before refreshing so they show immediately
-                await fetchPending();
-                addPendingAsTransfers();
+                const ok = await fetchPending();
+                if (ok)
+                    addPendingAsTransfers();
                 void refresh();
                 if (pendingEntries.length > 0) {
                     startPendingPoll();

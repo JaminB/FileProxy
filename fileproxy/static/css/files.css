@@ -79,6 +79,7 @@
 /* Transfers panel */
 .upload-panel-list {
   overflow-y: auto;
+  min-height: 0;
 }
 
 .upload-item {
