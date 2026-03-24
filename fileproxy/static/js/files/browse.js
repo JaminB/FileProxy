@@ -418,8 +418,7 @@ function syncPendingToTransfers() {
     for (const item of transfers) {
         if (item.status !== 'queued' && item.status !== 'failed')
             continue;
-        const serverEntry = (item.serverId ? serverById.get(item.serverId) : undefined) ??
-            serverByPath.get(item.path);
+        const serverEntry = (item.serverId ? serverById.get(item.serverId) : undefined) ?? serverByPath.get(item.path);
         if (!serverEntry) {
             item.status = 'done';
         }
@@ -438,7 +437,7 @@ function addPendingAsTransfers() {
                 id: newTransferId(),
                 serverId: p.id,
                 fileName: p.path.split('/').pop() || p.path,
-                fileSizeFmt: fmtBytes(p.expected_size) || '—',
+                fileSizeFmt: fmtBytes(p.expected_size) || '0 B',
                 path: p.path,
                 status: p.status === 'failed' ? 'failed' : 'queued',
                 progress: 100,
@@ -751,7 +750,7 @@ async function startUpload(files, nameOverride) {
         const item = {
             id: newTransferId(),
             fileName: name,
-            fileSizeFmt: fmtBytes(file.size) || '—',
+            fileSizeFmt: fmtBytes(file.size) || '0 B',
             path: `${state.prefix}${name}`,
             status: 'uploading',
             progress: 0,
@@ -904,7 +903,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const files = Array.from(el.uploadFile().files ?? []);
         if (!files.length)
             return;
-        void startUpload(files, el.uploadName().value.trim() || files[0].name);
+        el.uploadConfirmBtn().disabled = true;
+        void startUpload(files, el.uploadName().value.trim() || files[0].name).finally(() => {
+            el.uploadConfirmBtn().disabled = false;
+        });
     });
 });
 //# sourceMappingURL=browse.js.map
