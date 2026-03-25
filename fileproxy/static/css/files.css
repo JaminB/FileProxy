@@ -83,10 +83,11 @@
   right: 1rem;
   width: 320px;
   z-index: 1040;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,.15);
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
   border-radius: 0.5rem;
   box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  color: var(--bs-body-color);
 }
 
 .upload-overlay-header {
@@ -96,7 +97,7 @@
   padding: 0.5rem 0.65rem;
   cursor: pointer;
   user-select: none;
-  border-bottom: 1px solid rgba(0,0,0,.08);
+  border-bottom: 1px solid var(--bs-border-color);
 }
 
 .upload-overlay.collapsed .upload-overlay-header {
@@ -120,7 +121,7 @@
   background: none;
   border: none;
   padding: 0.1rem 0.25rem;
-  color: rgba(0,0,0,.5);
+  color: var(--bs-secondary-color);
   cursor: pointer;
   border-radius: 0.25rem;
   font-size: 0.85rem;
@@ -130,8 +131,8 @@
 }
 
 .upload-overlay-btn:hover {
-  color: rgba(0,0,0,.85);
-  background: rgba(0,0,0,.06);
+  color: var(--bs-body-color);
+  background: var(--bs-secondary-bg);
 }
 
 .upload-overlay-body {
@@ -152,7 +153,7 @@
 
 .upload-item {
   padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(0,0,0,.06);
+  border-bottom: 1px solid var(--bs-border-color-translucent);
 }
 .upload-item:last-child { border-bottom: none; }
 

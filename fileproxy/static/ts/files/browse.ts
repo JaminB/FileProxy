@@ -517,6 +517,8 @@ function addTransferItem(item: TransferItem): void {
   cancelBtn.type = 'button';
   cancelBtn.className = 'upload-item-cancel btn-close';
   cancelBtn.setAttribute('aria-label', 'Cancel or dismiss');
+  // Disabled until the XHR cancel function is wired up (set in updateTransferItem)
+  cancelBtn.disabled = true;
   cancelBtn.addEventListener('click', () => {
     if (item.cancel) {
       item.cancel();
@@ -559,6 +561,12 @@ function updateTransferItem(item: TransferItem): void {
   if (!node) return;
   const badge = node.querySelector<HTMLElement>('.upload-item-badge')!;
   const bar = node.querySelector<HTMLElement>('.upload-item-bar')!;
+  const cancelBtn = node.querySelector<HTMLButtonElement>('.upload-item-cancel');
+
+  // Enable cancel button once the XHR cancel fn is wired, or when done/failed (dismiss)
+  if (cancelBtn) {
+    cancelBtn.disabled = item.status === 'uploading' && !item.cancel;
+  }
 
   const pct = `${Math.round(item.progress)}%`;
   bar.style.width = pct;
@@ -1155,15 +1163,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Rename modal confirm
+  // Clear file input when rename modal is dismissed so re-selecting the same
+  // file fires the change event again.
+  el.uploadNameModal().addEventListener('hidden.bs.modal', () => {
+    el.uploadFile().value = '';
+  });
+
+  // Rename modal confirm — disable button immediately to prevent double-submit
   el.uploadNameConfirm().addEventListener('click', () => {
     const files = Array.from(el.uploadFile().files ?? []);
     if (!files.length || !state.vault) return;
+    const confirmBtn = el.uploadNameConfirm();
+    confirmBtn.disabled = true;
     const name = el.uploadNameInput().value.trim() || files[0].name;
     const vault = state.vault;
     const bsModal = bootstrap.Modal.getInstance(el.uploadNameModal());
     bsModal?.hide();
-    void startUpload(files, name, vault);
+    void startUpload(files, name, vault).finally(() => {
+      confirmBtn.disabled = false;
+    });
   });
 
   function toggleOverlay(): void {
@@ -1172,6 +1190,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const collapsed = overlay.classList.contains('collapsed');
     const toggleBtn = el.uploadOverlayToggle();
     toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+    const label = collapsed ? 'Expand uploads panel' : 'Collapse uploads panel';
+    toggleBtn.setAttribute('title', label);
+    toggleBtn.setAttribute('aria-label', label);
     const icon = toggleBtn.querySelector('i');
     if (icon) {
       icon.className = collapsed ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
