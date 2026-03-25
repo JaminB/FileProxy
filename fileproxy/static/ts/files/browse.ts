@@ -563,9 +563,12 @@ function updateTransferItem(item: TransferItem): void {
   const bar = node.querySelector<HTMLElement>('.upload-item-bar')!;
   const cancelBtn = node.querySelector<HTMLButtonElement>('.upload-item-cancel');
 
-  // Enable cancel button once the XHR cancel fn is wired, or when done/failed (dismiss)
+  // Enable cancel button once the XHR cancel fn is wired (uploading) or when done/failed (dismiss).
+  // Keep disabled for queued items — no server-side cancel exists, and dismissing would hide
+  // still-pending work that syncPendingToTransfers() won't re-add.
   if (cancelBtn) {
-    cancelBtn.disabled = item.status === 'uploading' && !item.cancel;
+    cancelBtn.disabled =
+      (item.status === 'uploading' && !item.cancel) || item.status === 'queued';
   }
 
   const pct = `${Math.round(item.progress)}%`;
@@ -1023,6 +1026,7 @@ async function startUpload(files: File[], nameOverride: string, vault: string): 
         },
         (cancelFn) => {
           item.cancel = cancelFn;
+          updateTransferItem(item); // enable the cancel button immediately
         },
       );
       if (result.status === 0) {
