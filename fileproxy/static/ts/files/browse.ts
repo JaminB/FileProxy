@@ -1154,7 +1154,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     overlay.classList.toggle('collapsed');
     const icon = el.uploadOverlayToggle().querySelector('i');
     if (icon) {
-      icon.className = overlay.classList.contains('collapsed') ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+      icon.className = overlay.classList.contains('collapsed')
+        ? 'bi bi-chevron-up'
+        : 'bi bi-chevron-down';
     }
   }
 
@@ -1165,9 +1167,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Overlay header click also toggles
-  el.uploadOverlay().querySelector('.upload-overlay-header')?.addEventListener('click', () => {
-    toggleOverlay();
-  });
+  el.uploadOverlay()
+    .querySelector('.upload-overlay-header')
+    ?.addEventListener('click', () => {
+      toggleOverlay();
+    });
 
   // Dismiss button hides overlay (transfers preserved in memory)
   el.uploadOverlayDismiss().addEventListener('click', (e) => {
