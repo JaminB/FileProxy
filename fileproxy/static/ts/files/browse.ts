@@ -567,8 +567,7 @@ function updateTransferItem(item: TransferItem): void {
   // Keep disabled for queued items — no server-side cancel exists, and dismissing would hide
   // still-pending work that syncPendingToTransfers() won't re-add.
   if (cancelBtn) {
-    cancelBtn.disabled =
-      (item.status === 'uploading' && !item.cancel) || item.status === 'queued';
+    cancelBtn.disabled = (item.status === 'uploading' && !item.cancel) || item.status === 'queued';
   }
 
   const pct = `${Math.round(item.progress)}%`;
