@@ -21,9 +21,14 @@ const el = {
     uploadFile: () => mustGet('#upload-file'),
     uploadPanelList: () => mustGet('#upload-panel-list'),
     uploadPanelEmpty: () => mustGet('#upload-panel-empty'),
-    uploadNameWrap: () => mustGet('#upload-name-wrap'),
-    uploadName: () => mustGet('#upload-name'),
-    uploadConfirmBtn: () => mustGet('#upload-confirm-btn'),
+    uploadOverlay: () => mustGet('#upload-overlay'),
+    uploadOverlaySummary: () => mustGet('#upload-overlay-summary'),
+    uploadOverlayToggle: () => mustGet('#upload-overlay-toggle'),
+    uploadOverlayDismiss: () => mustGet('#upload-overlay-dismiss'),
+    uploadOverlayBody: () => mustGet('#upload-overlay-body'),
+    uploadNameModal: () => mustGet('#upload-name-modal'),
+    uploadNameInput: () => mustGet('#upload-name-input'),
+    uploadNameConfirm: () => mustGet('#upload-name-confirm'),
     pageControls: () => mustGet('#page-controls'),
 };
 /* ----------------------------- State ----------------------------- */
@@ -36,9 +41,8 @@ const state = {
     hasNextPage: false,
     sort: null,
 };
-let pendingEntries = [];
-let pendingPollTimer = null;
-let pollGeneration = 0;
+const pendingByVault = new Map();
+const vaultPolls = new Map();
 let currentEntries = [];
 let transfers = [];
 /* ----------------------------- Small utils ----------------------------- */
@@ -263,81 +267,66 @@ function sortEntries(entries, sort) {
     return [...folders, ...files];
 }
 /* ----------------------------- Pending uploads ----------------------------- */
-// Returns true when pendingEntries was successfully refreshed, false on error or
-// vault mismatch. Callers must NOT use pendingEntries to make state-transition
-// decisions (queued → done) unless this returns true.
-async function fetchPending() {
-    const vault = state.vault;
-    if (!vault) {
-        pendingEntries = [];
-        return true;
-    }
+// Fetches pending entries for a specific vault and stores in pendingByVault.
+// Returns true on success, false on network error (stale data preserved).
+async function fetchPendingForVault(vault) {
     try {
         const data = await apiJson(`/api/v1/files/${encodeURIComponent(vault)}/pending/`);
-        // Discard result if the user switched vaults while the request was in-flight
-        if (state.vault !== vault)
-            return false;
-        pendingEntries = data;
+        pendingByVault.set(vault, data);
         return true;
     }
     catch {
-        return false; // keep stale on error; caller must skip sync
+        return false; // keep stale on error
     }
 }
-function stopPendingPoll() {
-    if (pendingPollTimer !== null) {
-        clearTimeout(pendingPollTimer);
-        pendingPollTimer = null;
+function stopVaultPoll(vault) {
+    const poll = vaultPolls.get(vault);
+    if (!poll)
+        return;
+    if (poll.timer !== null) {
+        clearTimeout(poll.timer);
+        poll.timer = null;
     }
-    // Increment generation so any in-flight poll() tick sees it is stale
-    // and does not re-arm the timer after stop/vault-switch.
-    pollGeneration++;
+    poll.gen++;
 }
-function startPendingPoll() {
-    if (pendingPollTimer !== null)
-        return; // already running
-    // Capture the current generation — in-flight ticks from a previous poll
-    // loop will have a different (older) generation and will bail out.
-    const myGen = ++pollGeneration;
-    // Track which paths were pending so we can refresh when they complete
-    let prevPaths = new Set(pendingEntries.map((p) => p.path));
-    // Use recursive setTimeout so the next tick only fires after the previous
-    // one fully completes — prevents overlapping fetches if the request is slow.
+function startVaultPoll(vault) {
+    stopVaultPoll(vault);
+    // Use a monotonically increasing gen so any in-flight tick from the previous
+    // poll loop (which captured an older gen) will always see a mismatch and bail.
+    const prevGen = vaultPolls.get(vault)?.gen ?? 0;
+    const entry = { gen: prevGen + 1, timer: null };
+    vaultPolls.set(vault, entry);
+    const myGen = entry.gen;
+    let prevPaths = new Set((pendingByVault.get(vault) ?? []).map((p) => p.path));
     async function poll() {
-        if (pollGeneration !== myGen)
-            return; // stale — vault switched or poll stopped
-        const ok = await fetchPending();
-        if (pollGeneration !== myGen)
-            return; // vault changed while request was in-flight
+        const cur = vaultPolls.get(vault);
+        if (!cur || cur.gen !== myGen)
+            return;
+        const ok = await fetchPendingForVault(vault);
+        const cur2 = vaultPolls.get(vault);
+        if (!cur2 || cur2.gen !== myGen)
+            return;
         if (!ok) {
-            // Fetch failed — skip sync so we don't incorrectly mark queued items done
-            if (pollGeneration === myGen) {
-                pendingPollTimer = setTimeout(() => void poll(), 4000);
-            }
+            cur2.timer = setTimeout(() => void poll(), 4000);
             return;
         }
-        const currentPaths = new Set(pendingEntries.map((p) => p.path));
-        // Find paths that completed (were pending, now gone)
+        const entries = pendingByVault.get(vault) ?? [];
+        const currentPaths = new Set(entries.map((p) => p.path));
         const completed = [...prevPaths].filter((path) => !currentPaths.has(path));
         prevPaths = currentPaths;
-        // Update the transfer panel
         syncPendingToTransfers();
-        // If any file completed, refresh the main listing to show it
-        if (completed.length > 0) {
+        if (completed.length > 0 && state.vault === vault) {
             void refresh();
         }
-        // Stop polling when nothing is pending
-        if (pendingEntries.length === 0) {
-            stopPendingPoll();
+        if (entries.length === 0) {
+            stopVaultPoll(vault);
+            pendingByVault.delete(vault);
+            vaultPolls.delete(vault);
             return;
         }
-        // Schedule the next poll only if this generation is still active
-        if (pollGeneration === myGen) {
-            pendingPollTimer = setTimeout(() => void poll(), 4000);
-        }
+        cur2.timer = setTimeout(() => void poll(), 4000);
     }
-    // Mark as active before the first async tick
-    pendingPollTimer = setTimeout(() => void poll(), 4000);
+    entry.timer = setTimeout(() => void poll(), 4000);
 }
 /* ----------------------------- Rendering ----------------------------- */
 function newTransferId() {
@@ -346,12 +335,49 @@ function newTransferId() {
     }
     return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
+function removeTransferItem(id) {
+    transfers = transfers.filter((t) => t.id !== id);
+    el.uploadPanelList().querySelector(`[data-transfer-id="${id}"]`)?.remove();
+    if (transfers.length === 0) {
+        el.uploadPanelEmpty().style.display = '';
+    }
+    syncOverlayVisibility();
+}
+function syncOverlayVisibility() {
+    const overlay = el.uploadOverlay();
+    const summary = el.uploadOverlaySummary();
+    const dismiss = el.uploadOverlayDismiss();
+    if (transfers.length === 0) {
+        overlay.style.display = 'none';
+        return;
+    }
+    overlay.style.display = '';
+    const uploadingCount = transfers.filter((t) => t.status === 'uploading').length;
+    const queuedCount = transfers.filter((t) => t.status === 'queued').length;
+    const active = uploadingCount + queuedCount;
+    if (active > 0) {
+        if (uploadingCount > 0 && queuedCount > 0) {
+            summary.textContent = `${uploadingCount} uploading, ${queuedCount} queued`;
+        }
+        else if (uploadingCount > 0) {
+            summary.textContent = `${uploadingCount} uploading`;
+        }
+        else {
+            summary.textContent = `${queuedCount} queued`;
+        }
+        dismiss.style.display = 'none';
+    }
+    else {
+        summary.textContent = `${transfers.length} transfer${transfers.length !== 1 ? 's' : ''}`;
+        dismiss.style.display = '';
+    }
+}
 function addTransferItem(item) {
     el.uploadPanelEmpty().style.display = 'none';
     const div = document.createElement('div');
     div.className = 'upload-item';
     div.setAttribute('data-transfer-id', item.id);
-    // Flex row: info + badge
+    // Flex row: info + badge + cancel
     const flexRow = document.createElement('div');
     flexRow.className = 'd-flex align-items-start justify-content-between gap-2';
     const infoDiv = document.createElement('div');
@@ -363,13 +389,31 @@ function addTransferItem(item) {
     const metaDiv = document.createElement('div');
     metaDiv.className = 'upload-item-meta text-muted';
     metaDiv.style.fontSize = '0.72rem';
-    metaDiv.textContent = item.fileSizeFmt;
+    metaDiv.textContent = `${item.fileSizeFmt} · ${item.vault}`;
     infoDiv.appendChild(nameDiv);
     infoDiv.appendChild(metaDiv);
+    const rightDiv = document.createElement('div');
+    rightDiv.className = 'd-flex align-items-center gap-1 flex-shrink-0';
     const badge = document.createElement('span');
     badge.className = 'upload-item-badge badge';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'upload-item-cancel btn-close';
+    cancelBtn.setAttribute('aria-label', 'Cancel or dismiss');
+    // Disabled until the XHR cancel function is wired up (set in updateTransferItem)
+    cancelBtn.disabled = true;
+    cancelBtn.addEventListener('click', () => {
+        if (item.cancel) {
+            item.cancel();
+        }
+        else {
+            removeTransferItem(item.id);
+        }
+    });
+    rightDiv.appendChild(badge);
+    rightDiv.appendChild(cancelBtn);
     flexRow.appendChild(infoDiv);
-    flexRow.appendChild(badge);
+    flexRow.appendChild(rightDiv);
     // Progress bar
     const progressOuter = document.createElement('div');
     progressOuter.className = 'progress mt-1';
@@ -387,6 +431,7 @@ function addTransferItem(item) {
     // Prepend so newest appears at the top
     el.uploadPanelList().insertBefore(div, el.uploadPanelList().firstChild);
     updateTransferItem(item);
+    syncOverlayVisibility();
 }
 function updateTransferItem(item) {
     const node = el.uploadPanelList().querySelector(`[data-transfer-id="${item.id}"]`);
@@ -394,6 +439,13 @@ function updateTransferItem(item) {
         return;
     const badge = node.querySelector('.upload-item-badge');
     const bar = node.querySelector('.upload-item-bar');
+    const cancelBtn = node.querySelector('.upload-item-cancel');
+    // Enable cancel button once the XHR cancel fn is wired (uploading) or when done/failed (dismiss).
+    // Keep disabled for queued items — no server-side cancel exists, and dismissing would hide
+    // still-pending work that syncPendingToTransfers() won't re-add.
+    if (cancelBtn) {
+        cancelBtn.disabled = (item.status === 'uploading' && !item.cancel) || item.status === 'queued';
+    }
     const pct = `${Math.round(item.progress)}%`;
     bar.style.width = pct;
     bar.setAttribute('aria-valuenow', String(Math.round(item.progress)));
@@ -425,25 +477,31 @@ function updateTransferItem(item) {
     }
 }
 function syncPendingToTransfers() {
-    const serverById = new Map(pendingEntries.map((p) => [p.id, p]));
-    const serverByPath = new Map(pendingEntries.map((p) => [p.path, p]));
-    for (const item of transfers) {
-        if (item.status !== 'queued' && item.status !== 'failed')
-            continue;
-        const serverEntry = (item.serverId ? serverById.get(item.serverId) : undefined) ?? serverByPath.get(item.path);
-        if (!serverEntry) {
-            item.status = 'done';
+    for (const [vault, entries] of pendingByVault) {
+        const serverById = new Map(entries.map((p) => [p.id, p]));
+        const serverByPath = new Map(entries.map((p) => [p.path, p]));
+        for (const item of transfers) {
+            if (item.vault !== vault)
+                continue;
+            if (item.status !== 'queued' && item.status !== 'failed')
+                continue;
+            const serverEntry = (item.serverId ? serverById.get(item.serverId) : undefined) ?? serverByPath.get(item.path);
+            if (!serverEntry) {
+                item.status = 'done';
+            }
+            else {
+                item.serverId = serverEntry.id;
+                item.status = serverEntry.status === 'failed' ? 'failed' : 'queued';
+            }
+            updateTransferItem(item);
         }
-        else {
-            item.serverId = serverEntry.id;
-            item.status = serverEntry.status === 'failed' ? 'failed' : 'queued';
-        }
-        updateTransferItem(item);
     }
+    syncOverlayVisibility();
 }
-function addPendingAsTransfers() {
-    const knownPaths = new Set(transfers.map((t) => t.path));
-    for (const p of pendingEntries) {
+function addPendingAsTransfers(vault) {
+    const entries = pendingByVault.get(vault) ?? [];
+    const knownPaths = new Set(transfers.filter((t) => t.vault === vault).map((t) => t.path));
+    for (const p of entries) {
         if (!knownPaths.has(p.path)) {
             const item = {
                 id: newTransferId(),
@@ -451,6 +509,7 @@ function addPendingAsTransfers() {
                 fileName: p.path.split('/').pop() || p.path,
                 fileSizeFmt: fmtBytes(p.expected_size) || '0 B',
                 path: p.path,
+                vault,
                 status: p.status === 'failed' ? 'failed' : 'queued',
                 progress: 100,
             };
@@ -708,7 +767,7 @@ async function refresh() {
     renderPagination();
     el.up().disabled = state.prefix === '';
 }
-function uploadWithProgress(url, formData, onProgress) {
+function uploadWithProgress(url, formData, onProgress, onCancel) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         const csrf = getCsrfToken();
@@ -721,6 +780,7 @@ function uploadWithProgress(url, formData, onProgress) {
                 onProgress((e.loaded / e.total) * 100);
             }
         };
+        xhr.onabort = () => resolve({ status: 0, body: null });
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 let body = null;
@@ -746,15 +806,13 @@ function uploadWithProgress(url, formData, onProgress) {
             }
         };
         xhr.onerror = () => reject(new Error('Network error'));
+        if (onCancel)
+            onCancel(() => xhr.abort());
         xhr.send(formData);
     });
 }
-async function startUpload(files, nameOverride) {
-    if (!state.vault)
-        return;
-    const vault = state.vault;
+async function startUpload(files, nameOverride, vault) {
     const isMulti = files.length > 1;
-    el.uploadNameWrap().style.display = 'none';
     el.uploadTriggerBtn().disabled = true;
     // Create transfer items and prepend to panel (newest at top)
     const localItems = files.map((file) => {
@@ -764,6 +822,7 @@ async function startUpload(files, nameOverride) {
             fileName: name,
             fileSizeFmt: fmtBytes(file.size) || '0 B',
             path: `${state.prefix}${name}`,
+            vault,
             status: 'uploading',
             progress: 0,
         };
@@ -781,12 +840,23 @@ async function startUpload(files, nameOverride) {
             const result = await uploadWithProgress(`/api/v1/files/${encodeURIComponent(vault)}/write/`, form, (pct) => {
                 item.progress = pct;
                 updateTransferItem(item);
+            }, (cancelFn) => {
+                item.cancel = cancelFn;
+                updateTransferItem(item); // enable the cancel button immediately
             });
+            if (result.status === 0) {
+                // Aborted by user — mark terminal so refresh logic can still run for completed siblings
+                item.status = 'failed';
+                removeTransferItem(item.id);
+                continue;
+            }
+            item.cancel = undefined;
             item.status = result.status === 202 ? 'queued' : 'done';
             if (result.status === 202)
                 anyQueued = true;
         }
         catch (e) {
+            item.cancel = undefined;
             item.status = 'failed';
             setFlash(`${item.fileName}: ${e instanceof Error ? e.message : 'Upload failed'}`, 'error');
         }
@@ -795,20 +865,18 @@ async function startUpload(files, nameOverride) {
     }
     el.uploadFile().value = '';
     el.uploadTriggerBtn().disabled = !state.vault;
-    // If the user switched vaults while these uploads were in flight, skip
-    // post-upload work (fetchPending/refresh) so we don't affect the new vault.
-    if (state.vault !== vault)
-        return;
     if (anyQueued) {
-        const ok = await fetchPending();
+        const ok = await fetchPendingForVault(vault);
         if (ok)
             syncPendingToTransfers();
-        startPendingPoll();
+        startVaultPoll(vault);
     }
-    else if (localItems.every((t) => t.status === 'done')) {
+    else if (localItems.some((t) => t.status === 'done')) {
         setFlash('Upload complete.', 'success');
-        await refresh();
+        if (state.vault === vault)
+            await refresh();
     }
+    syncOverlayVisibility();
 }
 function goUp() {
     if (!state.prefix)
@@ -854,24 +922,14 @@ async function loadVaults() {
             state.vault = it.name;
             state.prefix = '';
             resetPagination();
-            // Reset pending state when switching vaults
-            stopPendingPoll();
-            pendingEntries = [];
-            // Clear all transfers when switching vaults to prevent cross-vault state mixing.
-            // In-flight XHRs still complete in the background but are not shown in the new vault's panel.
-            transfers = [];
-            for (const node of Array.from(el.uploadPanelList().querySelectorAll('.upload-item'))) {
-                node.remove();
-            }
-            el.uploadPanelEmpty().style.display = '';
             void (async () => {
-                // Fetch pending uploads for this vault before refreshing so they show immediately
-                const ok = await fetchPending();
+                // Fetch pending uploads for this vault so in-progress server-side uploads appear immediately
+                const ok = await fetchPendingForVault(it.name);
                 if (ok)
-                    addPendingAsTransfers();
+                    addPendingAsTransfers(it.name);
                 void refresh();
-                if (pendingEntries.length > 0) {
-                    startPendingPoll();
+                if ((pendingByVault.get(it.name) ?? []).length > 0) {
+                    startVaultPoll(it.name);
                 }
             })();
             for (const elItem of Array.from(host.querySelectorAll('.list-group-item'))) {
@@ -900,26 +958,69 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         el.uploadFile().click();
     });
+    // File picker → single file shows rename modal, multi-file uploads directly
     el.uploadFile().addEventListener('change', () => {
         const files = Array.from(el.uploadFile().files ?? []);
-        if (!files.length)
+        if (!files.length || !state.vault)
             return;
         if (files.length === 1) {
-            el.uploadName().value = files[0].name;
-            el.uploadNameWrap().style.display = '';
+            el.uploadNameInput().value = files[0].name;
+            const bsModal = new bootstrap.Modal(el.uploadNameModal());
+            bsModal.show();
         }
         else {
-            void startUpload(files, '');
+            void startUpload(files, '', state.vault);
         }
     });
-    el.uploadConfirmBtn().addEventListener('click', () => {
+    // Clear file input when rename modal is dismissed so re-selecting the same
+    // file fires the change event again.
+    el.uploadNameModal().addEventListener('hidden.bs.modal', () => {
+        el.uploadFile().value = '';
+    });
+    // Rename modal confirm — disable button immediately to prevent double-submit
+    el.uploadNameConfirm().addEventListener('click', () => {
         const files = Array.from(el.uploadFile().files ?? []);
-        if (!files.length)
+        if (!files.length || !state.vault)
             return;
-        el.uploadConfirmBtn().disabled = true;
-        void startUpload(files, el.uploadName().value.trim() || files[0].name).finally(() => {
-            el.uploadConfirmBtn().disabled = false;
+        const confirmBtn = el.uploadNameConfirm();
+        confirmBtn.disabled = true;
+        const name = el.uploadNameInput().value.trim() || files[0].name;
+        const vault = state.vault;
+        const bsModal = bootstrap.Modal.getInstance(el.uploadNameModal());
+        bsModal?.hide();
+        void startUpload(files, name, vault).finally(() => {
+            confirmBtn.disabled = false;
         });
+    });
+    function toggleOverlay() {
+        const overlay = el.uploadOverlay();
+        overlay.classList.toggle('collapsed');
+        const collapsed = overlay.classList.contains('collapsed');
+        const toggleBtn = el.uploadOverlayToggle();
+        toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+        const label = collapsed ? 'Expand uploads panel' : 'Collapse uploads panel';
+        toggleBtn.setAttribute('title', label);
+        toggleBtn.setAttribute('aria-label', label);
+        const icon = toggleBtn.querySelector('i');
+        if (icon) {
+            icon.className = collapsed ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+        }
+    }
+    // Overlay toggle button
+    el.uploadOverlayToggle().addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleOverlay();
+    });
+    // Overlay header click also toggles
+    el.uploadOverlay()
+        .querySelector('.upload-overlay-header')
+        ?.addEventListener('click', () => {
+        toggleOverlay();
+    });
+    // Dismiss button hides overlay (transfers preserved in memory)
+    el.uploadOverlayDismiss().addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.uploadOverlay().style.display = 'none';
     });
 });
 //# sourceMappingURL=browse.js.map
