@@ -291,7 +291,10 @@ function stopVaultPoll(vault) {
 }
 function startVaultPoll(vault) {
     stopVaultPoll(vault);
-    const entry = { gen: 1, timer: null };
+    // Use a monotonically increasing gen so any in-flight tick from the previous
+    // poll loop (which captured an older gen) will always see a mismatch and bail.
+    const prevGen = vaultPolls.get(vault)?.gen ?? 0;
+    const entry = { gen: prevGen + 1, timer: null };
     vaultPolls.set(vault, entry);
     const myGen = entry.gen;
     let prevPaths = new Set((pendingByVault.get(vault) ?? []).map((p) => p.path));
@@ -347,9 +350,19 @@ function syncOverlayVisibility() {
         return;
     }
     overlay.style.display = '';
-    const active = transfers.filter((t) => t.status === 'uploading' || t.status === 'queued').length;
+    const uploadingCount = transfers.filter((t) => t.status === 'uploading').length;
+    const queuedCount = transfers.filter((t) => t.status === 'queued').length;
+    const active = uploadingCount + queuedCount;
     if (active > 0) {
-        summary.textContent = `${active} uploading`;
+        if (uploadingCount > 0 && queuedCount > 0) {
+            summary.textContent = `${uploadingCount} uploading, ${queuedCount} queued`;
+        }
+        else if (uploadingCount > 0) {
+            summary.textContent = `${uploadingCount} uploading`;
+        }
+        else {
+            summary.textContent = `${queuedCount} queued`;
+        }
         dismiss.style.display = 'none';
     }
     else {
@@ -962,9 +975,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     function toggleOverlay() {
         const overlay = el.uploadOverlay();
         overlay.classList.toggle('collapsed');
-        const icon = el.uploadOverlayToggle().querySelector('i');
+        const collapsed = overlay.classList.contains('collapsed');
+        const toggleBtn = el.uploadOverlayToggle();
+        toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+        const icon = toggleBtn.querySelector('i');
         if (icon) {
-            icon.className = overlay.classList.contains('collapsed') ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+            icon.className = collapsed ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
         }
     }
     // Overlay toggle button
