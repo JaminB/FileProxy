@@ -423,6 +423,8 @@ function startVaultPoll(vault: string): void {
 
     if (entries.length === 0) {
       stopVaultPoll(vault);
+      pendingByVault.delete(vault);
+      vaultPolls.delete(vault);
       return;
     }
 
@@ -951,8 +953,6 @@ function uploadWithProgress(
     if (csrf) xhr.setRequestHeader('X-CSRFToken', csrf);
     xhr.withCredentials = true;
 
-    if (onCancel) onCancel(() => xhr.abort());
-
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
         onProgress((e.loaded / e.total) * 100);
@@ -982,6 +982,7 @@ function uploadWithProgress(
       }
     };
     xhr.onerror = () => reject(new Error('Network error'));
+    if (onCancel) onCancel(() => xhr.abort());
     xhr.send(formData);
   });
 }
@@ -1029,7 +1030,8 @@ async function startUpload(files: File[], nameOverride: string, vault: string): 
         },
       );
       if (result.status === 0) {
-        // Aborted by user — remove from panel
+        // Aborted by user — mark terminal so refresh logic can still run for completed siblings
+        item.status = 'failed';
         removeTransferItem(item.id);
         continue;
       }
@@ -1052,7 +1054,7 @@ async function startUpload(files: File[], nameOverride: string, vault: string): 
     const ok = await fetchPendingForVault(vault);
     if (ok) syncPendingToTransfers();
     startVaultPoll(vault);
-  } else if (localItems.every((t) => t.status === 'done')) {
+  } else if (localItems.some((t) => t.status === 'done')) {
     setFlash('Upload complete.', 'success');
     if (state.vault === vault) await refresh();
   }

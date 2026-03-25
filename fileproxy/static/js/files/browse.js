@@ -320,6 +320,8 @@ function startVaultPoll(vault) {
         }
         if (entries.length === 0) {
             stopVaultPoll(vault);
+            pendingByVault.delete(vault);
+            vaultPolls.delete(vault);
             return;
         }
         cur2.timer = setTimeout(() => void poll(), 4000);
@@ -442,8 +444,7 @@ function updateTransferItem(item) {
     // Keep disabled for queued items — no server-side cancel exists, and dismissing would hide
     // still-pending work that syncPendingToTransfers() won't re-add.
     if (cancelBtn) {
-        cancelBtn.disabled =
-            (item.status === 'uploading' && !item.cancel) || item.status === 'queued';
+        cancelBtn.disabled = (item.status === 'uploading' && !item.cancel) || item.status === 'queued';
     }
     const pct = `${Math.round(item.progress)}%`;
     bar.style.width = pct;
@@ -774,8 +775,6 @@ function uploadWithProgress(url, formData, onProgress, onCancel) {
         if (csrf)
             xhr.setRequestHeader('X-CSRFToken', csrf);
         xhr.withCredentials = true;
-        if (onCancel)
-            onCancel(() => xhr.abort());
         xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
                 onProgress((e.loaded / e.total) * 100);
@@ -807,6 +806,8 @@ function uploadWithProgress(url, formData, onProgress, onCancel) {
             }
         };
         xhr.onerror = () => reject(new Error('Network error'));
+        if (onCancel)
+            onCancel(() => xhr.abort());
         xhr.send(formData);
     });
 }
@@ -844,7 +845,8 @@ async function startUpload(files, nameOverride, vault) {
                 updateTransferItem(item); // enable the cancel button immediately
             });
             if (result.status === 0) {
-                // Aborted by user — remove from panel
+                // Aborted by user — mark terminal so refresh logic can still run for completed siblings
+                item.status = 'failed';
                 removeTransferItem(item.id);
                 continue;
             }
@@ -869,7 +871,7 @@ async function startUpload(files, nameOverride, vault) {
             syncPendingToTransfers();
         startVaultPoll(vault);
     }
-    else if (localItems.every((t) => t.status === 'done')) {
+    else if (localItems.some((t) => t.status === 'done')) {
         setFlash('Upload complete.', 'success');
         if (state.vault === vault)
             await refresh();
