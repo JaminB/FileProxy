@@ -2,6 +2,14 @@ import { qs as qsMaybe, setFlash } from '../utils/dom.js';
 import { apiJson } from '../utils/api.js';
 import { getCsrfToken } from '../utils/cookies.js';
 
+/* Bootstrap global (loaded via CDN script tag) */
+declare const bootstrap: {
+  Modal: {
+    new (el: Element): { show(): void; hide(): void };
+    getInstance(el: Element): { show(): void; hide(): void } | null;
+  };
+};
+
 /* ----------------------------- Types ----------------------------- */
 
 type ConnectionMeta = {
@@ -1140,8 +1148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!files.length || !state.vault) return;
     if (files.length === 1) {
       el.uploadNameInput().value = files[0].name;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bsModal = new (window as any).bootstrap.Modal(el.uploadNameModal());
+      const bsModal = new bootstrap.Modal(el.uploadNameModal());
       bsModal.show();
     } else {
       void startUpload(files, '', state.vault);
@@ -1154,8 +1161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!files.length || !state.vault) return;
     const name = el.uploadNameInput().value.trim() || files[0].name;
     const vault = state.vault;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bsModal = (window as any).bootstrap.Modal.getInstance(el.uploadNameModal());
+    const bsModal = bootstrap.Modal.getInstance(el.uploadNameModal());
     bsModal?.hide();
     void startUpload(files, name, vault);
   });

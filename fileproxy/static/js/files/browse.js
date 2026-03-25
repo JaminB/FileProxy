@@ -952,8 +952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         if (files.length === 1) {
             el.uploadNameInput().value = files[0].name;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const bsModal = new window.bootstrap.Modal(el.uploadNameModal());
+            const bsModal = new bootstrap.Modal(el.uploadNameModal());
             bsModal.show();
         }
         else {
@@ -967,8 +966,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         const name = el.uploadNameInput().value.trim() || files[0].name;
         const vault = state.vault;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const bsModal = window.bootstrap.Modal.getInstance(el.uploadNameModal());
+        const bsModal = bootstrap.Modal.getInstance(el.uploadNameModal());
         bsModal?.hide();
         void startUpload(files, name, vault);
     });
@@ -989,7 +987,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleOverlay();
     });
     // Overlay header click also toggles
-    el.uploadOverlay().querySelector('.upload-overlay-header')?.addEventListener('click', () => {
+    el.uploadOverlay()
+        .querySelector('.upload-overlay-header')
+        ?.addEventListener('click', () => {
         toggleOverlay();
     });
     // Dismiss button hides overlay (transfers preserved in memory)
