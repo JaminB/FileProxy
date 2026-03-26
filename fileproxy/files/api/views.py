@@ -44,7 +44,7 @@ class FilesViewSet(viewsets.ViewSet):
     """
     Backend-agnostic file API.
 
-    - GET    /api/v1/files/                              -> list connections for current user (metadata only)
+    - GET    /api/v1/files/                              -> list connections for current user
     - POST   /api/v1/files/{connection_name}/health/     -> backend connectivity test
     - GET    /api/v1/files/{connection_name}/objects/    -> enumerate backend
     - GET    /api/v1/files/{connection_name}/path/       -> read file
