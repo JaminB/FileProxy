@@ -179,12 +179,14 @@ class FilesViewSet(viewsets.ViewSet):
         parser_classes=[JSONParser, MultiPartParser, OctetStreamParser],
     )
     def path(self, request, connection_name: str = ""):
-        if request.method == "GET":
+        if request.method in ("GET", "HEAD"):
             return self._path_read(request, connection_name)
         elif request.method == "POST":
             return self._path_write(request, connection_name)
-        else:
+        elif request.method == "DELETE":
             return self._path_delete(request, connection_name)
+        else:
+            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def _path_read(self, request, connection_name: str):
         """GET /api/v1/files/{connection_name}/path/?path=..."""
