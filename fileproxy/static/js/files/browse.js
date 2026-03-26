@@ -550,7 +550,7 @@ function makeFileActions(entry) {
     addItem(`<i class="bi bi-download me-2"></i>Download`, () => {
         if (!state.vault)
             return;
-        const url = `/api/v1/files/${encodeURIComponent(state.vault)}/download/?path=${encodeURIComponent(entry.path)}`;
+        const url = `/api/v1/files/${encodeURIComponent(state.vault)}/path/stream/?path=${encodeURIComponent(entry.path)}`;
         const a = document.createElement('a');
         a.href = url;
         a.download = entry.name || 'download';
@@ -565,7 +565,7 @@ function makeFileActions(entry) {
         if (!confirm(`Delete "${entry.path}"?`))
             return;
         try {
-            await apiJson(`/api/v1/files/${encodeURIComponent(state.vault)}/object/?path=${encodeURIComponent(entry.path)}`, { method: 'DELETE' });
+            await apiJson(`/api/v1/files/${encodeURIComponent(state.vault)}/path/?path=${encodeURIComponent(entry.path)}`, { method: 'DELETE' });
             setFlash('Deleted.', 'success');
             await refresh();
         }
@@ -837,7 +837,7 @@ async function startUpload(files, nameOverride, vault) {
             const form = new FormData();
             form.append('path', item.path);
             form.append('file', file);
-            const result = await uploadWithProgress(`/api/v1/files/${encodeURIComponent(vault)}/write/`, form, (pct) => {
+            const result = await uploadWithProgress(`/api/v1/files/${encodeURIComponent(vault)}/path/`, form, (pct) => {
                 item.progress = pct;
                 updateTransferItem(item);
             }, (cancelFn) => {

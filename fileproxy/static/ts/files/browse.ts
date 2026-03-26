@@ -689,7 +689,7 @@ function makeFileActions(entry: Extract<Entry, { kind: 'file' }>): HTMLElement {
 
   addItem(`<i class="bi bi-download me-2"></i>Download`, () => {
     if (!state.vault) return;
-    const url = `/api/v1/files/${encodeURIComponent(state.vault)}/download/?path=${encodeURIComponent(entry.path)}`;
+    const url = `/api/v1/files/${encodeURIComponent(state.vault)}/path/stream/?path=${encodeURIComponent(entry.path)}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = entry.name || 'download';
@@ -708,7 +708,7 @@ function makeFileActions(entry: Extract<Entry, { kind: 'file' }>): HTMLElement {
 
       try {
         await apiJson(
-          `/api/v1/files/${encodeURIComponent(state.vault)}/object/?path=${encodeURIComponent(entry.path)}`,
+          `/api/v1/files/${encodeURIComponent(state.vault)}/path/?path=${encodeURIComponent(entry.path)}`,
           { method: 'DELETE' },
         );
         setFlash('Deleted.', 'success');
@@ -1018,7 +1018,7 @@ async function startUpload(files: File[], nameOverride: string, vault: string): 
       form.append('path', item.path);
       form.append('file', file);
       const result = await uploadWithProgress(
-        `/api/v1/files/${encodeURIComponent(vault)}/write/`,
+        `/api/v1/files/${encodeURIComponent(vault)}/path/`,
         form,
         (pct) => {
           item.progress = pct;

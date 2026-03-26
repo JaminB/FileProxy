@@ -206,7 +206,7 @@ class FilesApiS3Tests(APITestCase):
 
         # write
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": path, "data_base64": payload_b64},
             format="json",
         )
@@ -214,7 +214,7 @@ class FilesApiS3Tests(APITestCase):
         self.assertEqual(resp.data["path"], path)
 
         # read
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
         self.assertEqual(b"".join(resp.streaming_content), payload)
@@ -233,7 +233,7 @@ class FilesApiS3Tests(APITestCase):
         self.assertEqual({o["path"] for o in resp.data["objects"]}, {path})
 
         # delete
-        resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/object/?path={path}")
+        resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/path/?path={path}")
         self.assertEqual(resp.status_code, 204, resp.text if hasattr(resp, "text") else "")
 
         # objects after delete
@@ -241,8 +241,8 @@ class FilesApiS3Tests(APITestCase):
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertNotIn(path, {o["path"] for o in resp.data["objects"]})
 
-    def test_test_endpoint_runs_backend_healthcheck(self):
-        resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/test/", format="json")
+    def test_health_endpoint_runs_backend_healthcheck(self):
+        resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/health/", format="json")
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["detail"], "Connection OK.")
 
@@ -296,7 +296,7 @@ class _BaseFilesTest(APITestCase):
 
     def _write(self, path: str, data: bytes = b"test data") -> None:
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": path, "data_base64": base64.b64encode(data).decode("ascii")},
             format="json",
         )
@@ -413,24 +413,24 @@ class FilesReadTests(_BaseFilesTest):
         path = "read/test.bin"
         self._write(path, payload)
 
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
         self.assertEqual(b"".join(resp.streaming_content), payload)
 
     def test_read_missing_path_param_returns_400(self):
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/")
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/")
         self.assertEqual(resp.status_code, 400)
 
     def test_read_nonexistent_path_returns_400(self):
         resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/read/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": "does/not/exist.txt"},
         )
         self.assertEqual(resp.status_code, 400)
 
     def test_read_unknown_vault_item_returns_404(self):
-        resp = self.client.get("/api/v1/files/no-such-item/read/", {"path": "anything.txt"})
+        resp = self.client.get("/api/v1/files/no-such-item/path/", {"path": "anything.txt"})
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
 
@@ -442,7 +442,7 @@ class FilesWriteTests(_BaseFilesTest):
         payload_b64 = base64.b64encode(data).decode("ascii")
 
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": path, "data_base64": payload_b64},
             format="json",
         )
@@ -457,7 +457,7 @@ class FilesWriteTests(_BaseFilesTest):
 
     def test_write_missing_path_returns_400(self):
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"data_base64": base64.b64encode(b"data").decode()},
             format="json",
         )
@@ -465,7 +465,7 @@ class FilesWriteTests(_BaseFilesTest):
 
     def test_write_missing_data_base64_returns_400(self):
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": "some/path.txt"},
             format="json",
         )
@@ -473,7 +473,7 @@ class FilesWriteTests(_BaseFilesTest):
 
     def test_write_unknown_vault_item_returns_404(self):
         resp = self.client.post(
-            "/api/v1/files/no-such-item/write/",
+            "/api/v1/files/no-such-item/path/",
             {"path": "p.txt", "data_base64": base64.b64encode(b"x").decode()},
             format="json",
         )
@@ -487,7 +487,7 @@ class FilesWriteMultipartTests(_BaseFilesTest):
         data = b"multipart content"
 
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": path, "file": io.BytesIO(data)},
             format="multipart",
         )
@@ -500,7 +500,7 @@ class FilesWriteMultipartTests(_BaseFilesTest):
 
     def test_write_multipart_missing_path_returns_400(self):
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"file": io.BytesIO(b"data")},
             format="multipart",
         )
@@ -508,7 +508,7 @@ class FilesWriteMultipartTests(_BaseFilesTest):
 
     def test_write_multipart_missing_file_returns_400(self):
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": "some/path.txt"},
             format="multipart",
         )
@@ -521,7 +521,7 @@ class FilesWriteOctetStreamTests(_BaseFilesTest):
         data = b"\x00\x01\x02\x03binary data"
 
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/?path={path}",
+            f"/api/v1/files/{self.vault_item_name}/path/?path={path}",
             data=data,
             content_type="application/octet-stream",
         )
@@ -534,7 +534,7 @@ class FilesWriteOctetStreamTests(_BaseFilesTest):
 
     def test_write_octet_stream_missing_path_returns_400(self):
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             data=b"some data",
             content_type="application/octet-stream",
         )
@@ -545,14 +545,14 @@ class FilesWriteOctetStreamTests(_BaseFilesTest):
         data = bytes(range(256)) * 16  # 4 KB of binary data
 
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/?path={path}",
+            f"/api/v1/files/{self.vault_item_name}/path/?path={path}",
             data=data,
             content_type="application/octet-stream",
         )
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["path"], path)
 
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
         self.assertEqual(b"".join(resp.streaming_content), data)
@@ -568,7 +568,7 @@ class FilesDeleteTests(_BaseFilesTest):
         self.assertIn(path, {o["path"] for o in resp.data["objects"]})
 
         # Delete
-        resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/object/?path={path}")
+        resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/path/?path={path}")
         self.assertEqual(resp.status_code, 204)
 
         # Confirm it is gone
@@ -576,27 +576,27 @@ class FilesDeleteTests(_BaseFilesTest):
         self.assertNotIn(path, {o["path"] for o in resp.data["objects"]})
 
     def test_delete_missing_path_returns_400(self):
-        resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/object/")
+        resp = self.client.delete(f"/api/v1/files/{self.vault_item_name}/path/")
         self.assertEqual(resp.status_code, 400)
 
     def test_delete_unknown_vault_item_returns_404(self):
-        resp = self.client.delete("/api/v1/files/no-such-item/object/?path=anything.txt")
+        resp = self.client.delete("/api/v1/files/no-such-item/path/?path=anything.txt")
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
 
 
-class FilesTestEndpointTests(_BaseFilesTest):
-    def test_test_success(self):
-        resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/test/", format="json")
+class FilesHealthEndpointTests(_BaseFilesTest):
+    def test_health_success(self):
+        resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/health/", format="json")
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["detail"], "Connection OK.")
 
-    def test_test_unknown_vault_item_returns_404(self):
-        resp = self.client.post("/api/v1/files/no-such-item/test/", format="json")
+    def test_health_unknown_vault_item_returns_404(self):
+        resp = self.client.post("/api/v1/files/no-such-item/health/", format="json")
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
 
-    def test_test_backend_connection_failure_returns_400(self):
+    def test_health_backend_connection_failure_returns_400(self):
         # Make head_bucket raise to simulate a connection failure.
         # BackendTestError is raised by S3Backend.test() when the bucket check fails.
         original_head_bucket = self._fake_s3.head_bucket
@@ -608,38 +608,38 @@ class FilesTestEndpointTests(_BaseFilesTest):
 
         self._fake_s3.head_bucket = _failing_head_bucket
         try:
-            resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/test/", format="json")
+            resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/health/", format="json")
             self.assertEqual(resp.status_code, 400)
             self.assertIn("detail", resp.data)
         finally:
             self._fake_s3.head_bucket = original_head_bucket
 
 
-class FilesDownloadTests(_BaseFilesTest):
-    def test_download_returns_binary_response(self):
+class FilesStreamTests(_BaseFilesTest):
+    def test_stream_returns_binary_response(self):
         payload = b"\x00\x01\x02binary content\xff"
         path = "dl/test.bin"
         self._write(path, payload)
 
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/download/", {"path": path})
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/stream/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
         self.assertIn("attachment", resp.get("Content-Disposition", ""))
         self.assertEqual(b"".join(resp.streaming_content), payload)
 
-    def test_download_missing_path_returns_400(self):
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/download/")
+    def test_stream_missing_path_returns_400(self):
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/stream/")
         self.assertEqual(resp.status_code, 400)
 
-    def test_download_nonexistent_path_returns_400(self):
+    def test_stream_nonexistent_path_returns_400(self):
         resp = self.client.get(
-            f"/api/v1/files/{self.vault_item_name}/download/",
+            f"/api/v1/files/{self.vault_item_name}/path/stream/",
             {"path": "does/not/exist.bin"},
         )
         self.assertEqual(resp.status_code, 400)
 
-    def test_download_unknown_vault_item_returns_404(self):
-        resp = self.client.get("/api/v1/files/no-such-item/download/", {"path": "anything.bin"})
+    def test_stream_unknown_vault_item_returns_404(self):
+        resp = self.client.get("/api/v1/files/no-such-item/path/stream/", {"path": "anything.bin"})
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
 
@@ -799,7 +799,7 @@ class FilesWriteStreamTests(_BaseFilesTest):
         data = bytes(range(256)) * (1024 * 4)
 
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": path, "file": io.BytesIO(data)},
             format="multipart",
         )
@@ -807,7 +807,7 @@ class FilesWriteStreamTests(_BaseFilesTest):
         self.assertEqual(resp.data["path"], path)
 
         # Confirm it lands correctly via the read endpoint
-        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/read/", {"path": path})
+        resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
         self.assertEqual(b"".join(resp.streaming_content), data)

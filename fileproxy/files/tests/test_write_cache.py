@@ -51,7 +51,7 @@ class WriteCacheJsonViewTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 resp = self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": "a/large.bin", "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
@@ -67,7 +67,7 @@ class WriteCacheJsonViewTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
@@ -85,7 +85,7 @@ class WriteCacheJsonViewTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": "a/large.bin", "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
@@ -105,7 +105,7 @@ class WriteCacheJsonViewTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 resp = self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
@@ -115,7 +115,7 @@ class WriteCacheJsonViewTests(_BaseFilesTest):
 
     def test_small_json_returns_200(self):
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": "a/small.txt", "data_base64": _b64(_SMALL_PAYLOAD)},
             format="json",
         )
@@ -139,7 +139,7 @@ class WriteCacheMultipartViewTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 resp = self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": "b/large.bin", "file": io.BytesIO(_LARGE_PAYLOAD)},
                     format="multipart",
                 )
@@ -154,7 +154,7 @@ class WriteCacheMultipartViewTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "file": io.BytesIO(_LARGE_PAYLOAD)},
                     format="multipart",
                 )
@@ -165,7 +165,7 @@ class WriteCacheMultipartViewTests(_BaseFilesTest):
 
     def test_small_multipart_returns_200(self):
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/",
+            f"/api/v1/files/{self.vault_item_name}/path/",
             {"path": "b/small.txt", "file": io.BytesIO(_SMALL_PAYLOAD)},
             format="multipart",
         )
@@ -188,7 +188,7 @@ class WriteCacheOctetStreamViewTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 resp = self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/?path=c/large.bin",
+                    f"/api/v1/files/{self.vault_item_name}/path/?path=c/large.bin",
                     data=_LARGE_PAYLOAD,
                     content_type="application/octet-stream",
                     HTTP_CONTENT_LENGTH=str(len(_LARGE_PAYLOAD)),
@@ -204,7 +204,7 @@ class WriteCacheOctetStreamViewTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/?path={path}",
+                    f"/api/v1/files/{self.vault_item_name}/path/?path={path}",
                     data=_LARGE_PAYLOAD,
                     content_type="application/octet-stream",
                     HTTP_CONTENT_LENGTH=str(len(_LARGE_PAYLOAD)),
@@ -216,7 +216,7 @@ class WriteCacheOctetStreamViewTests(_BaseFilesTest):
 
     def test_small_octet_stream_returns_200(self):
         resp = self.client.post(
-            f"/api/v1/files/{self.vault_item_name}/write/?path=c/small.bin",
+            f"/api/v1/files/{self.vault_item_name}/path/?path=c/small.bin",
             data=_SMALL_PAYLOAD,
             content_type="application/octet-stream",
             HTTP_CONTENT_LENGTH=str(len(_SMALL_PAYLOAD)),
@@ -241,14 +241,14 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
                 first_id = PendingUpload.objects.get().id
 
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
@@ -267,7 +267,7 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
         with tempfile.TemporaryDirectory() as tmp:
             with self.settings(WRITE_CACHE_DIR=tmp):
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
@@ -275,7 +275,7 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
                 self.assertTrue(first_temp.exists(), "First temp file should exist")
 
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
@@ -295,7 +295,7 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
             with self.settings(WRITE_CACHE_DIR=tmp):
                 # Enqueue the first upload.
                 self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
@@ -308,7 +308,7 @@ class WriteCacheDuplicateCancellationTests(_BaseFilesTest):
 
                 # Second upload for the same path while the first is actively UPLOADING.
                 resp = self.client.post(
-                    f"/api/v1/files/{self.vault_item_name}/write/",
+                    f"/api/v1/files/{self.vault_item_name}/path/",
                     {"path": path, "data_base64": _b64(_LARGE_PAYLOAD)},
                     format="json",
                 )
