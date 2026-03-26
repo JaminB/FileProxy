@@ -615,8 +615,8 @@ class FilesHealthEndpointTests(_BaseFilesTest):
             self._fake_s3.head_bucket = original_head_bucket
 
 
-class FilesDownloadTests(_BaseFilesTest):
-    def test_download_returns_binary_response(self):
+class FilesStreamTests(_BaseFilesTest):
+    def test_stream_returns_binary_response(self):
         payload = b"\x00\x01\x02binary content\xff"
         path = "dl/test.bin"
         self._write(path, payload)
@@ -627,18 +627,18 @@ class FilesDownloadTests(_BaseFilesTest):
         self.assertIn("attachment", resp.get("Content-Disposition", ""))
         self.assertEqual(b"".join(resp.streaming_content), payload)
 
-    def test_download_missing_path_returns_400(self):
+    def test_stream_missing_path_returns_400(self):
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/stream/")
         self.assertEqual(resp.status_code, 400)
 
-    def test_download_nonexistent_path_returns_400(self):
+    def test_stream_nonexistent_path_returns_400(self):
         resp = self.client.get(
             f"/api/v1/files/{self.vault_item_name}/path/stream/",
             {"path": "does/not/exist.bin"},
         )
         self.assertEqual(resp.status_code, 400)
 
-    def test_download_unknown_vault_item_returns_404(self):
+    def test_stream_unknown_vault_item_returns_404(self):
         resp = self.client.get("/api/v1/files/no-such-item/path/stream/", {"path": "anything.bin"})
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
