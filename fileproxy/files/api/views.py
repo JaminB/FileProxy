@@ -44,12 +44,13 @@ class FilesViewSet(viewsets.ViewSet):
     """
     Backend-agnostic file API.
 
-    - GET  /api/v1/files/                       -> list connections for current user (metadata only)
-    - POST /api/v1/files/{connection_name}/test/   -> backend connectivity test
-    - GET  /api/v1/files/{connection_name}/objects -> enumerate backend
-    - GET  /api/v1/files/{connection_name}/read    -> read object
-    - POST /api/v1/files/{connection_name}/write   -> write object
-    - POST /api/v1/files/{connection_name}/delete  -> delete object
+    - GET    /api/v1/files/                              -> list connections for current user (metadata only)
+    - POST   /api/v1/files/{connection_name}/health/     -> backend connectivity test
+    - GET    /api/v1/files/{connection_name}/objects/    -> enumerate backend
+    - GET    /api/v1/files/{connection_name}/path/       -> read file
+    - POST   /api/v1/files/{connection_name}/path/       -> write file
+    - DELETE /api/v1/files/{connection_name}/path/       -> delete file
+    - GET    /api/v1/files/{connection_name}/path/stream/ -> streaming binary download
     """
 
     lookup_field = "connection_name"
@@ -142,8 +143,8 @@ class FilesViewSet(viewsets.ViewSet):
         )
         return Response(ConnectionMetaSerializer(items, many=True).data)
 
-    @action(detail=True, methods=["post"])
-    def test(self, request, connection_name: str = ""):
+    @action(detail=True, methods=["post"], url_path="health")
+    def health(self, request, connection_name: str = ""):
         try:
             backend = self._backend(request, connection_name)
             backend.test()
@@ -171,8 +172,22 @@ class FilesViewSet(viewsets.ViewSet):
         finally:
             self._record_event(request, connection_name, "enumerate", ok=ok)
 
-    @action(detail=True, methods=["get"], url_path="read")
-    def read(self, request, connection_name: str = ""):
+    @action(
+        detail=True,
+        methods=["get", "post", "delete"],
+        url_path="path",
+        parser_classes=[JSONParser, MultiPartParser, OctetStreamParser],
+    )
+    def path(self, request, connection_name: str = ""):
+        if request.method == "GET":
+            return self._path_read(request, connection_name)
+        elif request.method == "POST":
+            return self._path_write(request, connection_name)
+        else:
+            return self._path_delete(request, connection_name)
+
+    def _path_read(self, request, connection_name: str):
+        """GET /api/v1/files/{connection_name}/path/?path=..."""
         path = ""
         try:
             check_limit(request.user, "read")
@@ -198,13 +213,8 @@ class FilesViewSet(viewsets.ViewSet):
             self._record_event(request, connection_name, "read", object_path=path, ok=False)
             return self._error(e)
 
-    @action(
-        detail=True,
-        methods=["post"],
-        url_path="write",
-        parser_classes=[JSONParser, MultiPartParser, OctetStreamParser],
-    )
-    def write(self, request, connection_name: str = ""):
+    def _path_write(self, request, connection_name: str):
+        """POST /api/v1/files/{connection_name}/path/"""
         ok = False
         path = ""
         bytes_written = 0
@@ -316,9 +326,8 @@ class FilesViewSet(viewsets.ViewSet):
                 bytes_transferred=bytes_written,
             )
 
-    @action(detail=True, methods=["delete"], url_path="object")
-    def delete_object(self, request: Request, connection_name: str = ""):
-        """DELETE /api/v1/files/{connection_name}/object/?path=..."""
+    def _path_delete(self, request: Request, connection_name: str):
+        """DELETE /api/v1/files/{connection_name}/path/?path=..."""
         ok = False
         path = ""
         try:
@@ -337,9 +346,9 @@ class FilesViewSet(viewsets.ViewSet):
         finally:
             self._record_event(request, connection_name, "delete", object_path=path, ok=ok)
 
-    @action(detail=True, methods=["get"], url_path="download")
-    def download(self, request, connection_name: str = ""):
-        """GET /api/v1/files/{connection_name}/download/?path=... — binary streaming download."""
+    @action(detail=True, methods=["get"], url_path="path/stream")
+    def path_stream(self, request, connection_name: str = ""):
+        """GET /api/v1/files/{connection_name}/path/stream/?path=... — binary streaming download."""
         path = ""
         try:
             check_limit(request.user, "read")
