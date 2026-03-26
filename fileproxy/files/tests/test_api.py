@@ -241,7 +241,7 @@ class FilesApiS3Tests(APITestCase):
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertNotIn(path, {o["path"] for o in resp.data["objects"]})
 
-    def test_test_endpoint_runs_backend_healthcheck(self):
+    def test_health_endpoint_runs_backend_healthcheck(self):
         resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/health/", format="json")
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["detail"], "Connection OK.")
@@ -585,18 +585,18 @@ class FilesDeleteTests(_BaseFilesTest):
         self.assertIn("detail", resp.data)
 
 
-class FilesTestEndpointTests(_BaseFilesTest):
-    def test_test_success(self):
+class FilesHealthEndpointTests(_BaseFilesTest):
+    def test_health_success(self):
         resp = self.client.post(f"/api/v1/files/{self.vault_item_name}/health/", format="json")
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.data["detail"], "Connection OK.")
 
-    def test_test_unknown_vault_item_returns_404(self):
+    def test_health_unknown_vault_item_returns_404(self):
         resp = self.client.post("/api/v1/files/no-such-item/health/", format="json")
         self.assertEqual(resp.status_code, 404)
         self.assertIn("detail", resp.data)
 
-    def test_test_backend_connection_failure_returns_400(self):
+    def test_health_backend_connection_failure_returns_400(self):
         # Make head_bucket raise to simulate a connection failure.
         # BackendTestError is raised by S3Backend.test() when the bucket check fails.
         original_head_bucket = self._fake_s3.head_bucket
