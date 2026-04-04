@@ -60,6 +60,12 @@ class ConnectionKind(models.TextChoices):
     AZURE_BLOB = "azure_blob", "Azure Blob Storage"
 
 
+# Connection kinds that use OAuth2 refresh tokens and support refresh_credentials().
+OAUTH2_CONNECTION_KINDS: frozenset[str] = frozenset(
+    {ConnectionKind.GDRIVE_OAUTH2, ConnectionKind.DROPBOX_OAUTH2}
+)
+
+
 class Connection(models.Model):
     """Encrypted record scoped to a tenant identifier."""
 

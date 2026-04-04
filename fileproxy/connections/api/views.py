@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
-from ..models import Connection, ConnectionKind
+from ..models import Connection, OAUTH2_CONNECTION_KINDS
 from ..tasks import refresh_oauth2_connection
 from .serializers import (
     AzureBlobCreateSerializer,
@@ -211,13 +211,11 @@ class ConnectionViewSet(viewsets.ModelViewSet):
 
         return Response({"detail": "Connection OK.", "ok": True})
 
-    _OAUTH2_KINDS = {ConnectionKind.GDRIVE_OAUTH2, ConnectionKind.DROPBOX_OAUTH2}
-
     @action(detail=True, methods=["post"])
     def refresh(self, request, pk=None):
         """POST /api/v1/connections/{id}/refresh/ — enqueue an immediate credential refresh."""
         item = _get_or_404(self.get_queryset(), pk=pk)
-        if item.kind not in self._OAUTH2_KINDS:
+        if item.kind not in OAUTH2_CONNECTION_KINDS:
             return Response(
                 {"detail": "Credential refresh is only available for OAuth2 connections."},
                 status=status.HTTP_400_BAD_REQUEST,

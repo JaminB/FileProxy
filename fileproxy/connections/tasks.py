@@ -8,11 +8,11 @@ from django.core.exceptions import ValidationError
 from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
-from .models import Connection, ConnectionKind
+from .models import Connection, OAUTH2_CONNECTION_KINDS
 
 logger = logging.getLogger(__name__)
 
-_OAUTH2_KINDS = {ConnectionKind.GDRIVE_OAUTH2, ConnectionKind.DROPBOX_OAUTH2}
+_OAUTH2_KINDS = OAUTH2_CONNECTION_KINDS
 
 
 @shared_task(name="connections.refresh_oauth2_connection")
@@ -66,7 +66,7 @@ def refresh_all_oauth2_connections() -> None:
     Queries all gdrive_oauth2 and dropbox_oauth2 connections and enqueues
     a refresh_oauth2_connection task for each one.
     """
-    ids = Connection.objects.filter(kind__in=_OAUTH2_KINDS).values_list("id", flat=True)
+    ids = Connection.objects.filter(kind__in=_OAUTH2_KINDS).values_list("id", flat=True).iterator()
     count = 0
     for conn_id in ids:
         refresh_oauth2_connection.delay(str(conn_id))
