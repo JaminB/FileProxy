@@ -270,4 +270,8 @@ format ──┬──> lint
 
 ## License
 
-TBD
+FileProxy is open-source software licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPLv3).
+
+You are free to self-host, modify, and redistribute FileProxy under those terms. The key condition: if you run a modified version as a network service, you must make your modifications available under the AGPLv3.
+
+A **commercial license** is available for organizations that need to deploy or embed FileProxy without the copyleft requirements. Contact us at [fileproxy.io](https://fileproxy.io) for details.
