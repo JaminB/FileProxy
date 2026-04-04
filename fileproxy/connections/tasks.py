@@ -34,9 +34,7 @@ def refresh_oauth2_connection(connection_id: str) -> None:
     try:
         backend = backend_from_config(conn.to_backend_config())
         backend.refresh_credentials()
-        logger.info(
-            "refresh_oauth2_connection: refreshed %s (%s)", connection_id, conn.kind
-        )
+        logger.info("refresh_oauth2_connection: refreshed %s (%s)", connection_id, conn.kind)
     except BackendConnectionError as e:
         logger.error(
             "refresh_oauth2_connection: auth failure for %s (%s/%s): %s",
@@ -46,9 +44,7 @@ def refresh_oauth2_connection(connection_id: str) -> None:
             e,
         )
     except Exception:
-        logger.exception(
-            "refresh_oauth2_connection: unexpected error for %s", connection_id
-        )
+        logger.exception("refresh_oauth2_connection: unexpected error for %s", connection_id)
 
 
 @shared_task(name="connections.refresh_all_oauth2_connections")
@@ -58,9 +54,7 @@ def refresh_all_oauth2_connections() -> None:
     Queries all gdrive_oauth2 and dropbox_oauth2 connections and enqueues
     a refresh_oauth2_connection task for each one.
     """
-    ids = (
-        Connection.objects.filter(kind__in=_OAUTH2_KINDS).values_list("id", flat=True)
-    )
+    ids = Connection.objects.filter(kind__in=_OAUTH2_KINDS).values_list("id", flat=True)
     count = 0
     for conn_id in ids:
         refresh_oauth2_connection.delay(str(conn_id))
