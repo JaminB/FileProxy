@@ -13,6 +13,7 @@ from django.conf import settings as django_settings
 from .base import (
     Backend,
     BackendConfig,
+    BackendConnectionError,
     BackendDeleteError,
     BackendEnumerateError,
     BackendError,
@@ -54,6 +55,18 @@ class DropboxBackend(Backend):
         if not isinstance(val, str) or not val.strip():
             raise BackendError(f"Missing required secret: {key}")
         return val.strip()
+
+    def refresh_credentials(self) -> None:
+        """Ping the Dropbox check endpoint to force an access token refresh.
+
+        Uses check_user which is a lightweight echo call that triggers the SDK's
+        internal OAuth2 refresh flow without writing any files.
+        Raises BackendConnectionError if the refresh token is revoked or invalid.
+        """
+        try:
+            self._dbx.check_user("echo")
+        except dropbox.exceptions.AuthError as e:
+            raise BackendConnectionError(f"Dropbox credential refresh failed: {e}") from e
 
     def test(self) -> None:
         test_name = f"/fileproxy-test-{uuid.uuid4().hex}.txt"
