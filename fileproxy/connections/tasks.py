@@ -32,9 +32,7 @@ def refresh_oauth2_connection(connection_id: str) -> None:
         logger.warning("refresh_oauth2_connection: connection %s not found", connection_id)
         return
     except (ValidationError, ValueError, TypeError):
-        logger.warning(
-            "refresh_oauth2_connection: invalid connection id %r", connection_id
-        )
+        logger.warning("refresh_oauth2_connection: invalid connection id %r", connection_id)
         return
 
     if conn.kind not in _OAUTH2_KINDS:
