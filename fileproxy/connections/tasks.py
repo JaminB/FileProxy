@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from celery import shared_task
+from django.core.exceptions import ValidationError
 
 from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
@@ -29,6 +30,19 @@ def refresh_oauth2_connection(connection_id: str) -> None:
         conn = Connection.objects.get(id=connection_id)
     except Connection.DoesNotExist:
         logger.warning("refresh_oauth2_connection: connection %s not found", connection_id)
+        return
+    except (ValidationError, ValueError, TypeError):
+        logger.warning(
+            "refresh_oauth2_connection: invalid connection id %r", connection_id
+        )
+        return
+
+    if conn.kind not in _OAUTH2_KINDS:
+        logger.warning(
+            "refresh_oauth2_connection: connection %s has non-OAuth2 kind %s, skipping",
+            connection_id,
+            conn.kind,
+        )
         return
 
     try:
