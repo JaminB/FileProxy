@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
-from .models import Connection, OAUTH2_CONNECTION_KINDS
+from .models import OAUTH2_CONNECTION_KINDS, Connection
 
 logger = logging.getLogger(__name__)
 

@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from core.backends.base import BackendConnectionError
 from core.backends.factory import backend_from_config
 
-from ..models import Connection, OAUTH2_CONNECTION_KINDS
+from ..models import OAUTH2_CONNECTION_KINDS, Connection
 from ..tasks import refresh_oauth2_connection
 from .serializers import (
     AzureBlobCreateSerializer,
