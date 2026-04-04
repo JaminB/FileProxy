@@ -111,7 +111,7 @@ class RefreshActionTests(APITestCase):
     def test_refresh_another_users_connection_returns_404(self, mock_task):
         conn_id = self._create_gdrive()
         # Create a second user and log in as them
-        other = User.objects.create_user(username="u3", password="pw")
+        User.objects.create_user(username="u3", password="pw")
         self.client.login(username="u3", password="pw")
         resp = self.client.post(f"/api/v1/connections/{conn_id}/refresh/")
         self.assertEqual(resp.status_code, 404)
