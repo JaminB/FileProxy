@@ -21,7 +21,7 @@ FileProxy is a Django web app that stores cloud storage credentials encrypted in
 ```
 fileproxy/
 ├── core/backends/       # Backend abstraction layer (ABC + concrete implementations)
-├── vault/               # Encrypted credential store (models, API, UI)
+├── connections/         # Encrypted credential store (models, API, UI)
 ├── files/               # File operation API (backend-agnostic)
 ├── usage/               # Event recording and analytics
 ├── subscription/        # Tiered plans and limit enforcement
@@ -53,9 +53,9 @@ The `Backend` ABC in `core/backends/base.py` defines the interface all backends 
 | `dropbox_oauth2` | OAuth2 (offline) | `refresh_token`; settings: `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` |
 | `azure_blob` | Service Principal | `tenant_id`, `client_id`, `client_secret`, `account_name`, `container_name` |
 
-### Vault encryption
+### Credential encryption
 
-Credentials are stored using envelope encryption. Each vault item has a unique Data Encryption Key (DEK) encrypted by a master Key Encryption Key (KEK) derived from `FILEPROXY_VAULT_MASTER_KEY`. AES-GCM authenticated data (AAD) binds each ciphertext to its `scope:kind:id`, preventing cross-item ciphertext swapping. The DEK is rotated independently per item via the `rotate` action without re-entering credentials.
+Credentials are stored using envelope encryption. Each connection has a unique Data Encryption Key (DEK) encrypted by a master Key Encryption Key (KEK) derived from `FILEPROXY_VAULT_MASTER_KEY`. AES-GCM authenticated data (AAD) binds each ciphertext to its `scope:kind:id`, preventing cross-item ciphertext swapping. The DEK is rotated independently per connection via the `rotate` action without re-entering credentials.
 
 ---
 
@@ -140,7 +140,7 @@ npm run ts:watch   # Watch mode
 | Path | Purpose |
 |---|---|
 | `/` | Home dashboard |
-| `/connections/` | Vault / connection management |
+| `/connections/` | Connection management |
 | `/files/` | File browser |
 | `/usage/` | Usage analytics overview |
 | `/subscription/` | Subscription plan management |
@@ -175,12 +175,13 @@ See `/api/docs/` for full request/response schemas.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/v1/files/` | List connections available for file operations |
-| POST | `/api/v1/files/{name}/test/` | Test backend connectivity |
+| POST | `/api/v1/files/{name}/health/` | Test backend connectivity |
 | GET | `/api/v1/files/{name}/objects/` | Enumerate objects (`prefix`, `cursor`, `page_size` params) |
-| GET | `/api/v1/files/{name}/read/?path=…` | Read object → `{"path": …, "data_base64": …}` |
-| POST | `/api/v1/files/{name}/write/` | Write object — JSON (`path` + `data_base64`), multipart, or `application/octet-stream` |
-| DELETE | `/api/v1/files/{name}/object/?path=…` | Delete object → 204 |
-| GET | `/api/v1/files/{name}/download/?path=…` | Streaming binary download |
+| GET | `/api/v1/files/{name}/path/?path=…` | Read object (streaming) |
+| POST | `/api/v1/files/{name}/path/` | Write object — JSON (`path` + `data_base64`), multipart, or `application/octet-stream` |
+| DELETE | `/api/v1/files/{name}/path/?path=…` | Delete object → 204 |
+| GET | `/api/v1/files/{name}/path/stream/?path=…` | Streaming binary download |
+| GET | `/api/v1/files/{name}/pending/` | List pending (in-progress) uploads |
 
 **Usage**
 
@@ -207,10 +208,11 @@ See `/api/docs/` for full request/response schemas.
 
 ```bash
 cd fileproxy
-poetry run python manage.py test           # All apps
-poetry run python manage.py test vault
+poetry run python manage.py test                     # All apps
+poetry run python manage.py test connections
 poetry run python manage.py test files
 poetry run python manage.py test usage
+poetry run python manage.py test subscription
 ```
 
 ---
@@ -252,18 +254,18 @@ format ──┬──> lint
 ## Adding a New Backend
 
 1. Create `core/backends/<name>.py` — implement the `Backend` ABC (`test`, `enumerate_page`, `read`, `write`, `delete`)
-2. Add a new `VaultItemKind` choice in `vault/models.py`
-3. `python manage.py makemigrations vault && python manage.py migrate`
-4. Add a credentials dataclass in `vault/schemas.py` with `to_payload` / `from_payload`
-5. Add `create_*` and `load_*` functions in `vault/service.py`
-6. Add a `*InitiateSerializer` (or `*CreateSerializer`) in `vault/api/serializers.py`
-7. Add a `*_initiate` (or `*_create`) action on `VaultItemViewSet` in `vault/api/views.py`
-8. Add a form view (and OAuth callback view if applicable) in `vault/ui/views.py`
-9. Register routes in `vault/ui/urls.py`
+2. Add a new `ConnectionKind` choice in `connections/models.py`
+3. `python manage.py makemigrations connections && python manage.py migrate`
+4. Add a credentials dataclass in `connections/schemas.py` with `to_payload` / `from_payload`
+5. Add `create_*` and `load_*` functions in `connections/service.py`
+6. Add a `*CreateSerializer` (or `*InitiateSerializer` for OAuth) in `connections/api/serializers.py`
+7. Add a `*_create` (or `*_initiate`) action on `ConnectionViewSet` in `connections/api/views.py`
+8. Add a form view (and OAuth callback view if applicable) in `connections/ui/views.py`
+9. Register routes in `connections/ui/urls.py`
 10. Register the backend class in `core/backends/factory.py`'s `_KIND_TO_BACKEND` dict
 11. Add any required env vars in `config/settings.py` (use `default=""` so the app starts without them)
-12. Create `vault/templates/vault_ui/new_<name>.html`
-13. Create `static/ts/vault/forms/<name>.ts`, then `npm run ts:build`
+12. Create `connections/templates/connections_ui/new_<name>.html`
+13. Create `static/ts/connections/forms/<name>.ts`, then `npm run ts:build`
 14. Verify the connection card in `new_credentials.html` links to `/connections/new/<name>/`
 
 ---
