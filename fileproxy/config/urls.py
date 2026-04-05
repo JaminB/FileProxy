@@ -46,8 +46,8 @@ urlpatterns = [
         name="clients",
     ),
     path(
-        "clients/windows-mount/",
-        login_required(TemplateView.as_view(template_name="clients/windows_mount.html")),
-        name="clients-windows-mount",
+        "clients/windows-explorer/",
+        login_required(TemplateView.as_view(template_name="clients/windows_explorer.html")),
+        name="clients-windows-explorer",
     ),
 ]

@@ -81,10 +81,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: windows-mount/go.mod
+          go-version-file: windows-explorer/go.mod
       - name: Run Go tests
-        working-directory: windows-mount
-        run: go test ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/...
+        working-directory: windows-explorer
+        run: go test ./client/...
 
   security:
     runs-on: ubuntu-latest
@@ -100,7 +100,7 @@ jobs:
           node-version: "20"
       - uses: actions/setup-go@v5
         with:
-          go-version-file: windows-mount/go.mod
+          go-version-file: windows-explorer/go.mod
       - name: Install Bandit
         run: pip install bandit
       - name: Python security scan (Bandit)
@@ -112,11 +112,11 @@ jobs:
       - name: Install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
       - name: Go security scan (gosec)
-        working-directory: windows-mount
-        # G104: unhandled errors on Body.Close/srv.Close (idiomatic Go)
-        # G112: Slowloris / missing ReadHeaderTimeout (localhost-only server, DoS excluded)
+        working-directory: windows-explorer
+        # G104: unhandled errors on Body.Close (idiomatic Go)
+        # G107: user-configured server URL is intentionally passed to http.Do
         # G117: secret field name in marshaled struct (API key saved intentionally to 0600 file)
-        run: gosec -exclude=G104,G112,G117 ./client/... ./proxyfs/... ./wdfs/... ./mountsvc/... ./winmount/... ./cmd/...
+        run: gosec -exclude=G104,G107,G117 ./client/... ./config/...
 
   changes:
     runs-on: ubuntu-latest
