@@ -65,7 +65,7 @@ func (c *Client) newRequest(method, path string, body io.Reader) (*http.Request,
 }
 
 func (c *Client) do(req *http.Request) (*http.Response, error) {
-	resp, err := c.http.Do(req) //#nosec G107 -- BaseURL is user-configured, not attacker-controlled
+	resp, err := c.http.Do(req) //#nosec G107,G704 -- BaseURL is user-configured, not attacker-controlled
 	if err != nil {
 		return nil, err
 	}
