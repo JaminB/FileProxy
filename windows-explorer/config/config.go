@@ -13,17 +13,21 @@ type Config struct {
 	APIKey    string `json:"api_key"`
 }
 
-func configPath() string {
+func configPath() (string, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {
-		dir = os.TempDir()
+		return "", err
 	}
-	return filepath.Join(dir, "FileProxyExplorer", "config.json")
+	return filepath.Join(dir, "FileProxyExplorer", "config.json"), nil
 }
 
 // Load reads the config from disk. Returns an empty Config on any error.
 func Load() Config {
-	data, err := os.ReadFile(configPath())
+	p, err := configPath()
+	if err != nil {
+		return Config{}
+	}
+	data, err := os.ReadFile(p) // #nosec G304 — path is UserConfigDir + hardcoded suffix
 	if err != nil {
 		return Config{}
 	}
@@ -36,7 +40,10 @@ func Load() Config {
 
 // Save writes the config to disk at %APPDATA%\FileProxyExplorer\config.json.
 func Save(cfg Config) error {
-	p := configPath()
+	p, err := configPath()
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
 		return err
 	}
