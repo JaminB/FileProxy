@@ -56,12 +56,17 @@ type opRow struct {
 
 // App coordinates all UI state: client, current location, models, ops.
 type App struct {
-	api     *client.Client
-	cfg     config.Config
-	cfgMu   sync.Mutex
-	ops     OpsStore
-	conn    string // current connection name ("" = none)
-	prefix  string // current path prefix within conn
+	api   *client.Client
+	cfg   config.Config
+	cfgMu sync.Mutex
+	ops   OpsStore
+
+	// conn and prefix are the current navigation location.
+	// Written on the UI thread; read from background goroutines under connMu.
+	connMu        sync.RWMutex
+	conn          string // current connection name ("" = none)
+	prefix        string // current path prefix within conn
+	exitRequested bool   // set before Close() to allow real exit
 
 	mw          *walk.MainWindow
 	treeView    *walk.TreeView
@@ -104,8 +109,8 @@ func ShowSettingsDialog(parent walk.Form, cfg config.Config) (config.Config, boo
 				Children: []Widget{
 					HSpacer{},
 					PushButton{
-						Text:      "Save",
-						MinSize:   Size{Width: 80},
+						Text:    "Save",
+						MinSize: Size{Width: 80},
 						OnClicked: func() {
 							cfg.ServerURL = strings.TrimSpace(urlEdit.Text())
 							cfg.APIKey = strings.TrimSpace(keyEdit.Text())
@@ -161,9 +166,9 @@ func Run(api *client.Client, cfg config.Config) {
 					MaxSize:  Size{Width: 180},
 				},
 				ProgressBar{
-					AssignTo: &app.opRows[i].bar,
-					MinSize:  Size{Width: 80},
-					MaxSize:  Size{Width: 9999},
+					AssignTo:      &app.opRows[i].bar,
+					MinSize:       Size{Width: 80},
+					MaxSize:       Size{Width: 9999},
 					StretchFactor: 1,
 				},
 				Label{
@@ -198,7 +203,10 @@ func Run(api *client.Client, cfg config.Config) {
 						}
 					}},
 					Separator{},
-					Action{Text: "E&xit", OnTriggered: func() { app.mw.Close() }},
+					Action{Text: "E&xit", OnTriggered: func() {
+						app.exitRequested = true
+						app.mw.Close()
+					}},
 				},
 			},
 		},
@@ -228,8 +236,8 @@ func Run(api *client.Client, cfg config.Config) {
 				Children: []Widget{
 					Label{Text: "Location:"},
 					LineEdit{
-						AssignTo:  &app.addrEdit,
-						Text:      "",
+						AssignTo: &app.addrEdit,
+						Text:     "",
 						OnKeyDown: func(key walk.Key) {
 							if key == walk.KeyReturn {
 								app.navigateToAddress()
@@ -247,10 +255,10 @@ func Run(api *client.Client, cfg config.Config) {
 				StretchFactor: 1,
 				Children: []Widget{
 					TreeView{
-						AssignTo:      &app.treeView,
-						Model:         app.treeModel,
-						MinSize:       Size{Width: 220},
-						MaxSize:       Size{Width: 400},
+						AssignTo: &app.treeView,
+						Model:    app.treeModel,
+						MinSize:  Size{Width: 220},
+						MaxSize:  Size{Width: 400},
 					},
 					TableView{
 						AssignTo:         &app.tableView,
@@ -279,6 +287,9 @@ func Run(api *client.Client, cfg config.Config) {
 		walk.MsgBox(nil, "Startup Error", err.Error(), walk.MsgBoxIconError|walk.MsgBoxOK)
 		return
 	}
+
+	// Wire up the main window reference for async tree loading.
+	app.treeModel.mw = app.mw
 
 	// ── TreeView selection changes navigation ─────────────────────────────────
 	app.treeView.CurrentItemChanged().Attach(func() {
@@ -321,7 +332,10 @@ func Run(api *client.Client, cfg config.Config) {
 
 		exitAct := walk.NewAction()
 		exitAct.SetText("Exit")
-		exitAct.Triggered().Attach(func() { app.mw.Close() })
+		exitAct.Triggered().Attach(func() {
+			app.exitRequested = true
+			app.mw.Close()
+		})
 		ni.ContextMenu().Actions().Add(exitAct)
 
 		ni.MouseDown().Attach(func(x, y int, button walk.MouseButton) {
@@ -332,7 +346,11 @@ func Run(api *client.Client, cfg config.Config) {
 		})
 
 		app.mw.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
-			// Minimise to tray on close.
+			if app.exitRequested {
+				// Real exit requested — allow the window to close.
+				return
+			}
+			// Otherwise minimise to tray.
 			app.mw.SetVisible(false)
 			*canceled = true
 		})
@@ -356,8 +374,11 @@ func Run(api *client.Client, cfg config.Config) {
 // ── Navigation ────────────────────────────────────────────────────────────────
 
 func (app *App) navigateTo(conn, prefix string) {
+	app.connMu.Lock()
 	app.conn = conn
 	app.prefix = prefix
+	app.connMu.Unlock()
+
 	addr := conn
 	if prefix != "" {
 		addr += "/" + strings.TrimSuffix(prefix, "/")
@@ -427,7 +448,12 @@ func (app *App) reloadConnections() {
 }
 
 func (app *App) reloadFileTable() {
-	if app.conn == "" {
+	app.connMu.RLock()
+	conn := app.conn
+	prefix := app.prefix
+	app.connMu.RUnlock()
+
+	if conn == "" {
 		return
 	}
 	app.loadMu.Lock()
@@ -435,7 +461,7 @@ func (app *App) reloadFileTable() {
 
 	app.mw.Synchronize(func() { app.setStatus("Loading...", "") })
 
-	objects, err := app.api.Enumerate(app.conn, app.prefix)
+	objects, err := app.api.Enumerate(conn, prefix)
 	if err != nil {
 		app.mw.Synchronize(func() {
 			app.setStatus("Error: "+err.Error(), "")
@@ -443,7 +469,7 @@ func (app *App) reloadFileTable() {
 		return
 	}
 	app.mw.Synchronize(func() {
-		app.tableModel.Reload(objects, app.prefix)
+		app.tableModel.Reload(objects, prefix)
 		app.setStatus(fmt.Sprintf("%d items", app.tableModel.RowCount()), "Ready")
 	})
 }
@@ -472,22 +498,20 @@ func (app *App) doDownload() {
 		size = *entry.Size
 	}
 	op := &Op{
-		ID:         fmt.Sprintf("dl-%d", time.Now().UnixNano()),
-		Kind:       OpDownload,
-		Conn:       app.conn,
-		Path:       entry.FullPath,
-		Name:       entry.Name,
-		TotalBytes: size,
-		Status:     OpActive,
+		ID:   fmt.Sprintf("dl-%d", time.Now().UnixNano()),
+		Kind: OpDownload,
+		Conn: app.conn,
+		Path: entry.FullPath,
+		Name: entry.Name,
 	}
+	op.totalBytes = size
+	op.status = OpActive
 	app.ops.Add(op)
 
 	go func() {
 		body, _, dlErr := app.api.Download(app.conn, entry.FullPath)
 		if dlErr != nil {
-			op.Status = OpFailed
-			op.ErrMsg = dlErr.Error()
-			op.DoneAt = time.Now()
+			op.Fail(dlErr.Error())
 			app.mw.Synchronize(func() {
 				walk.MsgBox(app.mw, "Download Error", dlErr.Error(), walk.MsgBoxIconError|walk.MsgBoxOK)
 			})
@@ -497,9 +521,7 @@ func (app *App) doDownload() {
 
 		f, createErr := os.Create(savePath)
 		if createErr != nil {
-			op.Status = OpFailed
-			op.ErrMsg = createErr.Error()
-			op.DoneAt = time.Now()
+			op.Fail(createErr.Error())
 			return
 		}
 		defer f.Close()
@@ -510,9 +532,7 @@ func (app *App) doDownload() {
 			n, readErr := body.Read(buf)
 			if n > 0 {
 				if _, wErr := f.Write(buf[:n]); wErr != nil {
-					op.Status = OpFailed
-					op.ErrMsg = wErr.Error()
-					op.DoneAt = time.Now()
+					op.Fail(wErr.Error())
 					return
 				}
 				op.AddDone(int64(n))
@@ -521,14 +541,11 @@ func (app *App) doDownload() {
 				break
 			}
 			if readErr != nil {
-				op.Status = OpFailed
-				op.ErrMsg = readErr.Error()
-				op.DoneAt = time.Now()
+				op.Fail(readErr.Error())
 				return
 			}
 		}
-		op.Status = OpDone
-		op.DoneAt = time.Now()
+		op.Complete()
 	}()
 }
 
@@ -545,31 +562,27 @@ func (app *App) openFile(entry *FileEntry) {
 		size = *entry.Size
 	}
 	op := &Op{
-		ID:         fmt.Sprintf("open-%d", time.Now().UnixNano()),
-		Kind:       OpDownload,
-		Conn:       app.conn,
-		Path:       entry.FullPath,
-		Name:       entry.Name,
-		TotalBytes: size,
-		Status:     OpActive,
+		ID:   fmt.Sprintf("open-%d", time.Now().UnixNano()),
+		Kind: OpDownload,
+		Conn: app.conn,
+		Path: entry.FullPath,
+		Name: entry.Name,
 	}
+	op.totalBytes = size
+	op.status = OpActive
 	app.ops.Add(op)
 
 	go func() {
 		body, _, dlErr := app.api.Download(app.conn, entry.FullPath)
 		if dlErr != nil {
-			op.Status = OpFailed
-			op.ErrMsg = dlErr.Error()
-			op.DoneAt = time.Now()
+			op.Fail(dlErr.Error())
 			return
 		}
 		defer body.Close()
 
 		f, createErr := os.Create(tmpPath)
 		if createErr != nil {
-			op.Status = OpFailed
-			op.ErrMsg = createErr.Error()
-			op.DoneAt = time.Now()
+			op.Fail(createErr.Error())
 			return
 		}
 		defer f.Close()
@@ -579,9 +592,7 @@ func (app *App) openFile(entry *FileEntry) {
 			n, readErr := body.Read(buf)
 			if n > 0 {
 				if _, wErr := f.Write(buf[:n]); wErr != nil {
-					op.Status = OpFailed
-					op.ErrMsg = wErr.Error()
-					op.DoneAt = time.Now()
+					op.Fail(wErr.Error())
 					return
 				}
 				op.AddDone(int64(n))
@@ -590,14 +601,11 @@ func (app *App) openFile(entry *FileEntry) {
 				break
 			}
 			if readErr != nil {
-				op.Status = OpFailed
-				op.ErrMsg = readErr.Error()
-				op.DoneAt = time.Now()
+				op.Fail(readErr.Error())
 				return
 			}
 		}
-		op.Status = OpDone
-		op.DoneAt = time.Now()
+		op.Complete()
 		shellOpen(tmpPath)
 	}()
 }
@@ -625,44 +633,43 @@ func (app *App) doUpload() {
 	size := fi.Size()
 
 	op := &Op{
-		ID:         fmt.Sprintf("ul-%d", time.Now().UnixNano()),
-		Kind:       OpUpload,
-		Conn:       app.conn,
-		Path:       remotePath,
-		Name:       filename,
-		TotalBytes: size,
-		Status:     OpPending,
+		ID:   fmt.Sprintf("ul-%d", time.Now().UnixNano()),
+		Kind: OpUpload,
+		Conn: app.conn,
+		Path: remotePath,
+		Name: filename,
 	}
+	op.totalBytes = size
+	op.status = OpPending
 	app.ops.Add(op)
 
 	go func() {
 		f, openErr := os.Open(localPath)
 		if openErr != nil {
-			op.Status = OpFailed
-			op.ErrMsg = openErr.Error()
-			op.DoneAt = time.Now()
+			op.Fail(openErr.Error())
 			return
 		}
 		defer f.Close()
 
 		// Wrap with counting reader to track progress.
 		pr := &progressReader{r: f, op: op}
-		op.Status = OpActive
+		op.Activate()
 
 		queued, upErr := app.api.Upload(app.conn, remotePath, pr)
 		if upErr != nil {
-			op.Status = OpFailed
-			op.ErrMsg = upErr.Error()
-			op.DoneAt = time.Now()
+			op.Fail(upErr.Error())
 			return
 		}
-		if !queued {
-			op.Status = OpDone
-			op.DoneAt = time.Now()
+		if queued {
+			// Server queued the upload — switch to pending state and reset
+			// the progress bar so it doesn't misleadingly show 100%.
+			op.SetQueued()
+			// pendingPollLoop will update status as the server processes it.
+		} else {
+			op.Complete()
 			// Reload the file list to show the new file.
 			app.mw.Synchronize(func() { go app.reloadFileTable() })
 		}
-		// If queued, the pendingPollLoop will update status via SyncWithPending.
 	}()
 }
 
@@ -703,21 +710,21 @@ func (app *App) transferRefreshLoop() {
 			return
 		case <-tick.C:
 			app.ops.Prune()
-			active := app.ops.Active()
-			app.mw.Synchronize(func() { app.renderOpsPanel(active) })
+			views := app.ops.Active()
+			app.mw.Synchronize(func() { app.renderOpsPanel(views) })
 		}
 	}
 }
 
-func (app *App) renderOpsPanel(ops []*Op) {
+func (app *App) renderOpsPanel(views []OpView) {
 	for i := range app.opRows {
 		row := &app.opRows[i]
-		if i < len(ops) {
-			op := ops[i]
-			row.opID = op.ID
+		if i < len(views) {
+			v := views[i]
+			row.opID = v.ID
 
 			// Name label — trim if too long.
-			name := op.Name
+			name := v.Name
 			if len(name) > 28 {
 				name = "..." + name[len(name)-25:]
 			}
@@ -725,29 +732,29 @@ func (app *App) renderOpsPanel(ops []*Op) {
 
 			// Progress bar
 			row.bar.SetRange(0, 100)
-			if op.TotalBytes > 0 {
+			if v.TotalBytes > 0 {
 				row.bar.SetMarqueeMode(false)
-				row.bar.SetValue(op.Percent())
+				row.bar.SetValue(v.Percent())
 			} else {
-				row.bar.SetMarqueeMode(op.Status == OpActive)
+				row.bar.SetMarqueeMode(v.Status == OpActive)
 				row.bar.SetValue(0)
 			}
 
 			// Status label
 			var stat string
-			switch op.Status {
+			switch v.Status {
 			case OpPending:
 				stat = "pending"
 			case OpActive:
-				if op.TotalBytes > 0 {
-					stat = fmt.Sprintf("%d%%", op.Percent())
+				if v.TotalBytes > 0 {
+					stat = fmt.Sprintf("%d%%", v.Percent())
 				} else {
-					stat = string(op.Kind)
+					stat = string(v.Kind)
 				}
 			case OpDone:
 				stat = "✓ done"
 			case OpFailed:
-				stat = "✗ " + op.ErrMsg
+				stat = "✗ " + v.ErrMsg
 				if len(stat) > 20 {
 					stat = stat[:20] + "..."
 				}
@@ -771,14 +778,17 @@ func (app *App) pendingPollLoop() {
 		case <-app.ctx.Done():
 			return
 		case <-tick.C:
-			if app.conn == "" {
+			app.connMu.RLock()
+			conn := app.conn
+			app.connMu.RUnlock()
+			if conn == "" {
 				continue
 			}
-			pending, err := app.api.PendingUploads(app.conn)
+			pending, err := app.api.PendingUploads(conn)
 			if err != nil {
 				continue
 			}
-			app.ops.SyncWithPending(app.conn, pending)
+			app.ops.SyncWithPending(conn, pending)
 		}
 	}
 }
