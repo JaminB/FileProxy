@@ -16,6 +16,7 @@ from googleapiclient.http import MediaInMemoryUpload, MediaIoBaseDownload, Media
 from .base import (
     Backend,
     BackendConfig,
+    BackendConnectionError,
     BackendDeleteError,
     BackendEnumerateError,
     BackendError,
@@ -50,6 +51,26 @@ class GDriveBackend(Backend):
             token_uri="https://oauth2.googleapis.com/token",
         )
         self._service = build("drive", "v3", credentials=creds, cache_discovery=False)
+
+    def refresh_credentials(self) -> None:
+        """Obtain a fresh access token using the stored refresh token.
+
+        Only hits the OAuth token endpoint — no Drive API calls.
+        Raises BackendConnectionError if the refresh token is revoked or invalid.
+        """
+        from google.auth.transport.requests import Request
+
+        creds = google.oauth2.credentials.Credentials(
+            token=None,
+            refresh_token=self._require_secret("refresh_token"),
+            client_id=django_settings.GOOGLE_CLIENT_ID,
+            client_secret=django_settings.GOOGLE_CLIENT_SECRET,
+            token_uri="https://oauth2.googleapis.com/token",
+        )
+        try:
+            creds.refresh(Request())
+        except google.auth.exceptions.RefreshError as e:
+            raise BackendConnectionError(f"GDrive credential refresh failed: {e}") from e
 
     # ------------------------------------------------------------------
     # Internal helpers

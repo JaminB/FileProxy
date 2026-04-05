@@ -45,6 +45,15 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_RESULT_BACKEND = None  # State is tracked in PendingUpload model
 
+from celery.schedules import crontab  # noqa: E402
+
+CELERY_BEAT_SCHEDULE = {
+    "refresh-all-oauth2-connections": {
+        "task": "connections.refresh_all_oauth2_connections",
+        "schedule": crontab(minute=0, hour="*/12"),  # 00:00 and 12:00 UTC
+    },
+}
+
 # Write cache — buffer large uploads to local disk before sending to backend
 WRITE_CACHE_DIR = env(
     "WRITE_CACHE_DIR",
