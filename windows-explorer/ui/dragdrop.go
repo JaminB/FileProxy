@@ -290,11 +290,11 @@ type iDataObjectVtbl struct {
 // fileDataObject provides CF_HDROP for a single remote file.
 // The download is deferred to GetData (called at actual drop time).
 type fileDataObject struct {
-	vtbl  *iDataObjectVtbl // must be first — COM convention
-	app   *App
-	conn  string
-	entry *FileEntry
-	hdrop uintptr // set lazily by GetData
+	vtbl    *iDataObjectVtbl // must be first — COM convention
+	app     *App
+	conn    string
+	entry   *FileEntry
+	tmpPath string // cached local path after first download; "" until then
 }
 
 // E_NOTIMPL stubs of varying arity (syscall.NewCallback requires exact arity).
@@ -339,22 +339,32 @@ func doQueryGetData(_ *fileDataObject, pfmtetc uintptr) uintptr {
 }
 
 // IDataObject::GetData(FORMATETC*, STGMEDIUM*)
-// Called by the drop target at drop time.  Downloads the file lazily.
+// Called by the drop target at drop time.  Downloads the file lazily on the
+// first call, then returns a fresh HGLOBAL on every call.  A fresh HGLOBAL is
+// required because the drop target takes ownership of the medium and frees it
+// via ReleaseStgMedium after each call — reusing the same handle would be a
+// use-after-free.
 func doGetData(this *fileDataObject, pfmtetc, pstgmed uintptr) uintptr {
 	fmtetc := (*formatETC)(unsafe.Pointer(pfmtetc))
 	if fmtetc.cfFormat != uint16(cfHDrop) {
 		return dvEFormatEtc
 	}
-	if this.hdrop == 0 {
-		hdrop, err := this.app.downloadToHDROP(this.conn, this.entry)
+	// Download once; cache the local path so subsequent GetData calls skip the
+	// network round-trip but still produce independent HGLOBALs.
+	if this.tmpPath == "" {
+		path, err := this.app.downloadToTempFile(this.conn, this.entry)
 		if err != nil {
 			return eFail
 		}
-		this.hdrop = hdrop
+		this.tmpPath = path
+	}
+	hdrop := createHDROP(this.tmpPath)
+	if hdrop == 0 {
+		return eFail
 	}
 	stg := (*stgMedium)(unsafe.Pointer(pstgmed))
 	stg.tymed = tymedHGlobal
-	stg.hGlobal = this.hdrop
+	stg.hGlobal = hdrop
 	stg.pUnkForRelease = 0
 	return sOK
 }
@@ -384,13 +394,13 @@ func createHDROP(path string) uintptr {
 	return hGlobal
 }
 
-// downloadToHDROP downloads a remote file to the OS temp dir and returns an
-// HDROP pointing at the local copy.  Blocks the calling goroutine (or UI
-// thread if called from within DoDragDrop) while downloading.
-func (app *App) downloadToHDROP(conn string, entry *FileEntry) (uintptr, error) {
+// downloadToTempFile downloads a remote file to the OS temp dir and returns
+// the local path.  The caller is responsible for creating an HDROP from that
+// path.  Blocks the calling goroutine while downloading.
+func (app *App) downloadToTempFile(conn string, entry *FileEntry) (string, error) {
 	tmpDir := filepath.Join(os.TempDir(), "fileproxy-explorer", conn)
 	if err := os.MkdirAll(tmpDir, 0700); err != nil {
-		return 0, err
+		return "", err
 	}
 	// Use a unique suffix to avoid collisions when the same file is dragged out
 	// multiple times while a previous copy is still open in another application.
@@ -402,20 +412,20 @@ func (app *App) downloadToHDROP(conn string, entry *FileEntry) (uintptr, error) 
 	body, _, err := app.api.Download(conn, entry.FullPath)
 	if err != nil {
 		app.setStatus("Error: "+err.Error(), "")
-		return 0, err
+		return "", err
 	}
 	defer body.Close()
 
 	f, err := os.Create(tmpPath)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	defer f.Close()
 	if _, err = io.Copy(f, body); err != nil {
-		return 0, err
+		return "", err
 	}
 	app.setStatus("Ready", "")
-	return createHDROP(tmpPath), nil
+	return tmpPath, nil
 }
 
 // ── Drag-out detection ────────────────────────────────────────────────────────
