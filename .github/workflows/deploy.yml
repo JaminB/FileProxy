@@ -58,7 +58,7 @@ jobs:
   build-windows-client:
     name: Build Windows Client
     runs-on: windows-latest
-    needs: test
+    needs: build-and-deploy
     environment: production
 
     steps:
@@ -77,8 +77,9 @@ jobs:
       - name: Build executables
         working-directory: windows-explorer
         run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
           go build -ldflags="-H windowsgui" -o dist/fileproxy-explorer-amd64.exe .
-          set GOARCH=386
+          $env:GOARCH = "386"
           go build -ldflags="-H windowsgui" -o dist/fileproxy-explorer-386.exe .
 
       - name: Upload to S3
