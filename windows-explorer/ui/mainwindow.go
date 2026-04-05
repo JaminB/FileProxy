@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -83,9 +84,10 @@ type App struct {
 
 	opRows [maxOpRows]opRow
 
-	loadMu sync.Mutex
-	ctx    context.Context
-	cancel context.CancelFunc
+	loadMu   sync.Mutex
+	reloadCh chan struct{} // coalescing signal: at most 1 queued reload at a time
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -149,6 +151,7 @@ func Run(api *client.Client, cfg config.Config) {
 		cfg:        cfg,
 		treeModel:  newConnTreeModel(api),
 		tableModel: newFileTableModel(),
+		reloadCh:   make(chan struct{}, 1),
 	}
 	app.ctx, app.cancel = context.WithCancel(context.Background())
 
@@ -382,6 +385,7 @@ func Run(api *client.Client, cfg config.Config) {
 	// ── Background goroutines ─────────────────────────────────────────────────
 	go app.transferRefreshLoop()
 	go app.pendingPollLoop()
+	go app.reloadWorker()
 
 	// Initial connection load.
 	app.reloadConnections()
@@ -392,6 +396,10 @@ func Run(api *client.Client, cfg config.Config) {
 	if app.ni != nil {
 		app.ni.Dispose()
 	}
+	// Keep dt alive for the entire window lifetime. The GC cannot see the pointer
+	// after RegisterDropTarget converted it to uintptr, so without KeepAlive it
+	// could theoretically be collected before RevokeDragDrop is called by the defer.
+	runtime.KeepAlive(dt)
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -523,7 +531,7 @@ func (app *App) doDownload() {
 		size = *entry.Size
 	}
 	op := &Op{
-		ID:   fmt.Sprintf("dl-%d", time.Now().UnixNano()),
+		ID:   nextOpID("dl"),
 		Kind: OpDownload,
 		Conn: app.conn,
 		Path: entry.FullPath,
@@ -577,7 +585,7 @@ func (app *App) doDownload() {
 func (app *App) openFile(entry *FileEntry) {
 	// Capture conn before creating the op so the goroutine uses a stable value.
 	op := &Op{
-		ID:   fmt.Sprintf("open-%d", time.Now().UnixNano()),
+		ID:   nextOpID("open"),
 		Kind: OpDownload,
 		Conn: app.conn,
 		Path: entry.FullPath,
@@ -664,7 +672,7 @@ func (app *App) doUpload() {
 	size := fi.Size()
 
 	op := &Op{
-		ID:   fmt.Sprintf("ul-%d", time.Now().UnixNano()),
+		ID:   nextOpID("ul"),
 		Kind: OpUpload,
 		Conn: app.conn,
 		Path: remotePath,
@@ -699,7 +707,7 @@ func (app *App) doUpload() {
 		} else {
 			op.Complete()
 			// Reload the file list to show the new file.
-			app.mw.Synchronize(func() { go app.reloadFileTable() })
+			app.scheduleReload()
 		}
 	}()
 }
@@ -724,10 +732,33 @@ func (app *App) doDelete() {
 			})
 			return
 		}
-		app.mw.Synchronize(func() {
-			go app.reloadFileTable()
-		})
+		app.scheduleReload()
 	}()
+}
+
+// ── Reload coalescing ─────────────────────────────────────────────────────────
+
+// scheduleReload queues a file-table reload.  If a reload is already queued
+// the second signal is dropped — only one reload runs at a time.
+// Safe to call from any goroutine.
+func (app *App) scheduleReload() {
+	select {
+	case app.reloadCh <- struct{}{}:
+	default: // already queued; caller's intent is satisfied
+	}
+}
+
+// reloadWorker drains reloadCh and calls reloadFileTable sequentially.
+// Runs as a background goroutine for the window lifetime.
+func (app *App) reloadWorker() {
+	for {
+		select {
+		case <-app.ctx.Done():
+			return
+		case <-app.reloadCh:
+			app.reloadFileTable()
+		}
+	}
 }
 
 // ── Transfers panel refresh ───────────────────────────────────────────────────
@@ -821,7 +852,7 @@ func (app *App) pendingPollLoop() {
 				continue
 			}
 			if app.ops.SyncWithPending(conn, pending) {
-				go app.reloadFileTable()
+				app.scheduleReload()
 			}
 		}
 	}

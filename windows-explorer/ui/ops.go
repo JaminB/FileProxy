@@ -11,6 +11,16 @@ import (
 	"github.com/fileproxy/windows-explorer/client"
 )
 
+// opSeq is a monotonic counter used to generate unique op IDs.
+// Using a counter instead of time.Now().UnixNano() avoids collisions
+// when many ops are created in the same nanosecond (e.g. bulk drag-drop).
+var opSeq atomic.Int64
+
+// nextOpID returns a unique ID for a new op, prefixed by kind ("ul", "dl", etc.).
+func nextOpID(kind string) string {
+	return fmt.Sprintf("%s-%d", kind, opSeq.Add(1))
+}
+
 // OpKind classifies an operation.
 type OpKind string
 

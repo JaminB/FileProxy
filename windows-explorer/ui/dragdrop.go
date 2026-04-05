@@ -19,6 +19,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"syscall"
 	"time"
 	"unsafe"
@@ -389,7 +391,11 @@ func (app *App) downloadToHDROP(conn string, entry *FileEntry) (uintptr, error) 
 	if err := os.MkdirAll(tmpDir, 0700); err != nil {
 		return 0, err
 	}
-	tmpPath := filepath.Join(tmpDir, entry.Name)
+	// Use a unique suffix to avoid collisions when the same file is dragged out
+	// multiple times while a previous copy is still open in another application.
+	ext := filepath.Ext(entry.Name)
+	base := strings.TrimSuffix(entry.Name, ext)
+	tmpPath := filepath.Join(tmpDir, fmt.Sprintf("%s-%d%s", base, time.Now().UnixNano(), ext))
 
 	app.setStatus("Preparing "+entry.Name+"...", "")
 	body, _, err := app.api.Download(conn, entry.FullPath)
@@ -477,6 +483,9 @@ func (app *App) startFileDragDrop(conn string, entry *FileEntry) {
 		uintptr(dropEffectCopy),
 		uintptr(unsafe.Pointer(&effect)),
 	)
+	// Prevent the GC from collecting dataObj before DoDragDrop returns.
+	// The pointer was passed as uintptr so the GC cannot see the live reference.
+	runtime.KeepAlive(dataObj)
 }
 
 // ── uploadPaths ───────────────────────────────────────────────────────────────
@@ -544,7 +553,7 @@ func (app *App) uploadPaths(paths []string) {
 	for _, item := range items {
 		item := item
 		op := &Op{
-			ID:   fmt.Sprintf("ul-%d", time.Now().UnixNano()),
+			ID:   nextOpID("ul"),
 			Kind: OpUpload,
 			Conn: conn,
 			Path: item.remotePath,
@@ -572,7 +581,7 @@ func (app *App) uploadPaths(paths []string) {
 				op.SetQueued()
 			} else {
 				op.Complete()
-				app.mw.Synchronize(func() { go app.reloadFileTable() })
+				app.scheduleReload()
 			}
 		}()
 	}
