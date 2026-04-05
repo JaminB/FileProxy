@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Windows Explorer Client{% endblock %}
 
@@ -28,10 +29,10 @@
     <div class="card-body">
       <h6 class="fw-semibold mb-3">Download</h6>
       <div class="d-flex flex-wrap gap-2">
-        <a href="{{ STATIC_URL }}dist/fileproxy-explorer-amd64.exe" class="btn btn-primary btn-sm" download>
+        <a href="{% get_static_prefix %}dist/fileproxy-explorer-amd64.exe" class="btn btn-primary btn-sm" download>
           <i class="bi bi-download me-1"></i>Download 64-bit (.exe)
         </a>
-        <a href="{{ STATIC_URL }}dist/fileproxy-explorer-386.exe" class="btn btn-outline-secondary btn-sm" download>
+        <a href="{% get_static_prefix %}dist/fileproxy-explorer-386.exe" class="btn btn-outline-secondary btn-sm" download>
           <i class="bi bi-download me-1"></i>Download 32-bit (.exe)
         </a>
       </div>
