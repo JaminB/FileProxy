@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Windows Explorer Client{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/clients/">Clients</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Windows Explorer Client</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-2 mb-1">
+    <i class="bi bi-windows opacity-75" aria-hidden="true"></i>
+    <span class="fw-semibold small">Windows Explorer Client</span>
+  </div>
+  <p class="text-secondary small mb-4">
+    A native Windows file browser for FileProxy. Browse connections, upload and download files, and track upload
+    progress — all in a familiar Explorer-style interface.
+    No runtime required — single static <code>.exe</code> with no dependencies.
+  </p>
+
+  <!-- Download section -->
+  <div class="card ab-card mb-4">
+    <div class="card-body">
+      <h6 class="fw-semibold mb-3">Download</h6>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{% static 'dist/fileproxy-explorer-amd64.exe' %}" class="btn btn-primary btn-sm" download>
+          <i class="bi bi-download me-1"></i>Download 64-bit (.exe)
+        </a>
+        <a href="{% static 'dist/fileproxy-explorer-386.exe' %}" class="btn btn-outline-secondary btn-sm" download>
+          <i class="bi bi-download me-1"></i>Download 32-bit (.exe)
+        </a>
+      </div>
+      <p class="text-secondary small mt-2 mb-0">
+        64-bit recommended for Windows 7 and later. 32-bit for older or 32-bit-only Windows.
+      </p>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+
+      <ol class="ps-3" style="list-style: none;">
+
+        <!-- Step 1 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">1</span>
+            Create an API key
+          </h3>
+          <p class="small mb-2">
+            The client authenticates to FileProxy using an API key. To create one:
+          </p>
+          <ol class="small ps-3 mb-2">
+            <li>Click your username in the top-right corner and go to <strong>Profile</strong>.</li>
+            <li>Open the <strong>API Keys</strong> tab and click <strong>Create</strong>.</li>
+            <li>Copy the token — it is shown only once.</li>
+          </ol>
+          <div class="alert alert-warning small py-2 mb-0">
+            Save the token somewhere safe now — you won't be able to view it again.
+          </div>
+        </li>
+
+        <!-- Step 2 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">2</span>
+            Run the client
+          </h3>
+          <p class="small mb-0">
+            Double-click the downloaded <code>.exe</code>. On first launch a settings dialog appears.
+            Enter your <strong>Server URL</strong> (e.g. <code>https://fileproxy.example.com</code>) and
+            <strong>API Key</strong>, then click <strong>Save</strong>.
+          </p>
+          <p class="small mt-2 mb-0">
+            Your credentials are saved to
+            <code>%APPDATA%\FileProxyExplorer\config.json</code> so you only need to enter them once.
+          </p>
+        </li>
+
+        <!-- Step 3 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">3</span>
+            Browse your connections
+          </h3>
+          <p class="small mb-2">
+            The left pane shows all your FileProxy connections. Click a connection to list its files in the
+            right pane. Double-click a folder to navigate into it, or double-click a file to download and
+            open it with the default application.
+          </p>
+          <p class="small mb-0">
+            Use the address bar to navigate directly to a path:
+          </p>
+          <pre class="bg-light p-2 rounded small mt-2 mb-0">my-s3-connection/folder/subfolder</pre>
+        </li>
+
+        <!-- Step 4 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">4</span>
+            Upload, download, and delete
+          </h3>
+          <ul class="small ps-3 mb-0">
+            <li><strong>Upload</strong> — click <kbd>⬆ Upload</kbd> in the toolbar to pick a local file and upload it to the current folder.</li>
+            <li><strong>Download</strong> — select a file and click <kbd>↓ Download</kbd> to save it locally.</li>
+            <li><strong>Delete</strong> — select a file and click <kbd>✕ Delete</kbd>. A confirmation is required.</li>
+            <li><strong>Open</strong> — double-click any file to download it to a temp folder and open it with the default application.</li>
+          </ul>
+        </li>
+
+        <!-- Step 5 -->
+        <li class="mb-4">
+          <h3 class="h6 fw-semibold mt-0 mb-1">
+            <span class="badge bg-secondary me-2" style="font-size: .7rem;">5</span>
+            Upload queue progress
+          </h3>
+          <p class="small mb-0">
+            Large files are queued on the server for background upload. The <strong>Transfers</strong> panel
+            at the bottom of the window shows real-time progress for all active uploads and downloads.
+            Each transfer is represented as a progress bar with its current status
+            (<em>pending</em>, <em>uploading</em>, or <em>done</em>).
+          </p>
+        </li>
+
+      </ol>
+
+    </div>
+  </div>
+{% endblock %}
