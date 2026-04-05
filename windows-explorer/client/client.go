@@ -158,7 +158,7 @@ func (c *Client) Download(conn, path string) (io.ReadCloser, int64, error) {
 }
 
 // Upload uploads r to path in conn using multipart/form-data.
-// size is used to update progress; pass -1 if unknown.
+// Callers that need progress tracking should wrap r with their own counting reader.
 // Returns queued=true when the server accepted it asynchronously (HTTP 202).
 func (c *Client) Upload(conn, path string, r io.Reader) (queued bool, err error) {
 	endpoint := fmt.Sprintf("/api/v1/files/%s/path/", url.PathEscape(conn))

@@ -191,15 +191,23 @@ func Run(api *client.Client, cfg config.Config) {
 				Text: "&File",
 				Items: []MenuItem{
 					Action{Text: "&Settings...", OnTriggered: func() {
-						newCfg, ok := ShowSettingsDialog(app.mw, app.cfg)
+						app.cfgMu.Lock()
+						oldCfg := app.cfg
+						app.cfgMu.Unlock()
+						newCfg, ok := ShowSettingsDialog(app.mw, oldCfg)
 						if ok {
 							app.cfgMu.Lock()
 							app.cfg = newCfg
 							app.cfgMu.Unlock()
 							config.Save(newCfg)
-							app.api = client.New(newCfg.ServerURL, newCfg.APIKey)
-							app.treeModel.api = app.api
-							app.reloadConnections()
+							// Don't swap app.api — background goroutines hold references to
+							// it and a concurrent pointer write would be a data race. Server
+							// and API-key changes take effect on the next launch.
+							if newCfg.ServerURL != oldCfg.ServerURL || newCfg.APIKey != oldCfg.APIKey {
+								walk.MsgBox(app.mw, "Restart required",
+									"Server URL or API key changed.\nRestart FileProxy Explorer to connect with the new settings.",
+									walk.MsgBoxIconInformation|walk.MsgBoxOK)
+							}
 						}
 					}},
 					Separator{},
@@ -509,7 +517,7 @@ func (app *App) doDownload() {
 	app.ops.Add(op)
 
 	go func() {
-		body, _, dlErr := app.api.Download(app.conn, entry.FullPath)
+		body, _, dlErr := app.api.Download(op.Conn, op.Path)
 		if dlErr != nil {
 			op.Fail(dlErr.Error())
 			app.mw.Synchronize(func() {
@@ -550,17 +558,7 @@ func (app *App) doDownload() {
 }
 
 func (app *App) openFile(entry *FileEntry) {
-	// Download to a temp location and open with default app.
-	tmpDir := filepath.Join(os.TempDir(), "fileproxy-explorer", app.conn)
-	if mkErr := os.MkdirAll(tmpDir, 0700); mkErr != nil {
-		return
-	}
-	tmpPath := filepath.Join(tmpDir, entry.Name)
-
-	size := int64(-1)
-	if entry.Size != nil {
-		size = *entry.Size
-	}
+	// Capture conn before creating the op so the goroutine uses a stable value.
 	op := &Op{
 		ID:   fmt.Sprintf("open-%d", time.Now().UnixNano()),
 		Kind: OpDownload,
@@ -568,12 +566,24 @@ func (app *App) openFile(entry *FileEntry) {
 		Path: entry.FullPath,
 		Name: entry.Name,
 	}
+	size := int64(-1)
+	if entry.Size != nil {
+		size = *entry.Size
+	}
 	op.totalBytes = size
 	op.status = OpActive
+
+	// Download to a temp location and open with default app.
+	tmpDir := filepath.Join(os.TempDir(), "fileproxy-explorer", op.Conn)
+	if mkErr := os.MkdirAll(tmpDir, 0700); mkErr != nil {
+		return
+	}
+	tmpPath := filepath.Join(tmpDir, entry.Name)
+
 	app.ops.Add(op)
 
 	go func() {
-		body, _, dlErr := app.api.Download(app.conn, entry.FullPath)
+		body, _, dlErr := app.api.Download(op.Conn, op.Path)
 		if dlErr != nil {
 			op.Fail(dlErr.Error())
 			return
@@ -655,7 +665,7 @@ func (app *App) doUpload() {
 		pr := &progressReader{r: f, op: op}
 		op.Activate()
 
-		queued, upErr := app.api.Upload(app.conn, remotePath, pr)
+		queued, upErr := app.api.Upload(op.Conn, op.Path, pr)
 		if upErr != nil {
 			op.Fail(upErr.Error())
 			return
@@ -679,13 +689,14 @@ func (app *App) doDelete() {
 	if entry == nil || entry.IsFolder {
 		return
 	}
-	msg := fmt.Sprintf("Delete %q from %q?", entry.Name, app.conn)
+	conn := app.conn // capture before goroutine to avoid stale read
+	msg := fmt.Sprintf("Delete %q from %q?", entry.Name, conn)
 	if walk.MsgBox(app.mw, "Confirm Delete", msg, walk.MsgBoxIconWarning|walk.MsgBoxYesNo) != walk.DlgCmdYes {
 		return
 	}
 	app.setStatus("Deleting "+entry.Name+"...", "")
 	go func() {
-		if err := app.api.Delete(app.conn, entry.FullPath); err != nil {
+		if err := app.api.Delete(conn, entry.FullPath); err != nil {
 			app.mw.Synchronize(func() {
 				app.setStatus("Delete failed: "+err.Error(), "")
 				walk.MsgBox(app.mw, "Delete Error", err.Error(), walk.MsgBoxIconError|walk.MsgBoxOK)

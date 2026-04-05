@@ -128,7 +128,7 @@ func (m *FileTableModel) Reload(objects []client.Object, prefix string) {
 			// Direct file at this level
 			var lm *time.Time
 			if obj.LastModified != nil {
-				t, err := time.Parse(time.RFC3339, *obj.LastModified)
+				t, err := time.Parse(time.RFC3339Nano, *obj.LastModified)
 				if err == nil {
 					lm = &t
 				}
