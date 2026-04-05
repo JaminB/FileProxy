@@ -6,6 +6,7 @@ import (
 	"github.com/fileproxy/windows-explorer/client"
 	"github.com/fileproxy/windows-explorer/config"
 	"github.com/fileproxy/windows-explorer/ui"
+	"github.com/lxn/walk"
 )
 
 func main() {
@@ -22,7 +23,10 @@ func main() {
 			return // User cancelled — exit.
 		}
 		cfg = newCfg
-		config.Save(cfg)
+		if err := config.Save(cfg); err != nil {
+			walk.MsgBox(nil, "FileProxy Explorer", "Failed to save config: "+err.Error(), walk.MsgBoxIconError|walk.MsgBoxOK)
+			return
+		}
 	}
 
 	api := client.New(cfg.ServerURL, cfg.APIKey)

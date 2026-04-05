@@ -188,7 +188,8 @@ func dtDrop(this *fileDropTarget, pDataObj, _, _, pdwEffect uintptr) uintptr {
 	fmtetc := formatETC{cfFormat: uint16(cfHDrop), dwAspect: dvaspectContent, lindex: -1, tymed: tymedHGlobal}
 	var stg stgMedium
 	vtblPtr := *(*uintptr)(unsafe.Pointer(pDataObj))
-	getDataFn := *(*uintptr)(unsafe.Pointer(vtblPtr + 3*8))
+	ptrSize := unsafe.Sizeof(uintptr(0))
+	getDataFn := *(*uintptr)(unsafe.Pointer(vtblPtr + 3*ptrSize))
 	hr, _, _ := syscall.SyscallN(getDataFn,
 		pDataObj,
 		uintptr(unsafe.Pointer(&fmtetc)),

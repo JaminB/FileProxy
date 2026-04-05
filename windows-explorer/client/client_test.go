@@ -54,11 +54,14 @@ func TestEnumeratePagination(t *testing.T) {
 // TestUploadQueued verifies that a 202 response sets queued=true.
 func TestUploadQueued(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ContentLength != 5 {
+			t.Errorf("expected Content-Length 5, got %d", r.ContentLength)
+		}
 		w.WriteHeader(http.StatusAccepted)
 	}))
 	defer srv.Close()
 
-	queued, err := newClient(srv).Upload("my-conn", "folder/file.txt", strings.NewReader("hello"), -1)
+	queued, err := newClient(srv).Upload("my-conn", "folder/file.txt", strings.NewReader("hello"), 5)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -74,7 +77,7 @@ func TestUploadImmediate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	queued, err := newClient(srv).Upload("my-conn", "file.txt", strings.NewReader("hello"), -1)
+	queued, err := newClient(srv).Upload("my-conn", "file.txt", strings.NewReader("hello"), 5)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -99,23 +102,28 @@ func TestDoErrorResponse(t *testing.T) {
 	}
 }
 
-// TestUploadMultipart verifies that the file field is present in the request body.
-func TestUploadMultipart(t *testing.T) {
+// TestUploadOctetStream verifies Content-Type, Content-Length, and body for uploads.
+func TestUploadOctetStream(t *testing.T) {
 	var gotContentType string
+	var gotContentLength int64
 	var gotBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotContentType = r.Header.Get("Content-Type")
+		gotContentLength = r.ContentLength
 		gotBody, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
 
-	_, err := newClient(srv).Upload("conn", "dir/hello.txt", strings.NewReader("world"), -1)
+	_, err := newClient(srv).Upload("conn", "dir/hello.txt", strings.NewReader("world"), 5)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 	if gotContentType != "application/octet-stream" {
 		t.Errorf("expected application/octet-stream content-type, got: %s", gotContentType)
+	}
+	if gotContentLength != 5 {
+		t.Errorf("expected Content-Length 5, got %d", gotContentLength)
 	}
 	if !strings.Contains(string(gotBody), "world") {
 		t.Error("expected file content in request body")
