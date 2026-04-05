@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -157,41 +156,20 @@ func (c *Client) Download(conn, path string) (io.ReadCloser, int64, error) {
 	return resp.Body, resp.ContentLength, nil
 }
 
-// Upload uploads r to path in conn using multipart/form-data.
-// Callers that need progress tracking should wrap r with their own counting reader.
+// Upload uploads r to path in conn using application/octet-stream with the
+// path as a query parameter.  size must match the number of bytes in r so
+// that Content-Length is sent and the server can handle large files correctly.
 // Returns queued=true when the server accepted it asynchronously (HTTP 202).
-func (c *Client) Upload(conn, path string, r io.Reader) (queued bool, err error) {
-	endpoint := fmt.Sprintf("/api/v1/files/%s/path/", url.PathEscape(conn))
-	filename := path
-	if idx := strings.LastIndex(path, "/"); idx >= 0 {
-		filename = path[idx+1:]
-	}
+func (c *Client) Upload(conn, path string, r io.Reader, size int64) (queued bool, err error) {
+	q := url.Values{"path": {path}}
+	endpoint := fmt.Sprintf("/api/v1/files/%s/path/?%s", url.PathEscape(conn), q.Encode())
 
-	pr, pw := io.Pipe()
-	mw := multipart.NewWriter(pw)
-	go func() {
-		var werr error
-		defer func() { pw.CloseWithError(werr) }()
-		if werr = mw.WriteField("path", path); werr != nil {
-			return
-		}
-		part, perr := mw.CreateFormFile("file", filename)
-		if perr != nil {
-			werr = perr
-			return
-		}
-		if _, werr = io.Copy(part, r); werr != nil {
-			return
-		}
-		werr = mw.Close()
-	}()
-
-	req, reqErr := c.newRequest("POST", endpoint, pr)
+	req, reqErr := c.newRequest("POST", endpoint, r)
 	if reqErr != nil {
-		pr.CloseWithError(reqErr)
 		return false, reqErr
 	}
-	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.ContentLength = size
 
 	resp, doErr := c.http.Do(req) //#nosec G107
 	if doErr != nil {
