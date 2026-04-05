@@ -27,7 +27,7 @@ func Load() Config {
 	if err != nil {
 		return Config{}
 	}
-	data, err := os.ReadFile(p)
+	data, err := os.ReadFile(p) // #nosec G304 — path is UserConfigDir + hardcoded suffix
 	if err != nil {
 		return Config{}
 	}
