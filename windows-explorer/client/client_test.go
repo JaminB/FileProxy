@@ -58,7 +58,7 @@ func TestUploadQueued(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	queued, err := newClient(srv).Upload("my-conn", "folder/file.txt", strings.NewReader("hello"))
+	queued, err := newClient(srv).Upload("my-conn", "folder/file.txt", strings.NewReader("hello"), -1)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestUploadImmediate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	queued, err := newClient(srv).Upload("my-conn", "file.txt", strings.NewReader("hello"))
+	queued, err := newClient(srv).Upload("my-conn", "file.txt", strings.NewReader("hello"), -1)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -110,14 +110,14 @@ func TestUploadMultipart(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := newClient(srv).Upload("conn", "dir/hello.txt", strings.NewReader("world"))
+	_, err := newClient(srv).Upload("conn", "dir/hello.txt", strings.NewReader("world"), -1)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
-	if !strings.HasPrefix(gotContentType, "multipart/form-data") {
-		t.Errorf("expected multipart/form-data content-type, got: %s", gotContentType)
+	if gotContentType != "application/octet-stream" {
+		t.Errorf("expected application/octet-stream content-type, got: %s", gotContentType)
 	}
 	if !strings.Contains(string(gotBody), "world") {
-		t.Error("expected file content in multipart body")
+		t.Error("expected file content in request body")
 	}
 }

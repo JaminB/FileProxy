@@ -1,3 +1,5 @@
+//go:build windows
+
 package ui
 
 import (
@@ -26,11 +28,12 @@ func (m *ConnTreeModel) LazyPopulation() bool       { return true }
 func (m *ConnTreeModel) RootCount() int             { return len(m.roots) }
 func (m *ConnTreeModel) RootAt(i int) walk.TreeItem { return m.roots[i] }
 
-// load fetches the connection list and populates the root items.
-func (m *ConnTreeModel) load() error {
+// fetchConnections does the network call and returns tree items.
+// Safe to call off the UI thread — does not touch walk.
+func (m *ConnTreeModel) fetchConnections() ([]*ConnTreeItem, error) {
 	conns, err := m.api.ListConnections()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	items := make([]*ConnTreeItem, len(conns))
 	for i, c := range conns {
@@ -42,20 +45,15 @@ func (m *ConnTreeModel) load() error {
 			name:   c.Name,
 		}
 	}
-	m.roots = items
-	m.PublishItemsReset(nil)
-	return nil
+	return items, nil
 }
 
-// connLoadingItem is a read-only placeholder shown while children load.
-type connLoadingItem struct{}
-
-func (l *connLoadingItem) Text() string              { return "Loading..." }
-func (l *connLoadingItem) Parent() walk.TreeItem     { return nil }
-func (l *connLoadingItem) ChildCount() int           { return 0 }
-func (l *connLoadingItem) ChildAt(i int) walk.TreeItem { return nil }
-
-var loadingPlaceholder walk.TreeItem = &connLoadingItem{}
+// applyConnections sets the root items and notifies the TreeView.
+// Must be called on the UI thread (inside mw.Synchronize).
+func (m *ConnTreeModel) applyConnections(items []*ConnTreeItem) {
+	m.roots = items
+	m.PublishItemsReset(nil)
+}
 
 // ConnTreeItem is a node in the connection tree (either a connection root or a virtual folder).
 type ConnTreeItem struct {
@@ -79,7 +77,8 @@ func (it *ConnTreeItem) Parent() walk.TreeItem {
 }
 
 // ChildCount returns the number of children, kicking off an async load if needed.
-// Called on the UI thread; shows a "Loading..." placeholder while the load is in progress.
+// Returns 0 while loading — walk must not try to insert children until the load
+// completes and PublishItemsReset fires on the UI thread.
 func (it *ConnTreeItem) ChildCount() int {
 	if !it.loaded && !it.loading {
 		it.loading = true
@@ -90,32 +89,36 @@ func (it *ConnTreeItem) ChildCount() int {
 			it.model.mw.Synchronize(func() {
 				if err == nil {
 					it.buildChildren(objects)
+					it.loaded = true
 				}
-				it.loaded = true
+				// On error, keep loaded=false so the next expand triggers a retry.
 				it.loading = false
 				it.model.PublishItemsReset(it)
 			})
 		}()
 	}
 	if !it.loaded {
-		return 1 // show "Loading..." placeholder
+		return 0
 	}
 	return len(it.children)
 }
 
 func (it *ConnTreeItem) ChildAt(i int) walk.TreeItem {
-	if !it.loaded {
-		return loadingPlaceholder
-	}
 	if i < len(it.children) {
 		return it.children[i]
 	}
 	return nil
 }
 
-// HasChild implements walk.HasChilder — always returns true so the tree
-// shows an expand arrow before we know the actual child count.
-func (it *ConnTreeItem) HasChild() bool { return true }
+// HasChild implements walk.HasChilder.
+// Returns true until the item is loaded (so the expand arrow appears), then
+// returns the accurate value so empty connections don't show a stale arrow.
+func (it *ConnTreeItem) HasChild() bool {
+	if !it.loaded {
+		return true
+	}
+	return len(it.children) > 0
+}
 
 // buildChildren constructs the virtual folder children from a flat object list.
 // Must be called on the UI thread (inside mw.Synchronize).

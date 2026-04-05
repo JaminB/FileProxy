@@ -1,3 +1,5 @@
+//go:build windows
+
 // Package ui provides the native Windows GUI for FileProxy Explorer.
 // It uses the walk library which wraps Win32 controls directly.
 package ui
@@ -139,6 +141,8 @@ func FreeConsole() { freeConsole.Call() }
 
 // Run creates and runs the main application window. Blocks until the window closes.
 func Run(api *client.Client, cfg config.Config) {
+	OleInit()
+	defer OleShutdown()
 
 	app := &App{
 		api:        api,
@@ -196,10 +200,15 @@ func Run(api *client.Client, cfg config.Config) {
 						app.cfgMu.Unlock()
 						newCfg, ok := ShowSettingsDialog(app.mw, oldCfg)
 						if ok {
+							if saveErr := config.Save(newCfg); saveErr != nil {
+								walk.MsgBox(app.mw, "Failed to save settings",
+									fmt.Sprintf("The settings could not be saved.\n\nError: %v", saveErr),
+									walk.MsgBoxIconError|walk.MsgBoxOK)
+								return
+							}
 							app.cfgMu.Lock()
 							app.cfg = newCfg
 							app.cfgMu.Unlock()
-							config.Save(newCfg)
 							// Don't swap app.api — background goroutines hold references to
 							// it and a concurrent pointer write would be a data race. Server
 							// and API-key changes take effect on the next launch.
@@ -298,6 +307,12 @@ func Run(api *client.Client, cfg config.Config) {
 
 	// Wire up the main window reference for async tree loading.
 	app.treeModel.mw = app.mw
+
+	// ── OLE drag-and-drop ─────────────────────────────────────────────────────
+	dt := newFileDropTarget(app)
+	revokeDropTarget := RegisterDropTarget(app.tableView.Handle(), dt)
+	defer revokeDropTarget()
+	app.attachDragOut()
 
 	// ── TreeView selection changes navigation ─────────────────────────────────
 	app.treeView.CurrentItemChanged().Attach(func() {
@@ -443,14 +458,16 @@ func (app *App) doRefresh() {
 func (app *App) reloadConnections() {
 	app.setStatus("Loading connections...", "")
 	go func() {
-		if err := app.treeModel.load(); err != nil {
+		items, err := app.treeModel.fetchConnections()
+		if err != nil {
 			app.mw.Synchronize(func() {
 				app.setStatus("Error loading connections: "+err.Error(), "")
 			})
 			return
 		}
 		app.mw.Synchronize(func() {
-			app.setStatus(fmt.Sprintf("%d connections", app.treeModel.RootCount()), "")
+			app.treeModel.applyConnections(items)
+			app.setStatus(fmt.Sprintf("%d connections", len(items)), "")
 		})
 	}()
 }
@@ -574,11 +591,15 @@ func (app *App) openFile(entry *FileEntry) {
 	op.status = OpActive
 
 	// Download to a temp location and open with default app.
+	// Use op.ID as a unique suffix to avoid collisions when multiple files
+	// share the same basename (e.g. README.md in different folders).
 	tmpDir := filepath.Join(os.TempDir(), "fileproxy-explorer", op.Conn)
 	if mkErr := os.MkdirAll(tmpDir, 0700); mkErr != nil {
 		return
 	}
-	tmpPath := filepath.Join(tmpDir, entry.Name)
+	ext := filepath.Ext(entry.Name)
+	baseName := strings.TrimSuffix(entry.Name, ext)
+	tmpPath := filepath.Join(tmpDir, fmt.Sprintf("%s-%s%s", baseName, op.ID, ext))
 
 	app.ops.Add(op)
 
@@ -665,7 +686,7 @@ func (app *App) doUpload() {
 		pr := &progressReader{r: f, op: op}
 		op.Activate()
 
-		queued, upErr := app.api.Upload(op.Conn, op.Path, pr)
+		queued, upErr := app.api.Upload(op.Conn, op.Path, pr, size)
 		if upErr != nil {
 			op.Fail(upErr.Error())
 			return
@@ -799,7 +820,9 @@ func (app *App) pendingPollLoop() {
 			if err != nil {
 				continue
 			}
-			app.ops.SyncWithPending(conn, pending)
+			if app.ops.SyncWithPending(conn, pending) {
+				go app.reloadFileTable()
+			}
 		}
 	}
 }
@@ -808,9 +831,7 @@ func (app *App) pendingPollLoop() {
 
 func (app *App) setStatus(left, right string) {
 	app.statusLeft.SetText(left)
-	if right != "" {
-		app.statusRight.SetText(right)
-	}
+	app.statusRight.SetText(right)
 }
 
 // ── Icon helpers ──────────────────────────────────────────────────────────────

@@ -1,3 +1,5 @@
+//go:build windows
+
 package main
 
 import (
@@ -9,7 +11,7 @@ import (
 func main() {
 	// Detach from the Windows console before showing any UI, so there is no
 	// terminal window flicker when the .exe is double-clicked from Explorer.
-	ui.FreeConsole()
+	// ui.FreeConsole() // disabled for debug build
 
 	cfg := config.Load()
 

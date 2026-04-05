@@ -1,3 +1,5 @@
+//go:build windows
+
 package ui
 
 import (
@@ -201,7 +203,9 @@ func (s *OpsStore) Prune() {
 }
 
 // SyncWithPending reconciles queued upload ops against the server's pending list.
-func (s *OpsStore) SyncWithPending(conn string, pending []client.PendingUpload) {
+// Returns true if any op transitioned to Done during this call (caller may
+// want to refresh the file table).
+func (s *OpsStore) SyncWithPending(conn string, pending []client.PendingUpload) (anyCompleted bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -237,7 +241,9 @@ func (s *OpsStore) SyncWithPending(conn string, pending []client.PendingUpload) 
 			op.status = OpDone
 			op.doneBytes.Store(op.totalBytes)
 			op.doneAt = time.Now()
+			anyCompleted = true
 		}
 		op.mu.Unlock()
 	}
+	return
 }
