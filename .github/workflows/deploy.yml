@@ -78,7 +78,7 @@ jobs:
         working-directory: windows-explorer
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          go install github.com/akavel/rsrc@latest
+          go install github.com/akavel/rsrc@v0.10.2
           rsrc -arch amd64 -manifest app.manifest -o rsrc_windows_amd64.syso
           go build -ldflags="-H windowsgui" -o dist/fileproxy-explorer-amd64.exe .
           rsrc -arch 386 -manifest app.manifest -o rsrc_windows_386.syso
