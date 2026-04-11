@@ -77,6 +77,7 @@ jobs:
       - name: Build executables
         working-directory: windows-explorer
         run: |
+          $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force dist | Out-Null
           go install github.com/akavel/rsrc@v0.10.2
           rsrc -arch amd64 -manifest app.manifest -o rsrc_windows_amd64.syso
