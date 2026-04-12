@@ -219,7 +219,9 @@ class UserViewSet(viewsets.ViewSet):
         profile = self._get_or_create_profile(user)
         if profile.status != UserProfile.STATUS_SUSPENDED:
             return Response(
-                {"detail": "Only suspended users can be activated via this endpoint. Use approve for pending/rejected users."},
+                {
+                    "detail": "Only suspended users can be activated via this endpoint. Use approve for pending/rejected users."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
