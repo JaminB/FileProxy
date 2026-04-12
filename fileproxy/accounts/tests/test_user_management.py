@@ -2,12 +2,10 @@
 
 from django.contrib.auth.models import User
 from django.test import TestCase
-from django.urls import reverse
 from rest_framework.test import APITestCase
 
 from accounts.models import UserProfile
-from subscription.models import SubscriptionPlan, UserSubscription
-
+from subscription.models import SubscriptionPlan, UserSubscription  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Beta signup view

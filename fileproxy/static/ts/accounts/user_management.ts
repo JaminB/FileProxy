@@ -264,7 +264,6 @@ async function handleAction(userId: number, action: string): Promise<void> {
       if (noteInput) noteInput.value = '';
       const label = qs<HTMLElement>('#noteModalLabel');
       if (label) label.textContent = action === 'reject' ? 'Reject user' : 'Suspend user';
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as
         | { show(): void }
         | undefined;
@@ -277,7 +276,6 @@ async function handleAction(userId: number, action: string): Promise<void> {
     pendingAction = { userId, action };
     const modal = document.getElementById('changePlanModal');
     if (modal) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as
         | { show(): void }
         | undefined;
@@ -336,7 +334,6 @@ function initListPage(): void {
       if (!pendingAction) return;
       const note = (qs<HTMLTextAreaElement>('#note-input')?.value ?? '').trim();
       const modal = document.getElementById('noteModal');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as
         | { hide(): void }
         | undefined;
@@ -362,7 +359,6 @@ function initListPage(): void {
       const planId = qs<HTMLSelectElement>('#plan-select')?.value;
       if (!planId) return;
       const modal = document.getElementById('changePlanModal');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as
         | { hide(): void }
         | undefined;
@@ -430,7 +426,6 @@ function initDetailPage(): void {
       if (modal) {
         const noteInput = qs<HTMLTextAreaElement>('#note-input');
         if (noteInput) noteInput.value = '';
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as
           | { show(): void }
           | undefined;
@@ -443,7 +438,6 @@ function initDetailPage(): void {
       pendingAction = { userId, action };
       const modal = document.getElementById('changePlanModal');
       if (modal) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as
           | { show(): void }
           | undefined;
@@ -481,7 +475,6 @@ function initDetailPage(): void {
       if (!pendingAction) return;
       const note = (qs<HTMLTextAreaElement>('#note-input')?.value ?? '').trim();
       const modal = document.getElementById('noteModal');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as
         | { hide(): void }
         | undefined;
@@ -506,7 +499,6 @@ function initDetailPage(): void {
       const planId = qs<HTMLSelectElement>('#plan-select')?.value;
       if (!planId) return;
       const modal = document.getElementById('changePlanModal');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as
         | { hide(): void }
         | undefined;

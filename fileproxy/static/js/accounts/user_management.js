@@ -15,7 +15,7 @@ async function apiPost(url, body = {}) {
         body: JSON.stringify(body),
     });
     if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
+        const err = (await resp.json().catch(() => ({})));
         throw new Error(err['detail'] ?? `Request failed (${resp.status})`);
     }
     return resp.json();
@@ -28,7 +28,7 @@ async function apiPatch(url, body) {
         body: JSON.stringify(body),
     });
     if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
+        const err = (await resp.json().catch(() => ({})));
         throw new Error(err['detail'] ?? `Request failed (${resp.status})`);
     }
     return resp.json();
@@ -40,7 +40,7 @@ async function apiDelete(url) {
         credentials: 'same-origin',
     });
     if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
+        const err = (await resp.json().catch(() => ({})));
         throw new Error(err['detail'] ?? `Delete failed (${resp.status})`);
     }
 }
@@ -56,8 +56,8 @@ async function fetchUsers(statusFilter, search) {
     });
     if (!resp.ok)
         throw new Error(`Failed to load users (${resp.status})`);
-    const data = await resp.json();
-    return Array.isArray(data) ? data : data.results ?? [];
+    const data = (await resp.json());
+    return Array.isArray(data) ? data : (data.results ?? []);
 }
 /** Fetch the pending count independently of the current tab filter. */
 async function fetchPendingCount() {
@@ -225,7 +225,6 @@ async function handleAction(userId, action) {
             const label = qs('#noteModalLabel');
             if (label)
                 label.textContent = action === 'reject' ? 'Reject user' : 'Suspend user';
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const bsModal = window.bootstrap?.Modal?.getOrCreateInstance(modal);
             bsModal?.show();
         }
@@ -235,7 +234,6 @@ async function handleAction(userId, action) {
         pendingAction = { userId, action };
         const modal = document.getElementById('changePlanModal');
         if (modal) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const bsModal = window.bootstrap?.Modal?.getOrCreateInstance(modal);
             bsModal?.show();
         }
@@ -292,7 +290,6 @@ function initListPage() {
                 return;
             const note = (qs('#note-input')?.value ?? '').trim();
             const modal = document.getElementById('noteModal');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const bsModal = window.bootstrap?.Modal?.getInstance(modal);
             bsModal?.hide();
             try {
@@ -318,7 +315,6 @@ function initListPage() {
             if (!planId)
                 return;
             const modal = document.getElementById('changePlanModal');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const bsModal = window.bootstrap?.Modal?.getInstance(modal);
             bsModal?.hide();
             try {
@@ -385,7 +381,6 @@ function initDetailPage() {
                 const noteInput = qs('#note-input');
                 if (noteInput)
                     noteInput.value = '';
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const bsModal = window.bootstrap?.Modal?.getOrCreateInstance(modal);
                 bsModal?.show();
             }
@@ -395,7 +390,6 @@ function initDetailPage() {
             pendingAction = { userId, action };
             const modal = document.getElementById('changePlanModal');
             if (modal) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const bsModal = window.bootstrap?.Modal?.getOrCreateInstance(modal);
                 bsModal?.show();
             }
@@ -433,7 +427,6 @@ function initDetailPage() {
                 return;
             const note = (qs('#note-input')?.value ?? '').trim();
             const modal = document.getElementById('noteModal');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const bsModal = window.bootstrap?.Modal?.getInstance(modal);
             bsModal?.hide();
             try {
@@ -458,7 +451,6 @@ function initDetailPage() {
             if (!planId)
                 return;
             const modal = document.getElementById('changePlanModal');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const bsModal = window.bootstrap?.Modal?.getInstance(modal);
             bsModal?.hide();
             try {
