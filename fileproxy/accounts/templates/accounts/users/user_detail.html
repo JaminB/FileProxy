@@ -86,8 +86,8 @@
 
             <dt class="col-5">Plan</dt>
             <dd class="col-7" id="detail-plan">
-              {% if target_user.usersubscription.plan %}
-                {{ target_user.usersubscription.plan.name }}
+              {% if target_user.subscription.plan %}
+                {{ target_user.subscription.plan.name }}
               {% else %}
                 <span class="text-secondary">Default</span>
               {% endif %}
@@ -112,14 +112,14 @@
           <h6 class="card-title fw-semibold mb-3">Actions</h6>
 
           <div class="d-flex flex-wrap gap-2" id="action-buttons" data-user-id="{{ target_user.id }}">
-            {% if target_user.profile.status == 'pending' or not target_user.is_active %}
+            {% if target_user.profile.status == 'pending' or target_user.profile.status == 'rejected' %}
               <button class="btn btn-sm btn-success" data-action="approve">Approve</button>
               <button class="btn btn-sm btn-danger" data-action="reject">Reject</button>
             {% endif %}
             {% if target_user.is_active and target_user != request.user %}
               <button class="btn btn-sm btn-warning" data-action="suspend">Suspend</button>
             {% endif %}
-            {% if target_user.profile.status == 'suspended' or target_user.profile.status == 'rejected' %}
+            {% if target_user.profile.status == 'suspended' %}
               <button class="btn btn-sm btn-outline-success" data-action="activate">Activate</button>
             {% endif %}
             <button class="btn btn-sm btn-outline-secondary" data-action="reset-password">Reset password</button>

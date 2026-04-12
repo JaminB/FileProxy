@@ -1,6 +1,7 @@
 from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -54,8 +55,8 @@ class UserViewSet(viewsets.ViewSet):
 
     def _get_user(self, pk):
         try:
-            return User.objects.select_related("profile", "usersubscription__plan").get(pk=pk)
-        except User.DoesNotExist:
+            return User.objects.select_related("profile", "subscription__plan").get(pk=pk)
+        except (User.DoesNotExist, ValueError, ValidationError):
             return None
 
     def _get_or_create_profile(self, user):
@@ -73,14 +74,15 @@ class UserViewSet(viewsets.ViewSet):
         if denied:
             return denied
 
-        qs = User.objects.select_related("profile", "usersubscription__plan").order_by(
-            "-date_joined"
-        )
+        qs = User.objects.select_related("profile", "subscription__plan").order_by("-date_joined")
 
         status_filter = request.query_params.get("status")
         if status_filter:
-            if status_filter == "no_profile":
-                qs = qs.filter(profile__isnull=True)
+            if status_filter == "active":
+                # Include users with no profile (treated as active) and those explicitly active
+                qs = qs.filter(
+                    Q(profile__isnull=True) | Q(profile__status=UserProfile.STATUS_ACTIVE)
+                )
             else:
                 qs = qs.filter(profile__status=status_filter)
 
@@ -136,6 +138,7 @@ class UserViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def approve(self, request, pk=None):
         denied = self._require_staff(request)
         if denied:
@@ -154,7 +157,11 @@ class UserViewSet(viewsets.ViewSet):
         user.is_active = True
         user.save(update_fields=["is_active"])
         profile.set_status(UserProfile.STATUS_ACTIVE)
-        switch_plan(user, get_or_create_beta_plan())
+
+        # Only assign the beta plan for users who signed up via the beta flow
+        if profile.signup_source == UserProfile.SOURCE_BETA:
+            switch_plan(user, get_or_create_beta_plan())
+
         user.refresh_from_db()
         return Response(UserListSerializer(user).data)
 
@@ -200,6 +207,7 @@ class UserViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
+        """Re-activate a suspended user. For pending/rejected users use approve instead."""
         denied = self._require_staff(request)
         if denied:
             return denied
@@ -209,6 +217,12 @@ class UserViewSet(viewsets.ViewSet):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         profile = self._get_or_create_profile(user)
+        if profile.status != UserProfile.STATUS_SUSPENDED:
+            return Response(
+                {"detail": "Only suspended users can be activated via this endpoint. Use approve for pending/rejected users."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         user.is_active = True
         user.save(update_fields=["is_active"])
         profile.set_status(UserProfile.STATUS_ACTIVE)

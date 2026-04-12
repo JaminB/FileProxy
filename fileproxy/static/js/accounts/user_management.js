@@ -44,10 +44,10 @@ async function apiDelete(url) {
         throw new Error(err['detail'] ?? `Delete failed (${resp.status})`);
     }
 }
-async function fetchUsers(status, search) {
+async function fetchUsers(statusFilter, search) {
     const params = new URLSearchParams();
-    if (status)
-        params.set('status', status);
+    if (statusFilter)
+        params.set('status', statusFilter);
     if (search)
         params.set('search', search);
     const resp = await fetch(`/api/v1/users/?${params.toString()}`, {
@@ -58,6 +58,16 @@ async function fetchUsers(status, search) {
         throw new Error(`Failed to load users (${resp.status})`);
     const data = await resp.json();
     return Array.isArray(data) ? data : data.results ?? [];
+}
+/** Fetch the pending count independently of the current tab filter. */
+async function fetchPendingCount() {
+    try {
+        const users = await fetchUsers('pending', '');
+        return users.length;
+    }
+    catch {
+        return 0;
+    }
 }
 // ---------------------------------------------------------------------------
 // Rendering helpers
@@ -120,7 +130,6 @@ function renderUserRows(tbody, users) {
         return;
     }
     for (const user of users) {
-        const rowClass = user.profile?.status === 'pending' ? ' class="table-warning"' : '';
         const tr = document.createElement('tr');
         if (user.profile?.status === 'pending')
             tr.classList.add('table-warning');
@@ -140,10 +149,22 @@ function renderUserRows(tbody, users) {
         tbody.appendChild(tr);
     }
 }
+/**
+ * Build per-row action dropdown.
+ *
+ * Action rules (aligned with API endpoint guards):
+ *   pending  → Approve, Reject
+ *   rejected → Approve, Reject (re-reject with new note)
+ *   active   → Suspend
+ *   suspended → Activate
+ */
 function buildActionsDropdown(user) {
     const group = document.createElement('div');
     group.className = 'dropdown';
-    const status = user.profile?.status;
+    const profileStatus = user.profile?.status;
+    const canApproveReject = profileStatus === 'pending' || profileStatus === 'rejected';
+    const canSuspend = user.is_active;
+    const canActivate = profileStatus === 'suspended';
     group.innerHTML = `
     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
       Actions
@@ -151,10 +172,10 @@ function buildActionsDropdown(user) {
     <ul class="dropdown-menu dropdown-menu-end">
       <li><a class="dropdown-item" href="/users/${user.id}/">View / Edit</a></li>
       <li><hr class="dropdown-divider"></li>
-      ${status === 'pending' || status === 'rejected' ? `<li><button class="dropdown-item" data-action="approve" data-id="${user.id}">Approve</button></li>` : ''}
-      ${status === 'pending' ? `<li><button class="dropdown-item text-danger" data-action="reject" data-id="${user.id}">Reject</button></li>` : ''}
-      ${user.is_active ? `<li><button class="dropdown-item text-warning" data-action="suspend" data-id="${user.id}">Suspend</button></li>` : ''}
-      ${status === 'suspended' || status === 'rejected' ? `<li><button class="dropdown-item text-success" data-action="activate" data-id="${user.id}">Activate</button></li>` : ''}
+      ${canApproveReject ? `<li><button class="dropdown-item" data-action="approve" data-id="${user.id}">Approve</button></li>` : ''}
+      ${canApproveReject ? `<li><button class="dropdown-item text-danger" data-action="reject" data-id="${user.id}">Reject</button></li>` : ''}
+      ${canSuspend ? `<li><button class="dropdown-item text-warning" data-action="suspend" data-id="${user.id}">Suspend</button></li>` : ''}
+      ${canActivate ? `<li><button class="dropdown-item text-success" data-action="activate" data-id="${user.id}">Activate</button></li>` : ''}
       <li><button class="dropdown-item" data-action="reset-password" data-id="${user.id}">Reset password</button></li>
       <li><button class="dropdown-item" data-action="change-plan" data-id="${user.id}">Change plan</button></li>
       <li><hr class="dropdown-divider"></li>
@@ -176,19 +197,21 @@ async function loadUsers() {
     if (!tbody)
         return;
     try {
-        const users = await fetchUsers(currentStatus, currentSearch);
+        const [users, pendingCount] = await Promise.all([
+            fetchUsers(currentStatus, currentSearch),
+            fetchPendingCount(),
+        ]);
         renderUserRows(tbody, users);
-        updatePendingBadge(users);
+        updatePendingBadge(pendingCount);
     }
     catch (err) {
         setFlash(String(err), 'error');
     }
 }
-function updatePendingBadge(users) {
+function updatePendingBadge(count) {
     const badge = qs('#badge-pending');
     if (!badge)
         return;
-    const count = users.filter((u) => u.profile?.status === 'pending').length;
     badge.textContent = count > 0 ? String(count) : '';
 }
 async function handleAction(userId, action) {

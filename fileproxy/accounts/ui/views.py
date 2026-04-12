@@ -59,7 +59,7 @@ def user_detail(request, user_id):
     if denied:
         return denied
     target_user = get_object_or_404(
-        User.objects.select_related("profile", "usersubscription__plan"), pk=user_id
+        User.objects.select_related("profile", "subscription__plan"), pk=user_id
     )
     plans = SubscriptionPlan.objects.filter(expires_at__isnull=True).order_by("name")
     return render(

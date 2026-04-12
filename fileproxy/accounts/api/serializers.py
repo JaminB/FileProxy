@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from ..models import APIKey, UserProfile
@@ -42,10 +43,10 @@ class UserListSerializer(serializers.ModelSerializer):
 
     def get_plan_name(self, user):
         try:
-            sub = user.usersubscription
+            sub = user.subscription
             if sub.plan:
                 return sub.plan.name
-        except Exception:
+        except ObjectDoesNotExist:
             pass
         return None
 
