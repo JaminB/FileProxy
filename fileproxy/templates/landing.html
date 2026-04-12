@@ -17,7 +17,11 @@
     </p>
     <div class="d-flex gap-2 justify-content-center flex-wrap mb-4">
       <a href="/accounts/login/" class="btn btn-primary px-4">Log in</a>
-      {% if REGISTRATION_ENABLED %}<a href="/accounts/register/" class="btn btn-outline-secondary px-4">Create an account</a>{% endif %}
+      {% if BETA_ENABLED %}
+        <a href="/accounts/beta/" class="btn btn-outline-secondary px-4">Request beta access</a>
+      {% elif REGISTRATION_ENABLED %}
+        <a href="/accounts/register/" class="btn btn-outline-secondary px-4">Create an account</a>
+      {% endif %}
       <a href="/api/docs/" class="btn btn-outline-secondary px-4">API docs</a>
     </div>
 
