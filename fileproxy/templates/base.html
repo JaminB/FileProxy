@@ -73,6 +73,11 @@
                 <li><a class="dropdown-item" href="/accounts/profile/">
                   <i class="bi bi-person me-1"></i> Profile
                 </a></li>
+                {% if user.is_staff %}
+                <li><a class="dropdown-item" href="/users/">
+                  <i class="bi bi-people me-1"></i> Users
+                </a></li>
+                {% endif %}
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <form method="post" action="/accounts/logout/" class="m-0">
@@ -86,7 +91,11 @@
             </div>
           {% else %}
             <a href="/accounts/login/" class="btn btn-sm btn-outline-secondary">Login</a>
-            {% if REGISTRATION_ENABLED %}<a href="/accounts/register/" class="btn btn-sm btn-primary">Register</a>{% endif %}
+            {% if BETA_ENABLED %}
+              <a href="/accounts/beta/" class="btn btn-sm btn-primary">Join Beta</a>
+            {% elif REGISTRATION_ENABLED %}
+              <a href="/accounts/register/" class="btn btn-sm btn-primary">Register</a>
+            {% endif %}
           {% endif %}
         </div>
       </div>

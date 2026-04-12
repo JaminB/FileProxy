@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Request Received — FileProxy{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="card ab-card mt-5 text-center">
+      <div class="card-body p-5">
+        <div class="mb-3">
+          <i class="bi bi-hourglass-split text-secondary" style="font-size: 2.5rem;"></i>
+        </div>
+        <h4 class="card-title mb-2">You're on the list</h4>
+        <p class="text-secondary mb-4">
+          Your beta access request has been received. We'll review it and send you
+          an email once your account is approved.
+        </p>
+        <a href="{% url 'login' %}" class="btn btn-outline-secondary btn-sm">Back to login</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

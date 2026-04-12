@@ -224,6 +224,23 @@ def switch_plan(user, plan) -> object:
     return sub
 
 
+def get_or_create_beta_plan():
+    from .models import SubscriptionPlan
+
+    plan, _ = SubscriptionPlan.objects.get_or_create(
+        name="beta",
+        defaults={
+            "enumerate_limit": 5000,
+            "read_limit": 1000,
+            "write_limit": 500,
+            "delete_limit": 500,
+            "read_transfer_limit_bytes": 1_073_741_824,   # 1 GB
+            "write_transfer_limit_bytes": 1_073_741_824,  # 1 GB
+        },
+    )
+    return plan
+
+
 @transaction.atomic
 def cancel_subscription(user) -> object:
     sub = get_or_create_subscription(user)
