@@ -13,6 +13,7 @@ def _require_staff(request):
     if not request.user.is_authenticated:
         from django.conf import settings
         from django.shortcuts import redirect as _redirect
+
         return _redirect(f"{settings.LOGIN_URL}?next={request.path}")
     if not request.user.is_staff:
         raise Http404
@@ -61,7 +62,11 @@ def user_detail(request, user_id):
         User.objects.select_related("profile", "usersubscription__plan"), pk=user_id
     )
     plans = SubscriptionPlan.objects.filter(expires_at__isnull=True).order_by("name")
-    return render(request, "accounts/users/user_detail.html", {
-        "target_user": target_user,
-        "plans": plans,
-    })
+    return render(
+        request,
+        "accounts/users/user_detail.html",
+        {
+            "target_user": target_user,
+            "plans": plans,
+        },
+    )

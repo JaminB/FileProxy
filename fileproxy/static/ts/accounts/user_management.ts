@@ -43,7 +43,7 @@ async function apiPost(url: string, body: unknown = {}): Promise<User> {
     body: JSON.stringify(body),
   });
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({})) as Record<string, string>;
+    const err = (await resp.json().catch(() => ({}))) as Record<string, string>;
     throw new Error(err['detail'] ?? `Request failed (${resp.status})`);
   }
   return resp.json() as Promise<User>;
@@ -57,7 +57,7 @@ async function apiPatch(url: string, body: unknown): Promise<User> {
     body: JSON.stringify(body),
   });
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({})) as Record<string, string>;
+    const err = (await resp.json().catch(() => ({}))) as Record<string, string>;
     throw new Error(err['detail'] ?? `Request failed (${resp.status})`);
   }
   return resp.json() as Promise<User>;
@@ -70,7 +70,7 @@ async function apiDelete(url: string): Promise<void> {
     credentials: 'same-origin',
   });
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({})) as Record<string, string>;
+    const err = (await resp.json().catch(() => ({}))) as Record<string, string>;
     throw new Error(err['detail'] ?? `Delete failed (${resp.status})`);
   }
 }
@@ -84,8 +84,8 @@ async function fetchUsers(status: string, search: string): Promise<User[]> {
     credentials: 'same-origin',
   });
   if (!resp.ok) throw new Error(`Failed to load users (${resp.status})`);
-  const data = await resp.json() as User[] | { results: User[] };
-  return Array.isArray(data) ? data : (data as { results: User[] }).results ?? [];
+  const data = (await resp.json()) as User[] | { results: User[] };
+  return Array.isArray(data) ? data : ((data as { results: User[] }).results ?? []);
 }
 
 // ---------------------------------------------------------------------------
@@ -242,7 +242,9 @@ async function handleAction(userId: number, action: string): Promise<void> {
       const label = qs<HTMLElement>('#noteModalLabel');
       if (label) label.textContent = action === 'reject' ? 'Reject user' : 'Suspend user';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as { show(): void } | undefined;
+      const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as
+        | { show(): void }
+        | undefined;
       bsModal?.show();
     }
     return;
@@ -253,7 +255,9 @@ async function handleAction(userId: number, action: string): Promise<void> {
     const modal = document.getElementById('changePlanModal');
     if (modal) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as { show(): void } | undefined;
+      const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as
+        | { show(): void }
+        | undefined;
       bsModal?.show();
     }
     return;
@@ -310,7 +314,9 @@ function initListPage(): void {
       const note = (qs<HTMLTextAreaElement>('#note-input')?.value ?? '').trim();
       const modal = document.getElementById('noteModal');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as { hide(): void } | undefined;
+      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as
+        | { hide(): void }
+        | undefined;
       bsModal?.hide();
 
       try {
@@ -334,7 +340,9 @@ function initListPage(): void {
       if (!planId) return;
       const modal = document.getElementById('changePlanModal');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as { hide(): void } | undefined;
+      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as
+        | { hide(): void }
+        | undefined;
       bsModal?.hide();
 
       try {
@@ -400,7 +408,9 @@ function initDetailPage(): void {
         const noteInput = qs<HTMLTextAreaElement>('#note-input');
         if (noteInput) noteInput.value = '';
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as { show(): void } | undefined;
+        const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as
+          | { show(): void }
+          | undefined;
         bsModal?.show();
       }
       return;
@@ -411,7 +421,9 @@ function initDetailPage(): void {
       const modal = document.getElementById('changePlanModal');
       if (modal) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as { show(): void } | undefined;
+        const bsModal = (window as any).bootstrap?.Modal?.getOrCreateInstance(modal) as
+          | { show(): void }
+          | undefined;
         bsModal?.show();
       }
       return;
@@ -447,7 +459,9 @@ function initDetailPage(): void {
       const note = (qs<HTMLTextAreaElement>('#note-input')?.value ?? '').trim();
       const modal = document.getElementById('noteModal');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as { hide(): void } | undefined;
+      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as
+        | { hide(): void }
+        | undefined;
       bsModal?.hide();
 
       try {
@@ -470,7 +484,9 @@ function initDetailPage(): void {
       if (!planId) return;
       const modal = document.getElementById('changePlanModal');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as { hide(): void } | undefined;
+      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal) as
+        | { hide(): void }
+        | undefined;
       bsModal?.hide();
 
       try {

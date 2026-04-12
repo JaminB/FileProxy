@@ -61,7 +61,10 @@ class UserViewSet(viewsets.ViewSet):
     def _get_or_create_profile(self, user):
         profile, _ = UserProfile.objects.get_or_create(
             user=user,
-            defaults={"status": UserProfile.STATUS_ACTIVE, "signup_source": UserProfile.SOURCE_NORMAL},
+            defaults={
+                "status": UserProfile.STATUS_ACTIVE,
+                "signup_source": UserProfile.SOURCE_NORMAL,
+            },
         )
         return profile
 
@@ -70,7 +73,9 @@ class UserViewSet(viewsets.ViewSet):
         if denied:
             return denied
 
-        qs = User.objects.select_related("profile", "usersubscription__plan").order_by("-date_joined")
+        qs = User.objects.select_related("profile", "usersubscription__plan").order_by(
+            "-date_joined"
+        )
 
         status_filter = request.query_params.get("status")
         if status_filter:
@@ -124,7 +129,9 @@ class UserViewSet(viewsets.ViewSet):
         if not user:
             return Response(status=status.HTTP_404_NOT_FOUND)
         if user == request.user:
-            return Response({"detail": "Cannot delete your own account."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Cannot delete your own account."}, status=status.HTTP_400_BAD_REQUEST
+            )
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -140,7 +147,9 @@ class UserViewSet(viewsets.ViewSet):
 
         profile = self._get_or_create_profile(user)
         if profile.status not in (UserProfile.STATUS_PENDING, UserProfile.STATUS_REJECTED):
-            return Response({"detail": "User is not pending approval."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "User is not pending approval."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         user.is_active = True
         user.save(update_fields=["is_active"])
@@ -177,7 +186,9 @@ class UserViewSet(viewsets.ViewSet):
         if not user:
             return Response(status=status.HTTP_404_NOT_FOUND)
         if user == request.user:
-            return Response({"detail": "Cannot suspend your own account."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Cannot suspend your own account."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         note = request.data.get("note", "")
         profile = self._get_or_create_profile(user)
@@ -214,7 +225,9 @@ class UserViewSet(viewsets.ViewSet):
         if not user:
             return Response(status=status.HTTP_404_NOT_FOUND)
         if not user.email:
-            return Response({"detail": "User has no email address."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "User has no email address."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         form = PasswordResetForm({"email": user.email})
         if form.is_valid():

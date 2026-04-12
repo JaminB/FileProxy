@@ -234,7 +234,7 @@ def get_or_create_beta_plan():
             "read_limit": 1000,
             "write_limit": 500,
             "delete_limit": 500,
-            "read_transfer_limit_bytes": 1_073_741_824,   # 1 GB
+            "read_transfer_limit_bytes": 1_073_741_824,  # 1 GB
             "write_transfer_limit_bytes": 1_073_741_824,  # 1 GB
         },
     )
