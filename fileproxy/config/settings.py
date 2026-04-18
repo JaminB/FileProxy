@@ -137,12 +137,16 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# API tasks use Bearer-token auth only — strip session, CSRF, and messages to
-# reduce per-request overhead.  UI tasks keep the full stack.
+# API tasks use Bearer-token auth only.  Drop session, CSRF, auth, and message
+# middleware to reduce per-request overhead.  AuthenticationMiddleware must be
+# removed together with SessionMiddleware because it raises ImproperlyConfigured
+# when request.session is absent.  DRF populates request.user independently via
+# its own auth classes (APIKeyAuthentication, BasicAuthentication).
 if DJANGO_MODE == "api":
     _api_drop = {
         "django.contrib.sessions.middleware.SessionMiddleware",
         "django.middleware.csrf.CsrfViewMiddleware",
+        "django.contrib.auth.middleware.AuthenticationMiddleware",
         "django.contrib.messages.middleware.MessageMiddleware",
     }
     MIDDLEWARE = [m for m in MIDDLEWARE if m not in _api_drop]

@@ -28,11 +28,13 @@ resource "aws_cloudwatch_log_group" "ecs" {
 locals {
   ecr_image = "${aws_ecr_repository.app.repository_url}:latest"
 
-  # Static environment variables common to all web-serving tasks
+  # Static environment variables common to all web-serving tasks.
+  # DJANGO_ALLOWED_HOSTS is intentionally omitted: settings.py uses ["*"] when
+  # DEBUG=False (host validation is handled at the ALB layer), so the env var
+  # would be silently ignored and create a false sense of host restriction.
   common_env = [
-    { name = "DJANGO_ALLOWED_HOSTS", value = "fileproxy.io,www.fileproxy.io" },
-    { name = "CSRF_TRUSTED_ORIGINS",  value = "https://fileproxy.io,https://www.fileproxy.io" },
-    { name = "WRITE_CACHE_DIR",       value = "/tmp/fileproxy/write_cache" },
+    { name = "CSRF_TRUSTED_ORIGINS", value = "https://fileproxy.io,https://www.fileproxy.io" },
+    { name = "WRITE_CACHE_DIR",      value = "/tmp/fileproxy/write_cache" },
   ]
 
   # SSM parameters injected as secrets at task start.

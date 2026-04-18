@@ -90,7 +90,9 @@ resource "aws_lb_listener" "https" {
 }
 
 # ── Listener rules — route /api/* to the API service ─────────────────────────
-# Priority 10: REST API endpoints
+# A single rule covers all API traffic: REST endpoints, OpenAPI schema, Swagger
+# UI, and the Windows Explorer client.  /api/schema* and /api/docs* are already
+# matched by /api/* so a separate rule would be unreachable dead code.
 resource "aws_lb_listener_rule" "api" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 10
@@ -103,23 +105,6 @@ resource "aws_lb_listener_rule" "api" {
   condition {
     path_pattern {
       values = ["/api/*"]
-    }
-  }
-}
-
-# Priority 20: OpenAPI schema + Swagger UI (used by Windows Explorer client)
-resource "aws_lb_listener_rule" "api_schema" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 20
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.api.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/api/schema*", "/api/docs*"]
     }
   }
 }
