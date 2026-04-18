@@ -26,11 +26,19 @@ resource "aws_security_group" "efs" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "NFS from ECS"
+    description     = "NFS from web ECS tasks (API write-cache enqueue)"
     from_port       = 2049
     to_port         = 2049
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs.id]
+  }
+
+  ingress {
+    description     = "NFS from worker ECS tasks (Celery write-cache dequeue)"
+    from_port       = 2049
+    to_port         = 2049
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_worker.id]
   }
 
   egress {

@@ -54,17 +54,44 @@ resource "aws_security_group" "ecs" {
   tags = { Name = "${var.project}-${var.env}-ecs-sg" }
 }
 
+# Dedicated SG for background tasks (Celery worker + beat).
+# No ingress rules: these tasks never receive inbound connections.
+# Kept separate from ecs-sg to avoid granting the ALB's 8000/tcp ingress
+# rule to processes that have no HTTP listener.
+resource "aws_security_group" "ecs_worker" {
+  name        = "${var.project}-${var.env}-ecs-worker-sg"
+  description = "Egress-only SG for Celery worker and beat tasks (no inbound)"
+  vpc_id      = aws_vpc.main.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.project}-${var.env}-ecs-worker-sg" }
+}
+
 resource "aws_security_group" "rds" {
   name        = "${var.project}-${var.env}-rds-sg"
   description = "Allow PostgreSQL from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "PostgreSQL from ECS"
+    description     = "PostgreSQL from web ECS tasks"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs.id]
+  }
+
+  ingress {
+    description     = "PostgreSQL from worker/beat ECS tasks"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_worker.id]
   }
 
   egress {
