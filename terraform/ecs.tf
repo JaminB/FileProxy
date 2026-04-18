@@ -30,8 +30,11 @@ locals {
 
   # Static environment variables common to all web-serving tasks.
   # DJANGO_ALLOWED_HOSTS is intentionally omitted: settings.py uses ["*"] when
-  # DEBUG=False (host validation is handled at the ALB layer), so the env var
-  # would be silently ignored and create a false sense of host restriction.
+  # DEBUG=False, so the env var would be silently ignored and create a false
+  # sense of host restriction.  No explicit host-header conditions are applied
+  # at the ALB level either; the security boundary here is HTTPS termination on
+  # the ALB listener combined with the VPC security group that only allows
+  # inbound 8000/tcp from the ALB security group.
   common_env = [
     { name = "CSRF_TRUSTED_ORIGINS", value = "https://fileproxy.io,https://www.fileproxy.io" },
     { name = "WRITE_CACHE_DIR",      value = "/tmp/fileproxy/write_cache" },
@@ -314,7 +317,9 @@ resource "aws_ecs_service" "worker" {
     assign_public_ip = true
   }
 
-  deployment_minimum_healthy_percent = 0
+  # Keep at least one worker running during deployments so in-flight async
+  # uploads are not interrupted mid-transfer.
+  deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
 
   lifecycle {

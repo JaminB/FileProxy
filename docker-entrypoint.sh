@@ -1,7 +1,10 @@
 #!/bin/sh
 set -e
 
-DJANGO_MODE="${DJANGO_MODE:-gunicorn}"
+# Default to empty string — matches settings.py's documented "unset = full stack" behavior.
+# The gunicorn branch is reached when DJANGO_MODE is empty, "api", "ui", or any
+# unrecognised value; explicit "worker" and "beat" branches are checked first.
+DJANGO_MODE="${DJANGO_MODE:-}"
 
 echo "Running migrations..."
 python manage.py migrate --noinput
