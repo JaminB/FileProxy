@@ -38,10 +38,14 @@ if [ "$DJANGO_MODE" = "beat" ]; then
   exec celery -A config beat --loglevel=info
 fi
 
-# Default: gunicorn (handles DJANGO_MODE=api, DJANGO_MODE=ui, or unset)
+# Default: gunicorn with UvicornWorker (ASGI) for DJANGO_MODE=api, ui, or unset.
+# The UvicornWorker runs an asyncio event loop per worker process, allowing
+# async streaming responses to multiplex many concurrent file transfers without
+# blocking the process while waiting for network I/O between chunks.
 prepare_app
-echo "Starting gunicorn..."
-exec gunicorn config.wsgi:application \
+echo "Starting gunicorn (UvicornWorker / ASGI)..."
+exec gunicorn config.asgi:application \
+    --worker-class uvicorn.workers.UvicornWorker \
     --bind 0.0.0.0:8000 \
     --workers "${GUNICORN_WORKERS:-2}" \
     --timeout "${GUNICORN_TIMEOUT:-30}" \

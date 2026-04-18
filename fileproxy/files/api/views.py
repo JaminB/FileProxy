@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import urllib.parse
+
+from asgiref.sync import sync_to_async
 
 from django.conf import settings
 from django.http import StreamingHttpResponse
@@ -86,20 +89,30 @@ class FilesViewSet(viewsets.ViewSet):
             bytes_transferred=bytes_transferred,
         )
 
-    def _tracked_stream(self, request, connection_name: str, chunks, path: str):
-        """Wrap a chunk iterator so the read event is recorded after streaming completes."""
+    async def _async_tracked_stream(self, request, connection_name: str, chunks_iter, path: str):
+        """Async generator that pulls chunks from a sync backend iterator.
+
+        Each call to next() runs in the thread pool via asyncio.to_thread(), freeing
+        the event loop to serve other requests between chunks.  This allows a single
+        UvicornWorker process to handle many concurrent file transfers without blocking.
+        """
         ok = False
         total_bytes = 0
+        _done = object()
         try:
-            for chunk in chunks:
-                total_bytes += len(chunk)
+            while True:
+                chunk = await asyncio.to_thread(next, chunks_iter, _done)
+                if chunk is _done:
+                    break
+                if chunk:
+                    total_bytes += len(chunk)
                 yield chunk
             ok = True
         except GeneratorExit:
             ok = True  # Client disconnected; count bytes already sent
             raise
         finally:
-            self._record_event(
+            await sync_to_async(self._record_event)(
                 request,
                 connection_name,
                 "read",
@@ -199,18 +212,21 @@ class FilesViewSet(viewsets.ViewSet):
             q.is_valid(raise_exception=True)
             path = q.validated_data["path"]
 
+            # read_stream() initiates the backend request and returns an iterator.
+            # Connection-time errors (auth, not-found) are raised here so they can
+            # be converted to proper HTTP error responses before headers are sent.
             chunks = backend.read_stream(path)
 
-            def _limited_chunks():
-                for chunk in chunks:
+            async def _content():
+                _done = object()
+                async for chunk in self._async_tracked_stream(
+                    request, connection_name, iter(chunks), path
+                ):
                     if chunk:
-                        check_limit(request.user, "read", bytes_count=len(chunk))
+                        await sync_to_async(check_limit)(request.user, "read", bytes_count=len(chunk))
                     yield chunk
 
-            return StreamingHttpResponse(
-                self._tracked_stream(request, connection_name, _limited_chunks(), path),
-                content_type="application/octet-stream",
-            )
+            return StreamingHttpResponse(_content(), content_type="application/octet-stream")
         except Exception as e:  # noqa: BLE001
             self._record_event(request, connection_name, "read", object_path=path, ok=False)
             return self._error(e)
@@ -364,16 +380,15 @@ class FilesViewSet(viewsets.ViewSet):
 
             chunks = backend.read_stream(path)
 
-            def _limited_chunks():
-                for chunk in chunks:
+            async def _content():
+                async for chunk in self._async_tracked_stream(
+                    request, connection_name, iter(chunks), path
+                ):
                     if chunk:
-                        check_limit(request.user, "read", bytes_count=len(chunk))
+                        await sync_to_async(check_limit)(request.user, "read", bytes_count=len(chunk))
                     yield chunk
 
-            resp = StreamingHttpResponse(
-                self._tracked_stream(request, connection_name, _limited_chunks(), path),
-                content_type="application/octet-stream",
-            )
+            resp = StreamingHttpResponse(_content(), content_type="application/octet-stream")
             resp["Content-Disposition"] = (
                 f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
             )
