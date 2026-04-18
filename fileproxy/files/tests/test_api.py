@@ -27,6 +27,7 @@ def _read_streaming(resp) -> bytes:
         return async_to_sync(_collect_async)()
     return b"".join(content)
 
+
 User = get_user_model()
 
 
