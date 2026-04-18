@@ -18,7 +18,7 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project}-${var.env}"
-  retention_in_days = 14
+  retention_in_days = 7
 
   tags = { Name = "${var.project}-${var.env}-ecs-logs" }
 }
@@ -299,7 +299,17 @@ resource "aws_ecs_service" "worker" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker.arn
   desired_count   = 1
-  launch_type     = "FARGATE"
+
+  # Prefer SPOT (~70% cheaper); fall back to on-demand if no SPOT capacity.
+  # recover_pending_uploads runs at startup to handle any interrupted uploads.
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 4
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
 
   network_configuration {
     subnets          = aws_subnet.public[*].id
@@ -326,7 +336,14 @@ resource "aws_ecs_service" "beat" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.beat.arn
   desired_count   = 1
-  launch_type     = "FARGATE"
+
+  # Beat is stateless — a SPOT interruption causes a brief scheduling gap
+  # (seconds to minutes) before the task restarts, which is acceptable for
+  # a scheduler that fires twice a day.
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
+  }
 
   network_configuration {
     subnets          = aws_subnet.public[*].id

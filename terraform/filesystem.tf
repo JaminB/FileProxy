@@ -5,7 +5,9 @@
 
 resource "aws_efs_file_system" "write_cache" {
   availability_zone_name = local.azs[0]
-  throughput_mode        = "elastic"
+  # Bursting is free up to burst-credit limits; switch to "elastic" if CloudWatch
+  # shows BurstCreditBalance consistently near zero under production load.
+  throughput_mode        = "bursting"
   encrypted              = true
 
   tags = { Name = "${var.project}-${var.env}-write-cache" }
