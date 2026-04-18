@@ -3,20 +3,18 @@ resource "aws_security_group" "redis" {
   description = "Allow Redis from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description     = "Redis from web ECS tasks"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
-  }
-
-  ingress {
-    description     = "Redis from worker/beat ECS tasks"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_worker.id]
+  dynamic "ingress" {
+    for_each = {
+      "web ECS tasks"         = aws_security_group.ecs.id
+      "worker/beat ECS tasks" = aws_security_group.ecs_worker.id
+    }
+    content {
+      description     = "Redis from ${ingress.key}"
+      from_port       = 6379
+      to_port         = 6379
+      protocol        = "tcp"
+      security_groups = [ingress.value]
+    }
   }
 
   egress {

@@ -71,6 +71,12 @@ locals {
     containerPath = "/tmp/fileproxy"
     readOnly      = false
   }
+
+  # Per-service log configurations — merges the common log_config with the
+  # awslogs-stream-prefix so each service's output lands in its own stream.
+  log_config_for = { for svc in ["api", "ui", "worker", "beat"] : svc => merge(local.log_config, {
+    options = merge(local.log_config.options, { "awslogs-stream-prefix" = svc })
+  }) }
 }
 
 # The EFS mount point object is reused across API and worker container definitions.
@@ -116,11 +122,7 @@ resource "aws_ecs_task_definition" "api" {
 
     mountPoints = [local.efs_mount]
 
-    logConfiguration = merge(local.log_config, {
-      options = merge(local.log_config.options, {
-        "awslogs-stream-prefix" = "api"
-      })
-    })
+    logConfiguration = local.log_config_for["api"]
   }])
 
   tags = { Name = "${var.project}-${var.env}-api" }
@@ -150,11 +152,7 @@ resource "aws_ecs_task_definition" "ui" {
 
     secrets = local.common_secrets
 
-    logConfiguration = merge(local.log_config, {
-      options = merge(local.log_config.options, {
-        "awslogs-stream-prefix" = "ui"
-      })
-    })
+    logConfiguration = local.log_config_for["ui"]
   }])
 
   tags = { Name = "${var.project}-${var.env}-ui" }
@@ -195,11 +193,7 @@ resource "aws_ecs_task_definition" "worker" {
 
     mountPoints = [local.efs_mount]
 
-    logConfiguration = merge(local.log_config, {
-      options = merge(local.log_config.options, {
-        "awslogs-stream-prefix" = "worker"
-      })
-    })
+    logConfiguration = local.log_config_for["worker"]
   }])
 
   tags = { Name = "${var.project}-${var.env}-worker" }
@@ -225,11 +219,7 @@ resource "aws_ecs_task_definition" "beat" {
 
     secrets = local.common_secrets
 
-    logConfiguration = merge(local.log_config, {
-      options = merge(local.log_config.options, {
-        "awslogs-stream-prefix" = "beat"
-      })
-    })
+    logConfiguration = local.log_config_for["beat"]
   }])
 
   tags = { Name = "${var.project}-${var.env}-beat" }
@@ -353,77 +343,64 @@ resource "aws_ecs_service" "beat" {
 
 # ── Application Auto Scaling ──────────────────────────────────────────────────
 
-resource "aws_appautoscaling_target" "api" {
-  max_capacity       = 10
-  min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.api.name}"
+locals {
+  autoscaling = {
+    api    = { service = aws_ecs_service.api.name,    max = 10, min = 1, target_cpu = 60.0, scale_in = 120 }
+    ui     = { service = aws_ecs_service.ui.name,     max = 3,  min = 1, target_cpu = 70.0, scale_in = 180 }
+    worker = { service = aws_ecs_service.worker.name, max = 5,  min = 1, target_cpu = 60.0, scale_in = 120 }
+  }
+}
+
+resource "aws_appautoscaling_target" "svc" {
+  for_each           = local.autoscaling
+  max_capacity       = each.value.max
+  min_capacity       = each.value.min
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${each.value.service}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
-resource "aws_appautoscaling_policy" "api_cpu" {
-  name               = "${var.project}-${var.env}-api-cpu"
+resource "aws_appautoscaling_policy" "svc_cpu" {
+  for_each           = local.autoscaling
+  name               = "${var.project}-${var.env}-${each.key}-cpu"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.api.resource_id
-  scalable_dimension = aws_appautoscaling_target.api.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.api.service_namespace
+  resource_id        = aws_appautoscaling_target.svc[each.key].resource_id
+  scalable_dimension = aws_appautoscaling_target.svc[each.key].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.svc[each.key].service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
-    target_value       = 60.0
-    scale_in_cooldown  = 120
+    target_value       = each.value.target_cpu
+    scale_in_cooldown  = each.value.scale_in
     scale_out_cooldown = 60
   }
 }
 
-resource "aws_appautoscaling_target" "ui" {
-  max_capacity       = 3
-  min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.ui.name}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
+# State address renames — keeps Terraform from destroying and recreating existing
+# autoscaling resources when moving from per-service resources to for_each.
+moved {
+  from = aws_appautoscaling_target.api
+  to   = aws_appautoscaling_target.svc["api"]
 }
-
-resource "aws_appautoscaling_policy" "ui_cpu" {
-  name               = "${var.project}-${var.env}-ui-cpu"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ui.resource_id
-  scalable_dimension = aws_appautoscaling_target.ui.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ui.service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
-    }
-    target_value       = 70.0
-    scale_in_cooldown  = 180
-    scale_out_cooldown = 60
-  }
+moved {
+  from = aws_appautoscaling_target.ui
+  to   = aws_appautoscaling_target.svc["ui"]
 }
-
-resource "aws_appautoscaling_target" "worker" {
-  max_capacity       = 5
-  min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.worker.name}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
+moved {
+  from = aws_appautoscaling_target.worker
+  to   = aws_appautoscaling_target.svc["worker"]
 }
-
-resource "aws_appautoscaling_policy" "worker_cpu" {
-  name               = "${var.project}-${var.env}-worker-cpu"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.worker.resource_id
-  scalable_dimension = aws_appautoscaling_target.worker.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.worker.service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
-    }
-    target_value       = 60.0
-    scale_in_cooldown  = 120
-    scale_out_cooldown = 60
-  }
+moved {
+  from = aws_appautoscaling_policy.api_cpu
+  to   = aws_appautoscaling_policy.svc_cpu["api"]
+}
+moved {
+  from = aws_appautoscaling_policy.ui_cpu
+  to   = aws_appautoscaling_policy.svc_cpu["ui"]
+}
+moved {
+  from = aws_appautoscaling_policy.worker_cpu
+  to   = aws_appautoscaling_policy.svc_cpu["worker"]
 }

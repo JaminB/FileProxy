@@ -148,7 +148,7 @@ jobs:
               --service "$service" \
               --force-new-deployment \
               --region us-east-1 \
-              --output none
+              --output text
           done
           # Wait for web-facing services to stabilise before declaring success
           echo "Waiting for API and UI services to stabilise..."

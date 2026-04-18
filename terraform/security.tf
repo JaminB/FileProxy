@@ -78,20 +78,18 @@ resource "aws_security_group" "rds" {
   description = "Allow PostgreSQL from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description     = "PostgreSQL from web ECS tasks"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
-  }
-
-  ingress {
-    description     = "PostgreSQL from worker/beat ECS tasks"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_worker.id]
+  dynamic "ingress" {
+    for_each = {
+      "web ECS tasks"         = aws_security_group.ecs.id
+      "worker/beat ECS tasks" = aws_security_group.ecs_worker.id
+    }
+    content {
+      description     = "PostgreSQL from ${ingress.key}"
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = [ingress.value]
+    }
   }
 
   egress {
