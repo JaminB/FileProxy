@@ -6,6 +6,10 @@ from typing import Any
 from unittest.mock import patch
 
 from asgiref.sync import async_to_sync
+from botocore.exceptions import ClientError
+from django.contrib.auth import get_user_model
+from django.test import override_settings
+from rest_framework.test import APITestCase
 
 
 def _read_streaming(resp) -> bytes:
@@ -22,12 +26,6 @@ def _read_streaming(resp) -> bytes:
 
         return async_to_sync(_collect_async)()
     return b"".join(content)
-
-
-from botocore.exceptions import ClientError
-from django.contrib.auth import get_user_model
-from django.test import override_settings
-from rest_framework.test import APITestCase
 
 User = get_user_model()
 
