@@ -1,3 +1,10 @@
+# api_timeout_s is the gunicorn --timeout for the API service.  The ALB
+# idle_timeout and the API target-group deregistration_delay are both derived
+# from it so the three values stay in sync when the timeout is tuned.
+locals {
+  api_timeout_s = 300
+}
+
 resource "aws_lb" "main" {
   name               = "${var.project}-${var.env}-alb"
   internal           = false
@@ -5,23 +12,23 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
 
-  # Must exceed the API gunicorn --timeout (300 s) so the ALB does not drop the
-  # backend connection before a long-running file transfer completes.
-  idle_timeout = 305
+  # Must exceed the API gunicorn --timeout so the ALB does not drop the backend
+  # connection before a long-running file transfer completes.
+  idle_timeout = local.api_timeout_s + 5
 
   tags = { Name = "${var.project}-${var.env}-alb" }
 }
 
 # ── Target groups ─────────────────────────────────────────────────────────────
 
-# API service: long deregistration drain (active file transfers may take up to 300 s)
+# API service: drain matches the gunicorn timeout so in-flight transfers finish
 resource "aws_lb_target_group" "api" {
   name                 = "${var.project}-${var.env}-api-tg"
   port                 = 8000
   protocol             = "HTTP"
   target_type          = "ip"
   vpc_id               = aws_vpc.main.id
-  deregistration_delay = 300
+  deregistration_delay = local.api_timeout_s
 
   health_check {
     path                = "/health/"

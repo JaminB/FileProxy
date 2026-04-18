@@ -123,7 +123,7 @@ resource "aws_iam_role_policy" "ecs_execution_ssm" {
       Sid    = "SSMGetSecrets"
       Effect = "Allow"
       Action = ["ssm:GetParameters", "ssm:GetParameter"]
-      Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/fileproxy/prod/*"
+      Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/fileproxy/${var.env}/*"
     }]
   })
 }

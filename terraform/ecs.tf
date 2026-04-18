@@ -115,7 +115,7 @@ resource "aws_ecs_task_definition" "api" {
     environment = concat(local.common_env, [
       { name = "DJANGO_MODE",      value = "api" },
       { name = "GUNICORN_WORKERS", value = "4" },
-      { name = "GUNICORN_TIMEOUT", value = "300" },
+      { name = "GUNICORN_TIMEOUT", value = tostring(local.api_timeout_s) },
     ])
 
     secrets = local.common_secrets
@@ -348,11 +348,14 @@ resource "aws_ecs_service" "beat" {
   task_definition = aws_ecs_task_definition.beat.arn
   desired_count   = 1
 
-  # Beat is stateless — a SPOT interruption causes a brief scheduling gap
-  # (seconds to minutes) before the task restarts, which is acceptable for
-  # a scheduler that fires twice a day.
+  # Prefer SPOT for cost savings; fall back to on-demand if no SPOT capacity
+  # is available so scheduled jobs still run.
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
+    weight            = 4
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
     weight            = 1
   }
 
@@ -363,8 +366,12 @@ resource "aws_ecs_service" "beat" {
     assign_public_ip = true
   }
 
+  # Beat must run as a singleton — two concurrent instances would schedule every
+  # job twice. deployment_maximum_percent = 100 prevents ECS from ever starting a
+  # second task, and deployment_minimum_healthy_percent = 0 allows stop-then-start
+  # rollouts (the brief scheduling gap during deploys is acceptable).
   deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100  # Only ever 1 beat task at a time
+  deployment_maximum_percent         = 100
 
   tags = { Name = "${var.project}-${var.env}-beat" }
 }
@@ -406,29 +413,3 @@ resource "aws_appautoscaling_policy" "svc_cpu" {
   }
 }
 
-# State address renames — keeps Terraform from destroying and recreating existing
-# autoscaling resources when moving from per-service resources to for_each.
-moved {
-  from = aws_appautoscaling_target.api
-  to   = aws_appautoscaling_target.svc["api"]
-}
-moved {
-  from = aws_appautoscaling_target.ui
-  to   = aws_appautoscaling_target.svc["ui"]
-}
-moved {
-  from = aws_appautoscaling_target.worker
-  to   = aws_appautoscaling_target.svc["worker"]
-}
-moved {
-  from = aws_appautoscaling_policy.api_cpu
-  to   = aws_appautoscaling_policy.svc_cpu["api"]
-}
-moved {
-  from = aws_appautoscaling_policy.ui_cpu
-  to   = aws_appautoscaling_policy.svc_cpu["ui"]
-}
-moved {
-  from = aws_appautoscaling_policy.worker_cpu
-  to   = aws_appautoscaling_policy.svc_cpu["worker"]
-}
