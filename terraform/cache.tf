@@ -1,14 +1,14 @@
 resource "aws_security_group" "redis" {
   name        = "${var.project}-${var.env}-redis-sg"
-  description = "Allow Redis from EC2"
+  description = "Allow Redis from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "Redis from EC2"
+    description     = "Redis from ECS"
     from_port       = 6379
     to_port         = 6379
     protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
+    security_groups = [aws_security_group.ecs.id]
   }
 
   egress {

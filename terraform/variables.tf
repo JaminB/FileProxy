@@ -26,27 +26,3 @@ variable "github_repo" {
   type        = string
   default     = "FileProxy"
 }
-
-variable "asg_min_size" {
-  description = "ASG minimum instance count"
-  type        = number
-  default     = 1
-}
-
-variable "asg_max_size" {
-  description = "ASG maximum instance count"
-  type        = number
-  default     = 4
-}
-
-variable "asg_desired_capacity" {
-  description = "ASG desired instance count"
-  type        = number
-  default     = 1
-}
-
-variable "instance_type" {
-  description = "EC2 instance type"
-  type        = string
-  default     = "t2.medium"
-}

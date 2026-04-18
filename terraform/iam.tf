@@ -70,13 +70,12 @@ resource "aws_iam_role_policy" "github_actions" {
         ]
       },
       {
-        Sid    = "ASGInstanceRefresh"
+        Sid    = "ECSDeployServices"
         Effect = "Allow"
         Action = [
-          "autoscaling:StartInstanceRefresh",
-          "autoscaling:CancelInstanceRefresh",
-          "autoscaling:DescribeInstanceRefreshes",
-          "autoscaling:DescribeAutoScalingGroups"
+          "ecs:UpdateService",
+          "ecs:DescribeServices",
+          "ecs:DescribeClusters"
         ]
         Resource = "*"
       },
@@ -90,54 +89,68 @@ resource "aws_iam_role_policy" "github_actions" {
   })
 }
 
-# ── EC2 instance profile ─────────────────────────────────────────────────────
+# ── ECS execution role ────────────────────────────────────────────────────────
+# Used by the ECS agent to pull images from ECR, write logs to CloudWatch,
+# and fetch SSM secrets at task start.
 
-resource "aws_iam_role" "ec2" {
-  name = "${var.project}-${var.env}-ec2"
+resource "aws_iam_role" "ecs_execution" {
+  name = "${var.project}-${var.env}-ecs-execution"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
       Action    = "sts:AssumeRole"
     }]
   })
 }
 
-resource "aws_iam_role_policy" "ec2" {
+resource "aws_iam_role_policy_attachment" "ecs_execution_managed" {
+  role       = aws_iam_role.ecs_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Allow the execution role to fetch SSM parameters (SecureString + String)
+# so secrets are injected at task start without landing in environment dumps.
+resource "aws_iam_role_policy" "ecs_execution_ssm" {
+  name = "ssm-secrets"
+  role = aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "SSMGetSecrets"
+      Effect = "Allow"
+      Action = ["ssm:GetParameters", "ssm:GetParameter"]
+      Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/fileproxy/prod/*"
+    }]
+  })
+}
+
+# ── ECS task role ─────────────────────────────────────────────────────────────
+# Granted to the application process inside the container.
+
+resource "aws_iam_role" "ecs_task" {
+  name = "${var.project}-${var.env}-ecs-task"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task" {
   name = "app-permissions"
-  role = aws_iam_role.ec2.id
+  role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
-        Sid      = "ECRAuth"
-        Effect   = "Allow"
-        Action   = "ecr:GetAuthorizationToken"
-        Resource = "*"
-      },
-      {
-        Sid    = "ECRPull"
-        Effect = "Allow"
-        Action = [
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage"
-        ]
-        Resource = aws_ecr_repository.app.arn
-      },
-      {
-        Sid    = "SSMRead"
-        Effect = "Allow"
-        Action = [
-          "ssm:GetParametersByPath",
-          "ssm:GetParameter",
-          "ssm:GetParameters"
-        ]
-        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/fileproxy/prod/*"
-      },
       {
         Sid    = "S3StaticRead"
         Effect = "Allow"
@@ -146,17 +159,18 @@ resource "aws_iam_role_policy" "ec2" {
           aws_s3_bucket.static.arn,
           "${aws_s3_bucket.static.arn}/*"
         ]
+      },
+      # EFS access point mount — required for Fargate EFS with IAM auth
+      {
+        Sid    = "EFSMount"
+        Effect = "Allow"
+        Action = [
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite",
+          "elasticfilesystem:ClientRootAccess"
+        ]
+        Resource = aws_efs_file_system.write_cache.arn
       }
     ]
   })
-}
-
-resource "aws_iam_role_policy_attachment" "ec2_ssm" {
-  role       = aws_iam_role.ec2.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_instance_profile" "ec2" {
-  name = "${var.project}-${var.env}-ec2-profile"
-  role = aws_iam_role.ec2.name
 }
