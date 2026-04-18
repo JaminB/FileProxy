@@ -267,8 +267,19 @@ resource "aws_ecs_service" "ui" {
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.ui.arn
   desired_count                      = 1
-  launch_type                        = "FARGATE"
   health_check_grace_period_seconds  = 90
+
+  # Prefer SPOT; fall back to on-demand. The ALB drains connections before the
+  # task stops, so a SPOT interruption causes a replacement start (~30s) rather
+  # than a hard error for active users.
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 4
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
 
   network_configuration {
     subnets          = aws_subnet.public[*].id
