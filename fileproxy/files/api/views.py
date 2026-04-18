@@ -217,7 +217,6 @@ class FilesViewSet(viewsets.ViewSet):
             chunks = backend.read_stream(path)
 
             async def _content():
-                _done = object()
                 async for chunk in self._async_tracked_stream(
                     request, connection_name, iter(chunks), path
                 ):
