@@ -118,6 +118,14 @@ INSTALLED_APPS = [
     "subscription.apps.SubscriptionConfig",
 ]
 
+# DJANGO_MODE controls which service role this process plays:
+#   "api"    — API service (Bearer-token auth only; session/CSRF/messages stripped)
+#   "ui"     — UI service (full middleware stack)
+#   "worker" — Celery worker (not a web process; middleware irrelevant)
+#   "beat"   — Celery beat (not a web process; middleware irrelevant)
+#   unset    — full stack (local dev, backwards-compatible default)
+DJANGO_MODE = env("DJANGO_MODE", "")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -128,6 +136,16 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# API tasks use Bearer-token auth only — strip session, CSRF, and messages to
+# reduce per-request overhead.  UI tasks keep the full stack.
+if DJANGO_MODE == "api":
+    _api_drop = {
+        "django.contrib.sessions.middleware.SessionMiddleware",
+        "django.middleware.csrf.CsrfViewMiddleware",
+        "django.contrib.messages.middleware.MessageMiddleware",
+    }
+    MIDDLEWARE = [m for m in MIDDLEWARE if m not in _api_drop]
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",

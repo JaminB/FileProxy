@@ -137,23 +137,22 @@ jobs:
             --distribution-id ${{ secrets.CF_DISTRIBUTION_ID }} \
             --paths "/static/*"
 
-      - name: Trigger ASG instance refresh
+      - name: Deploy to ECS
         run: |
-          # Cancel any in-progress refresh so ours isn't blocked
-          aws autoscaling cancel-instance-refresh \
-            --auto-scaling-group-name fileproxy-prod-asg 2>/dev/null || true
-          # Wait for cancellation to fully complete (cancel is async)
-          for i in $(seq 1 60); do
-            STATUS=$(aws autoscaling describe-instance-refreshes \
-              --auto-scaling-group-name fileproxy-prod-asg \
-              --query 'InstanceRefreshes[0].Status' --output text 2>/dev/null || echo "None")
-            echo "Refresh status: $STATUS"
-            case "$STATUS" in
-              Successful|Failed|Cancelled|RollbackSuccessful|RollbackFailed|None|None*)
-                break ;;
-            esac
-            sleep 5
+          CLUSTER=fileproxy-prod
+          # Force new deployments on all services so they pull the latest :latest image
+          for service in fileproxy-prod-api fileproxy-prod-ui fileproxy-prod-worker fileproxy-prod-beat; do
+            echo "Updating service: $service"
+            aws ecs update-service \
+              --cluster "$CLUSTER" \
+              --service "$service" \
+              --force-new-deployment \
+              --region us-east-1 \
+              --output none
           done
-          aws autoscaling start-instance-refresh \
-            --auto-scaling-group-name fileproxy-prod-asg \
-            --preferences '{"MinHealthyPercentage": 100, "InstanceWarmup": 600}'
+          # Wait for web-facing services to stabilise before declaring success
+          echo "Waiting for API and UI services to stabilise..."
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services fileproxy-prod-api fileproxy-prod-ui \
+            --region us-east-1
