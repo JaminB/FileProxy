@@ -223,7 +223,9 @@ class FilesViewSet(viewsets.ViewSet):
                     request, connection_name, iter(chunks), path
                 ):
                     if chunk:
-                        await sync_to_async(check_limit)(request.user, "read", bytes_count=len(chunk))
+                        await sync_to_async(check_limit)(
+                            request.user, "read", bytes_count=len(chunk)
+                        )
                     yield chunk
 
             return StreamingHttpResponse(_content(), content_type="application/octet-stream")
@@ -385,7 +387,9 @@ class FilesViewSet(viewsets.ViewSet):
                     request, connection_name, iter(chunks), path
                 ):
                     if chunk:
-                        await sync_to_async(check_limit)(request.user, "read", bytes_count=len(chunk))
+                        await sync_to_async(check_limit)(
+                            request.user, "read", bytes_count=len(chunk)
+                        )
                     yield chunk
 
             resp = StreamingHttpResponse(_content(), content_type="application/octet-stream")

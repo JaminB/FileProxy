@@ -13,6 +13,7 @@ def _read_streaming(resp) -> bytes:
     content = resp.streaming_content
 
     if hasattr(content, "__aiter__"):
+
         async def _collect_async():
             chunks = []
             async for chunk in content:
@@ -21,6 +22,7 @@ def _read_streaming(resp) -> bytes:
 
         return async_to_sync(_collect_async)()
     return b"".join(content)
+
 
 from botocore.exceptions import ClientError
 from django.contrib.auth import get_user_model
