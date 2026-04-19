@@ -142,6 +142,8 @@ jobs:
           CLUSTER=fileproxy-prod
           # Kick off all four service updates in parallel so the deploy step
           # takes ~1 update-service RTT instead of 4× sequential calls.
+          # Track PIDs individually so any single failure fails the step.
+          PIDS=()
           for service in fileproxy-prod-api fileproxy-prod-ui fileproxy-prod-worker fileproxy-prod-beat; do
             echo "Updating service: $service"
             aws ecs update-service \
@@ -150,8 +152,13 @@ jobs:
               --force-new-deployment \
               --region us-east-1 \
               --output text &
+            PIDS+=($!)
           done
-          wait
+          EXIT=0
+          for pid in "${PIDS[@]}"; do
+            wait "$pid" || EXIT=$?
+          done
+          [ "$EXIT" -eq 0 ] || exit "$EXIT"
           # Wait for web-facing services to stabilise before declaring success
           echo "Waiting for API and UI services to stabilise..."
           aws ecs wait services-stable \

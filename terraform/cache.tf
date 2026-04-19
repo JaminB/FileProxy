@@ -53,7 +53,7 @@ resource "aws_elasticache_replication_group" "main" {
 # Terraform-managed: value is derived from the ElastiCache endpoint above.
 # Do NOT set this manually — it will be overwritten on next apply.
 resource "aws_ssm_parameter" "celery_broker_url" {
-  name  = "/fileproxy/prod/celery_broker_url"
+  name  = "/fileproxy/${var.env}/celery_broker_url"
   type  = "SecureString"
   value = "rediss://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379/0"
 
