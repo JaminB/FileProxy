@@ -24,22 +24,8 @@ resource "aws_efs_backup_policy" "write_cache" {
 
 resource "aws_security_group" "efs" {
   name        = "${var.project}-${var.env}-efs-sg"
-  description = "NFS inbound from ECS tasks"
+  description = "NFS inbound from EC2 instances"
   vpc_id      = aws_vpc.main.id
-
-  dynamic "ingress" {
-    for_each = {
-      web    = { sg = aws_security_group.ecs.id,        desc = "NFS from web ECS tasks (API write-cache enqueue)" }
-      worker = { sg = aws_security_group.ecs_worker.id, desc = "NFS from worker ECS tasks (Celery write-cache dequeue)" }
-    }
-    content {
-      description     = ingress.value.desc
-      from_port       = 2049
-      to_port         = 2049
-      protocol        = "tcp"
-      security_groups = [ingress.value.sg]
-    }
-  }
 
   egress {
     from_port   = 0
@@ -51,8 +37,27 @@ resource "aws_security_group" "efs" {
   tags = { Name = "${var.project}-${var.env}-efs-sg" }
 }
 
-# Single mount target in the same AZ as the EFS file system.
-# Fargate tasks in azs[1] can still mount via NFS; they just cross AZs for the data path.
+resource "aws_vpc_security_group_ingress_rule" "efs_from_ecs" {
+  security_group_id            = aws_security_group.efs.id
+  referenced_security_group_id = aws_security_group.ecs.id
+  from_port                    = 2049
+  to_port                      = 2049
+  ip_protocol                  = "tcp"
+  description                  = "NFS from web ECS tasks (API write-cache enqueue)"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "efs_from_ecs_worker" {
+  security_group_id            = aws_security_group.efs.id
+  referenced_security_group_id = aws_security_group.ecs_worker.id
+  from_port                    = 2049
+  to_port                      = 2049
+  ip_protocol                  = "tcp"
+  description                  = "NFS from worker ECS tasks (Celery write-cache dequeue)"
+}
+
+# Single mount target in the same AZ as the One Zone EFS file system.
+# ECS services that mount this EFS must be pinned to public[0] (azs[0]); Fargate
+# tasks in azs[1] cannot resolve the EFS DNS endpoint for a different AZ.
 resource "aws_efs_mount_target" "write_cache" {
   file_system_id  = aws_efs_file_system.write_cache.id
   subnet_id       = aws_subnet.public[0].id

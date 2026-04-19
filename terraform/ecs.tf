@@ -250,7 +250,9 @@ resource "aws_ecs_service" "api" {
   health_check_grace_period_seconds  = 120
 
   network_configuration {
-    subnets          = aws_subnet.public[*].id
+    # Pinned to azs[0] — One Zone EFS only has a mount target in that AZ;
+    # tasks in azs[1] fail DNS resolution for the EFS endpoint.
+    subnets          = [aws_subnet.public[0].id]
     security_groups  = [aws_security_group.ecs.id]
     assign_public_ip = true
   }
@@ -335,7 +337,8 @@ resource "aws_ecs_service" "worker" {
   }
 
   network_configuration {
-    subnets          = aws_subnet.public[*].id
+    # Pinned to azs[0] — One Zone EFS only has a mount target in that AZ.
+    subnets          = [aws_subnet.public[0].id]
     # Use the egress-only worker SG — worker tasks have no HTTP listener and
     # must not inherit the ALB 8000/tcp ingress rule from ecs-sg.
     security_groups  = [aws_security_group.ecs_worker.id]
