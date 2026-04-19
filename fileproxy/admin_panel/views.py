@@ -24,7 +24,9 @@ def dashboard(request):
         "suspended": UserProfile.objects.filter(status=UserProfile.STATUS_SUSPENDED).count(),
         "beta": UserProfile.objects.filter(signup_source=UserProfile.SOURCE_BETA).count(),
     }
-    return render(request, "admin_panel/dashboard.html", {"stats": stats, "pending_count": stats["pending"]})
+    return render(
+        request, "admin_panel/dashboard.html", {"stats": stats, "pending_count": stats["pending"]}
+    )
 
 
 def users(request):
@@ -32,7 +34,9 @@ def users(request):
     if denied:
         return denied
     plans = SubscriptionPlan.objects.filter(expires_at__isnull=True).order_by("name")
-    return render(request, "admin_panel/users.html", {"plans": plans, "pending_count": _pending_count()})
+    return render(
+        request, "admin_panel/users.html", {"plans": plans, "pending_count": _pending_count()}
+    )
 
 
 def user_detail(request, user_id):
@@ -55,4 +59,6 @@ def beta(request):
     if denied:
         return denied
     plans = SubscriptionPlan.objects.filter(expires_at__isnull=True).order_by("name")
-    return render(request, "admin_panel/beta.html", {"plans": plans, "pending_count": _pending_count()})
+    return render(
+        request, "admin_panel/beta.html", {"plans": plans, "pending_count": _pending_count()}
+    )
