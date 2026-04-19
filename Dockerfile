@@ -22,6 +22,11 @@ WORKDIR /app
 COPY fileproxy/pyproject.toml fileproxy/poetry.lock* ./
 RUN poetry install --without dev --no-root
 
+# uvicorn is installed via pip (not poetry) to avoid a lock-file update cycle.
+# When the dev environment has network access, add it properly with:
+#   cd fileproxy && poetry add "uvicorn[standard]>=0.32,<1.0"
+RUN pip install --no-cache-dir "uvicorn[standard]>=0.32,<1.0"
+
 COPY fileproxy/ ./
 
 # Copy compiled JS from node stage

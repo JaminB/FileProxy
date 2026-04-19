@@ -5,10 +5,28 @@ import io
 from typing import Any
 from unittest.mock import patch
 
+from asgiref.sync import async_to_sync
 from botocore.exceptions import ClientError
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from rest_framework.test import APITestCase
+
+
+def _read_streaming(resp) -> bytes:
+    """Consume a StreamingHttpResponse whose content may be a sync or async generator."""
+    content = resp.streaming_content
+
+    if hasattr(content, "__aiter__"):
+
+        async def _collect_async():
+            chunks = []
+            async for chunk in content:
+                chunks.append(chunk)
+            return b"".join(chunks)
+
+        return async_to_sync(_collect_async)()
+    return b"".join(content)
+
 
 User = get_user_model()
 
@@ -217,7 +235,7 @@ class FilesApiS3Tests(APITestCase):
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
-        self.assertEqual(b"".join(resp.streaming_content), payload)
+        self.assertEqual(_read_streaming(resp), payload)
 
         # objects (no prefix)
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/objects/")
@@ -416,7 +434,7 @@ class FilesReadTests(_BaseFilesTest):
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
-        self.assertEqual(b"".join(resp.streaming_content), payload)
+        self.assertEqual(_read_streaming(resp), payload)
 
     def test_read_missing_path_param_returns_400(self):
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/")
@@ -555,7 +573,7 @@ class FilesWriteOctetStreamTests(_BaseFilesTest):
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
-        self.assertEqual(b"".join(resp.streaming_content), data)
+        self.assertEqual(_read_streaming(resp), data)
 
 
 class FilesDeleteTests(_BaseFilesTest):
@@ -625,7 +643,7 @@ class FilesStreamTests(_BaseFilesTest):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
         self.assertIn("attachment", resp.get("Content-Disposition", ""))
-        self.assertEqual(b"".join(resp.streaming_content), payload)
+        self.assertEqual(_read_streaming(resp), payload)
 
     def test_stream_missing_path_returns_400(self):
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/stream/")
@@ -810,4 +828,4 @@ class FilesWriteStreamTests(_BaseFilesTest):
         resp = self.client.get(f"/api/v1/files/{self.vault_item_name}/path/", {"path": path})
         self.assertEqual(resp.status_code, 200)
         self.assertIn("application/octet-stream", resp.get("Content-Type", ""))
-        self.assertEqual(b"".join(resp.streaming_content), data)
+        self.assertEqual(_read_streaming(resp), data)

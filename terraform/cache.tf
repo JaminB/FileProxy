@@ -1,14 +1,20 @@
 resource "aws_security_group" "redis" {
   name        = "${var.project}-${var.env}-redis-sg"
-  description = "Allow Redis from EC2"
+  description = "Allow Redis from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description     = "Redis from EC2"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
+  dynamic "ingress" {
+    for_each = {
+      "web ECS tasks"         = aws_security_group.ecs.id
+      "worker/beat ECS tasks" = aws_security_group.ecs_worker.id
+    }
+    content {
+      description     = "Redis from ${ingress.key}"
+      from_port       = 6379
+      to_port         = 6379
+      protocol        = "tcp"
+      security_groups = [ingress.value]
+    }
   }
 
   egress {
@@ -47,7 +53,7 @@ resource "aws_elasticache_replication_group" "main" {
 # Terraform-managed: value is derived from the ElastiCache endpoint above.
 # Do NOT set this manually — it will be overwritten on next apply.
 resource "aws_ssm_parameter" "celery_broker_url" {
-  name  = "/fileproxy/prod/celery_broker_url"
+  name  = "/fileproxy/${var.env}/celery_broker_url"
   type  = "SecureString"
   value = "rediss://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379/0"
 

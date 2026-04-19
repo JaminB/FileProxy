@@ -25,7 +25,7 @@ resource "aws_rds_cluster" "main" {
   storage_encrypted         = true
 
   serverlessv2_scaling_configuration {
-    min_capacity = 1
+    min_capacity = 0.5
     max_capacity = 16
   }
 
@@ -43,7 +43,7 @@ resource "aws_rds_cluster_instance" "main" {
 
 # Store DB connection info in SSM for user-data to pick up
 resource "aws_ssm_parameter" "db_host" {
-  name  = "/fileproxy/prod/db_host"
+  name  = "/fileproxy/${var.env}/db_host"
   type  = "String"
   value = aws_rds_cluster.main.endpoint
 
@@ -51,7 +51,7 @@ resource "aws_ssm_parameter" "db_host" {
 }
 
 resource "aws_ssm_parameter" "db_name" {
-  name  = "/fileproxy/prod/db_name"
+  name  = "/fileproxy/${var.env}/db_name"
   type  = "String"
   value = aws_rds_cluster.main.database_name
 
@@ -59,7 +59,7 @@ resource "aws_ssm_parameter" "db_name" {
 }
 
 resource "aws_ssm_parameter" "db_user" {
-  name  = "/fileproxy/prod/db_user"
+  name  = "/fileproxy/${var.env}/db_user"
   type  = "String"
   value = aws_rds_cluster.main.master_username
 
@@ -67,7 +67,7 @@ resource "aws_ssm_parameter" "db_user" {
 }
 
 resource "aws_ssm_parameter" "db_password" {
-  name  = "/fileproxy/prod/db_password"
+  name  = "/fileproxy/${var.env}/db_password"
   type  = "SecureString"
   value = random_password.db.result
 

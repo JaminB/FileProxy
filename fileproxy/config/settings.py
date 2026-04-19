@@ -118,6 +118,14 @@ INSTALLED_APPS = [
     "subscription.apps.SubscriptionConfig",
 ]
 
+# DJANGO_MODE controls which service role this process plays:
+#   "api"    — API service (Bearer-token auth only; session/CSRF/messages stripped)
+#   "ui"     — UI service (full middleware stack)
+#   "worker" — Celery worker (not a web process; middleware irrelevant)
+#   "beat"   — Celery beat (not a web process; middleware irrelevant)
+#   unset    — full stack (local dev, backwards-compatible default)
+DJANGO_MODE = env("DJANGO_MODE", "")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -128,6 +136,22 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# API tasks drop session, CSRF, auth, and message middleware to reduce
+# per-request overhead.  AuthenticationMiddleware must be removed with
+# SessionMiddleware because it raises ImproperlyConfigured when request.session
+# is absent.  DRF still populates request.user via its own auth pipeline:
+# APIKeyAuthentication (Bearer token) and BasicAuthentication remain active;
+# SessionAuthentication is registered globally but becomes inoperative in API
+# mode because it relies on request.user set by AuthenticationMiddleware.
+if DJANGO_MODE == "api":
+    _api_drop = {
+        "django.contrib.sessions.middleware.SessionMiddleware",
+        "django.middleware.csrf.CsrfViewMiddleware",
+        "django.contrib.auth.middleware.AuthenticationMiddleware",
+        "django.contrib.messages.middleware.MessageMiddleware",
+    }
+    MIDDLEWARE = [m for m in MIDDLEWARE if m not in _api_drop]
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",

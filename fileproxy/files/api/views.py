@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import urllib.parse
 
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.http import StreamingHttpResponse
 from rest_framework import status, viewsets
@@ -86,20 +88,30 @@ class FilesViewSet(viewsets.ViewSet):
             bytes_transferred=bytes_transferred,
         )
 
-    def _tracked_stream(self, request, connection_name: str, chunks, path: str):
-        """Wrap a chunk iterator so the read event is recorded after streaming completes."""
+    async def _async_tracked_stream(self, request, connection_name: str, chunks_iter, path: str):
+        """Async generator that pulls chunks from a sync backend iterator.
+
+        Each call to next() runs in the thread pool via asyncio.to_thread(), freeing
+        the event loop to serve other requests between chunks.  This allows a single
+        UvicornWorker process to handle many concurrent file transfers without blocking.
+        """
         ok = False
         total_bytes = 0
+        _done = object()
         try:
-            for chunk in chunks:
-                total_bytes += len(chunk)
+            while True:
+                chunk = await asyncio.to_thread(next, chunks_iter, _done)
+                if chunk is _done:
+                    break
+                if chunk:
+                    total_bytes += len(chunk)
                 yield chunk
             ok = True
-        except GeneratorExit:
-            ok = True  # Client disconnected; count bytes already sent
+        except (GeneratorExit, asyncio.CancelledError):
+            ok = True  # Client disconnected or task cancelled; count bytes already sent
             raise
         finally:
-            self._record_event(
+            await sync_to_async(self._record_event)(
                 request,
                 connection_name,
                 "read",
@@ -199,16 +211,14 @@ class FilesViewSet(viewsets.ViewSet):
             q.is_valid(raise_exception=True)
             path = q.validated_data["path"]
 
+            # read_stream() returns an iterator; some backends raise connection/auth
+            # errors eagerly (before the first chunk), others defer them to first
+            # iteration.  Errors raised here are caught and turned into HTTP error
+            # responses before headers are sent; errors raised during streaming
+            # (first iteration) will result in a truncated response.
             chunks = backend.read_stream(path)
-
-            def _limited_chunks():
-                for chunk in chunks:
-                    if chunk:
-                        check_limit(request.user, "read", bytes_count=len(chunk))
-                    yield chunk
-
             return StreamingHttpResponse(
-                self._tracked_stream(request, connection_name, _limited_chunks(), path),
+                self._async_tracked_stream(request, connection_name, iter(chunks), path),
                 content_type="application/octet-stream",
             )
         except Exception as e:  # noqa: BLE001
@@ -258,7 +268,10 @@ class FilesViewSet(viewsets.ViewSet):
 
                 raw_content_length = request.META.get("CONTENT_LENGTH")
                 if raw_content_length is None:
-                    return Response({"detail": "Content-Length header is required."}, status=411)
+                    return Response(
+                        {"detail": "Content-Length header is required."},
+                        status=status.HTTP_411_LENGTH_REQUIRED,
+                    )
                 try:
                     content_length = int(raw_content_length)
                 except (ValueError, TypeError):
@@ -363,15 +376,8 @@ class FilesViewSet(viewsets.ViewSet):
             encoded_filename = urllib.parse.quote(filename, safe="")
 
             chunks = backend.read_stream(path)
-
-            def _limited_chunks():
-                for chunk in chunks:
-                    if chunk:
-                        check_limit(request.user, "read", bytes_count=len(chunk))
-                    yield chunk
-
             resp = StreamingHttpResponse(
-                self._tracked_stream(request, connection_name, _limited_chunks(), path),
+                self._async_tracked_stream(request, connection_name, iter(chunks), path),
                 content_type="application/octet-stream",
             )
             resp["Content-Disposition"] = (
