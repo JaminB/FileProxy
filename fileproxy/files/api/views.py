@@ -211,9 +211,11 @@ class FilesViewSet(viewsets.ViewSet):
             q.is_valid(raise_exception=True)
             path = q.validated_data["path"]
 
-            # read_stream() initiates the backend request and returns an iterator.
-            # Connection-time errors (auth, not-found) are raised here so they can
-            # be converted to proper HTTP error responses before headers are sent.
+            # read_stream() returns an iterator; some backends raise connection/auth
+            # errors eagerly (before the first chunk), others defer them to first
+            # iteration.  Errors raised here are caught and turned into HTTP error
+            # responses before headers are sent; errors raised during streaming
+            # (first iteration) will result in a truncated response.
             chunks = backend.read_stream(path)
             return StreamingHttpResponse(
                 self._async_tracked_stream(request, connection_name, iter(chunks), path),
