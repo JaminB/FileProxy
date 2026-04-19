@@ -35,22 +35,16 @@ urlpatterns = [
     path("accounts/", include("django.contrib.auth.urls")),
     path("accounts/", include("accounts.urls")),
     path("admin-panel/", include("admin_panel.urls")),
-    path(
-        "users/",
-        lambda req: HttpResponsePermanentRedirect(
-            "/admin-panel/users/?" + req.META.get("QUERY_STRING", "")
-            if req.META.get("QUERY_STRING")
-            else "/admin-panel/users/"
-        ),
-    ),
-    path(
-        "users/<int:user_id>/",
-        lambda req, user_id: HttpResponsePermanentRedirect(
-            f"/admin-panel/users/{user_id}/?" + req.META.get("QUERY_STRING", "")
-            if req.META.get("QUERY_STRING")
-            else f"/admin-panel/users/{user_id}/"
-        ),
-    ),
+    path("users/", lambda req: HttpResponsePermanentRedirect(
+        "/admin-panel/users/?" + req.META["QUERY_STRING"]
+        if req.META.get("QUERY_STRING")
+        else "/admin-panel/users/"
+    )),
+    path("users/<int:user_id>/", lambda req, user_id: HttpResponsePermanentRedirect(
+        f"/admin-panel/users/{user_id}/?" + req.META["QUERY_STRING"]
+        if req.META.get("QUERY_STRING")
+        else f"/admin-panel/users/{user_id}/"
+    )),
     path("admin/", admin.site.urls),
     path("files/", include("files.ui.urls")),
     path("connections/", include("connections.ui.urls")),
