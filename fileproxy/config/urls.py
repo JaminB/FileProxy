@@ -36,7 +36,10 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("admin-panel/", include("admin_panel.urls")),
     path("users/", lambda req: HttpResponsePermanentRedirect("/admin-panel/users/")),
-    path("users/<int:user_id>/", lambda req, user_id: HttpResponsePermanentRedirect(f"/admin-panel/users/{user_id}/")),
+    path(
+        "users/<int:user_id>/",
+        lambda req, user_id: HttpResponsePermanentRedirect(f"/admin-panel/users/{user_id}/"),
+    ),
     path("admin/", admin.site.urls),
     path("files/", include("files.ui.urls")),
     path("connections/", include("connections.ui.urls")),
