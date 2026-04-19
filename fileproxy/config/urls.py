@@ -68,9 +68,7 @@ urlpatterns = [
     ),
     path(
         "clients/windows-explorer/",
-        login_required(
-            TemplateView.as_view(template_name="clients/windows_explorer.html")
-        ),
+        login_required(TemplateView.as_view(template_name="clients/windows_explorer.html")),
         name="clients-windows-explorer",
     ),
 ]

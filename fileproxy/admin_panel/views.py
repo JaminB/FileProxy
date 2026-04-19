@@ -19,16 +19,10 @@ def dashboard(request):
 
     stats = {
         "total": User.objects.count(),
-        "pending": UserProfile.objects.filter(
-            status=UserProfile.STATUS_PENDING
-        ).count(),
+        "pending": UserProfile.objects.filter(status=UserProfile.STATUS_PENDING).count(),
         "active": UserProfile.objects.filter(status=UserProfile.STATUS_ACTIVE).count(),
-        "suspended": UserProfile.objects.filter(
-            status=UserProfile.STATUS_SUSPENDED
-        ).count(),
-        "beta": UserProfile.objects.filter(
-            signup_source=UserProfile.SOURCE_BETA
-        ).count(),
+        "suspended": UserProfile.objects.filter(status=UserProfile.STATUS_SUSPENDED).count(),
+        "beta": UserProfile.objects.filter(signup_source=UserProfile.SOURCE_BETA).count(),
     }
     return render(
         request,
