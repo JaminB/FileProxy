@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-from typing import BinaryIO, Iterator
 
 from django.test import SimpleTestCase
 
