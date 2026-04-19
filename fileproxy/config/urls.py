@@ -20,7 +20,11 @@ def index(request):
 urlpatterns = [
     path("health/", health, name="health"),
     path("", index, name="index"),
-    path("home/", login_required(TemplateView.as_view(template_name="home.html")), name="home"),
+    path(
+        "home/",
+        login_required(TemplateView.as_view(template_name="home.html")),
+        name="home",
+    ),
     path(
         "docs/",
         login_required(TemplateView.as_view(template_name="api_docs.html")),
@@ -64,7 +68,9 @@ urlpatterns = [
     ),
     path(
         "clients/windows-explorer/",
-        login_required(TemplateView.as_view(template_name="clients/windows_explorer.html")),
+        login_required(
+            TemplateView.as_view(template_name="clients/windows_explorer.html")
+        ),
         name="clients-windows-explorer",
     ),
 ]
