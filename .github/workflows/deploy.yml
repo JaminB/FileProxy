@@ -140,7 +140,8 @@ jobs:
       - name: Deploy to ECS
         run: |
           CLUSTER=fileproxy-prod
-          # Force new deployments on all services so they pull the latest :latest image
+          # Kick off all four service updates in parallel so the deploy step
+          # takes ~1 update-service RTT instead of 4× sequential calls.
           for service in fileproxy-prod-api fileproxy-prod-ui fileproxy-prod-worker fileproxy-prod-beat; do
             echo "Updating service: $service"
             aws ecs update-service \
@@ -148,8 +149,9 @@ jobs:
               --service "$service" \
               --force-new-deployment \
               --region us-east-1 \
-              --output text
+              --output text &
           done
+          wait
           # Wait for web-facing services to stabilise before declaring success
           echo "Waiting for API and UI services to stabilise..."
           aws ecs wait services-stable \

@@ -215,14 +215,10 @@ class FilesViewSet(viewsets.ViewSet):
             # Connection-time errors (auth, not-found) are raised here so they can
             # be converted to proper HTTP error responses before headers are sent.
             chunks = backend.read_stream(path)
-
-            async def _content():
-                async for chunk in self._async_tracked_stream(
-                    request, connection_name, iter(chunks), path
-                ):
-                    yield chunk
-
-            return StreamingHttpResponse(_content(), content_type="application/octet-stream")
+            return StreamingHttpResponse(
+                self._async_tracked_stream(request, connection_name, iter(chunks), path),
+                content_type="application/octet-stream",
+            )
         except Exception as e:  # noqa: BLE001
             self._record_event(request, connection_name, "read", object_path=path, ok=False)
             return self._error(e)
@@ -270,7 +266,10 @@ class FilesViewSet(viewsets.ViewSet):
 
                 raw_content_length = request.META.get("CONTENT_LENGTH")
                 if raw_content_length is None:
-                    return Response({"detail": "Content-Length header is required."}, status=411)
+                    return Response(
+                        {"detail": "Content-Length header is required."},
+                        status=status.HTTP_411_LENGTH_REQUIRED,
+                    )
                 try:
                     content_length = int(raw_content_length)
                 except (ValueError, TypeError):
@@ -375,14 +374,10 @@ class FilesViewSet(viewsets.ViewSet):
             encoded_filename = urllib.parse.quote(filename, safe="")
 
             chunks = backend.read_stream(path)
-
-            async def _content():
-                async for chunk in self._async_tracked_stream(
-                    request, connection_name, iter(chunks), path
-                ):
-                    yield chunk
-
-            resp = StreamingHttpResponse(_content(), content_type="application/octet-stream")
+            resp = StreamingHttpResponse(
+                self._async_tracked_stream(request, connection_name, iter(chunks), path),
+                content_type="application/octet-stream",
+            )
             resp["Content-Disposition"] = (
                 f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
             )

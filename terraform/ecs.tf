@@ -65,7 +65,13 @@ locals {
     }
   }
 
-  # Container mount point for write-cache EFS — used by API and worker tasks
+  # EFS write-cache volume and mount — used by API and worker task definitions.
+  # efs_volume is consumed by dynamic "volume" blocks; efs_mount by mountPoints.
+  efs_volume = {
+    name            = "write-cache"
+    file_system_id  = aws_efs_file_system.write_cache.id
+    access_point_id = aws_efs_access_point.write_cache.id
+  }
   efs_mount = {
     sourceVolume  = "write-cache"
     containerPath = "/tmp/fileproxy"
@@ -93,14 +99,17 @@ resource "aws_ecs_task_definition" "api" {
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
-  volume {
-    name = "write-cache"
-    efs_volume_configuration {
-      file_system_id          = aws_efs_file_system.write_cache.id
-      transit_encryption      = "ENABLED"
-      authorization_config {
-        access_point_id = aws_efs_access_point.write_cache.id
-        iam             = "ENABLED"
+  dynamic "volume" {
+    for_each = [local.efs_volume]
+    content {
+      name = volume.value.name
+      efs_volume_configuration {
+        file_system_id     = volume.value.file_system_id
+        transit_encryption = "ENABLED"
+        authorization_config {
+          access_point_id = volume.value.access_point_id
+          iam             = "ENABLED"
+        }
       }
     }
   }
@@ -167,14 +176,17 @@ resource "aws_ecs_task_definition" "worker" {
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
-  volume {
-    name = "write-cache"
-    efs_volume_configuration {
-      file_system_id          = aws_efs_file_system.write_cache.id
-      transit_encryption      = "ENABLED"
-      authorization_config {
-        access_point_id = aws_efs_access_point.write_cache.id
-        iam             = "ENABLED"
+  dynamic "volume" {
+    for_each = [local.efs_volume]
+    content {
+      name = volume.value.name
+      efs_volume_configuration {
+        file_system_id     = volume.value.file_system_id
+        transit_encryption = "ENABLED"
+        authorization_config {
+          access_point_id = volume.value.access_point_id
+          iam             = "ENABLED"
+        }
       }
     }
   }
