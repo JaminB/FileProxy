@@ -58,7 +58,7 @@
       <i class="bi bi-people me-1"></i> Manage Users
     </a>
     {% if stats.pending > 0 %}
-    <a href="/admin-panel/beta/" class="btn btn-sm btn-warning">
+    <a href="/admin-panel/users/?status=pending" class="btn btn-sm btn-warning">
       <i class="bi bi-clock me-1"></i> Review {{ stats.pending }} Pending
     </a>
     {% endif %}

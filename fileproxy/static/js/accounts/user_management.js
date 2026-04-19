@@ -44,12 +44,14 @@ async function apiDelete(url) {
         throw new Error(err['detail'] ?? `Delete failed (${resp.status})`);
     }
 }
-async function fetchUsers(statusFilter, search) {
+async function fetchUsers(statusFilter, search, signupSource) {
     const params = new URLSearchParams();
     if (statusFilter)
         params.set('status', statusFilter);
     if (search)
         params.set('search', search);
+    if (signupSource)
+        params.set('signup_source', signupSource);
     const resp = await fetch(`/api/v1/users/?${params.toString()}`, {
         headers: { Accept: 'application/json' },
         credentials: 'same-origin',
@@ -60,9 +62,9 @@ async function fetchUsers(statusFilter, search) {
     return Array.isArray(data) ? data : (data.results ?? []);
 }
 /** Fetch the pending count independently of the current tab filter. */
-async function fetchPendingCount() {
+async function fetchPendingCount(signupSource) {
     try {
-        const users = await fetchUsers('pending', '');
+        const users = await fetchUsers('pending', '', signupSource);
         return users.length;
     }
     catch {
@@ -196,10 +198,11 @@ async function loadUsers() {
     const tbody = qs('#users-rows');
     if (!tbody)
         return;
+    const signupSource = window._ADMIN_SIGNUP_SOURCE;
     try {
         const [users, pendingCount] = await Promise.all([
-            fetchUsers(currentStatus, currentSearch),
-            fetchPendingCount(),
+            fetchUsers(currentStatus, currentSearch, signupSource),
+            fetchPendingCount(signupSource),
         ]);
         renderUserRows(tbody, users);
         updatePendingBadge(pendingCount);

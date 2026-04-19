@@ -95,6 +95,10 @@ class UserViewSet(viewsets.ViewSet):
                 | Q(last_name__icontains=search)
             )
 
+        signup_source_filter = request.query_params.get("signup_source")
+        if signup_source_filter:
+            qs = qs.filter(profile__signup_source=signup_source_filter)
+
         return Response(UserListSerializer(qs, many=True).data)
 
     def retrieve(self, request, pk=None):

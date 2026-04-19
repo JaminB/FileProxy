@@ -4,6 +4,7 @@ import { qs, setFlash } from '../utils/dom.js';
 declare global {
   interface Window {
     _ADMIN_INITIAL_STATUS?: string;
+    _ADMIN_SIGNUP_SOURCE?: string;
   }
 }
 
@@ -81,10 +82,11 @@ async function apiDelete(url: string): Promise<void> {
   }
 }
 
-async function fetchUsers(statusFilter: string, search: string): Promise<User[]> {
+async function fetchUsers(statusFilter: string, search: string, signupSource?: string): Promise<User[]> {
   const params = new URLSearchParams();
   if (statusFilter) params.set('status', statusFilter);
   if (search) params.set('search', search);
+  if (signupSource) params.set('signup_source', signupSource);
   const resp = await fetch(`/api/v1/users/?${params.toString()}`, {
     headers: { Accept: 'application/json' },
     credentials: 'same-origin',
@@ -95,9 +97,9 @@ async function fetchUsers(statusFilter: string, search: string): Promise<User[]>
 }
 
 /** Fetch the pending count independently of the current tab filter. */
-async function fetchPendingCount(): Promise<number> {
+async function fetchPendingCount(signupSource?: string): Promise<number> {
   try {
-    const users = await fetchUsers('pending', '');
+    const users = await fetchUsers('pending', '', signupSource);
     return users.length;
   } catch {
     return 0;
@@ -243,10 +245,11 @@ async function loadUsers(): Promise<void> {
   const tbody = qs<HTMLTableSectionElement>('#users-rows');
   if (!tbody) return;
 
+  const signupSource = window._ADMIN_SIGNUP_SOURCE;
   try {
     const [users, pendingCount] = await Promise.all([
-      fetchUsers(currentStatus, currentSearch),
-      fetchPendingCount(),
+      fetchUsers(currentStatus, currentSearch, signupSource),
+      fetchPendingCount(signupSource),
     ]);
     renderUserRows(tbody, users);
     updatePendingBadge(pendingCount);

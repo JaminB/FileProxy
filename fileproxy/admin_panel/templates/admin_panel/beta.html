@@ -122,6 +122,6 @@
 
 {% block scripts %}
   {{ block.super }}
-  <script>window._ADMIN_INITIAL_STATUS = 'pending';</script>
+  <script>window._ADMIN_INITIAL_STATUS = 'pending'; window._ADMIN_SIGNUP_SOURCE = 'beta';</script>
   <script type="module" src="{% static 'js/accounts/user_management.js' %}"></script>
 {% endblock %}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.contrib.auth.models import User
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, render
 
 from accounts.models import UserProfile
@@ -17,13 +18,13 @@ def dashboard(request):
     if denied:
         return denied
 
-    stats = {
-        "total": User.objects.count(),
-        "pending": UserProfile.objects.filter(status=UserProfile.STATUS_PENDING).count(),
-        "active": UserProfile.objects.filter(status=UserProfile.STATUS_ACTIVE).count(),
-        "suspended": UserProfile.objects.filter(status=UserProfile.STATUS_SUSPENDED).count(),
-        "beta": UserProfile.objects.filter(signup_source=UserProfile.SOURCE_BETA).count(),
-    }
+    profile_stats = UserProfile.objects.aggregate(
+        pending=Count("id", filter=Q(status=UserProfile.STATUS_PENDING)),
+        active=Count("id", filter=Q(status=UserProfile.STATUS_ACTIVE)),
+        suspended=Count("id", filter=Q(status=UserProfile.STATUS_SUSPENDED)),
+        beta=Count("id", filter=Q(signup_source=UserProfile.SOURCE_BETA)),
+    )
+    stats = {"total": User.objects.count(), **profile_stats}
     return render(
         request,
         "admin_panel/dashboard.html",
