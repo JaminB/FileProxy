@@ -107,8 +107,8 @@ class FilesViewSet(viewsets.ViewSet):
                     total_bytes += len(chunk)
                 yield chunk
             ok = True
-        except GeneratorExit:
-            ok = True  # Client disconnected; count bytes already sent
+        except (GeneratorExit, asyncio.CancelledError):
+            ok = True  # Client disconnected or task cancelled; count bytes already sent
             raise
         finally:
             await sync_to_async(self._record_event)(
