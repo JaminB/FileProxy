@@ -36,7 +36,11 @@ class CreateLoadGDriveTests(TestCase):
             scope=self.scope,
             name="s3-conn",
             settings_obj={"user_id": self.user.id},
-            secrets_obj={"access_key_id": "AKIA", "secret_access_key": "secret", "session_token": None},
+            secrets_obj={
+                "access_key_id": "AKIA",
+                "secret_access_key": "secret",
+                "session_token": None,
+            },
         )
         with self.assertRaises(ValueError):
             load_gdrive_oauth2_credentials(item=item)
@@ -61,7 +65,11 @@ class CreateLoadDropboxTests(TestCase):
             scope=self.scope,
             name="s3-conn",
             settings_obj={"user_id": self.user.id},
-            secrets_obj={"access_key_id": "AKIA", "secret_access_key": "secret", "session_token": None},
+            secrets_obj={
+                "access_key_id": "AKIA",
+                "secret_access_key": "secret",
+                "session_token": None,
+            },
         )
         with self.assertRaises(ValueError):
             load_dropbox_oauth2_credentials(item=item)
@@ -76,7 +84,11 @@ class CreateLoadAzureBlobTests(TestCase):
         item = create_azure_blob_credentials(
             scope=self.scope,
             name="my-azure",
-            settings_obj={"account_name": "myaccount", "container_name": "mycontainer", "user_id": self.user.id},
+            settings_obj={
+                "account_name": "myaccount",
+                "container_name": "mycontainer",
+                "user_id": self.user.id,
+            },
             secrets_obj={"tenant_id": "t-123", "client_id": "c-456", "client_secret": "s-789"},
         )
         creds = load_azure_blob_credentials(item=item)
@@ -89,7 +101,11 @@ class CreateLoadAzureBlobTests(TestCase):
             scope=self.scope,
             name="s3-conn",
             settings_obj={"user_id": self.user.id},
-            secrets_obj={"access_key_id": "AKIA", "secret_access_key": "secret", "session_token": None},
+            secrets_obj={
+                "access_key_id": "AKIA",
+                "secret_access_key": "secret",
+                "session_token": None,
+            },
         )
         with self.assertRaises(ValueError):
             load_azure_blob_credentials(item=item)

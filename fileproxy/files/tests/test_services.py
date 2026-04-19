@@ -33,7 +33,11 @@ class ConnectionsForUserTests(TestCase):
             scope=f"user:{user.id}",
             name=name,
             settings_obj={"user_id": user.id},
-            secrets_obj={"access_key_id": "AKIA", "secret_access_key": "secret", "session_token": None},
+            secrets_obj={
+                "access_key_id": "AKIA",
+                "secret_access_key": "secret",
+                "session_token": None,
+            },
         )
 
     def test_returns_only_own_connections(self):
@@ -62,7 +66,11 @@ class GetBackendForConnectionTests(TestCase):
             scope=f"user:{self.user.id}",
             name=name,
             settings_obj={"user_id": self.user.id, "bucket": "test-bucket"},
-            secrets_obj={"access_key_id": "AKIAEXAMPLE", "secret_access_key": "secret", "session_token": None},
+            secrets_obj={
+                "access_key_id": "AKIAEXAMPLE",
+                "secret_access_key": "secret",
+                "session_token": None,
+            },
         )
 
     def test_missing_name_raises_connection_not_found(self):
