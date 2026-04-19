@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpResponsePermanentRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import include, path
 from django.views.generic import TemplateView
@@ -34,7 +34,9 @@ urlpatterns = [
     ),
     path("accounts/", include("django.contrib.auth.urls")),
     path("accounts/", include("accounts.urls")),
-    path("users/", include("accounts.ui.urls")),
+    path("admin-panel/", include("admin_panel.urls")),
+    path("users/", lambda req: HttpResponsePermanentRedirect("/admin-panel/users/")),
+    path("users/<int:user_id>/", lambda req, user_id: HttpResponsePermanentRedirect(f"/admin-panel/users/{user_id}/")),
     path("admin/", admin.site.urls),
     path("files/", include("files.ui.urls")),
     path("connections/", include("connections.ui.urls")),

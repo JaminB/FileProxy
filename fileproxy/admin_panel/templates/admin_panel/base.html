@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="d-flex gap-4">
+
+  <!-- Sidebar -->
+  <nav class="d-none d-md-flex flex-column flex-shrink-0" style="width: 180px;">
+    <div class="small fw-semibold text-secondary text-uppercase mb-2 px-2" style="letter-spacing:.05em;">Admin</div>
+    <ul class="nav nav-pills flex-column gap-1">
+      <li class="nav-item">
+        <a class="nav-link py-1 px-2 {% if request.resolver_match.url_name == 'admin-dashboard' %}active{% endif %}"
+           href="/admin-panel/">
+          <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-2 {% if request.resolver_match.url_name == 'admin-users' or request.resolver_match.url_name == 'admin-user-detail' %}active{% endif %}"
+           href="/admin-panel/users/">
+          <i class="bi bi-people me-1"></i> Users
+          <span class="badge bg-warning text-dark ms-1 small" id="sidebar-pending-badge" style="display:none;"></span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-2 {% if request.resolver_match.url_name == 'admin-beta' %}active{% endif %}"
+           href="/admin-panel/beta/">
+          <i class="bi bi-stars me-1"></i> Beta Signups
+        </a>
+      </li>
+      <li><hr class="my-2"></li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-2 text-secondary"
+           href="/subscription/plans/">
+          <i class="bi bi-card-list me-1"></i> Plans
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Main content -->
+  <div class="flex-grow-1 min-width-0">
+    {% block admin_content %}{% endblock %}
+  </div>
+
+</div>
+
+<script>
+  // Load pending count and update sidebar badge
+  (function () {
+    fetch('/api/v1/users/?status=pending', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const users = Array.isArray(data) ? data : (data.results ?? []);
+        const count = users.length;
+        if (count > 0) {
+          const badge = document.getElementById('sidebar-pending-badge');
+          if (badge) { badge.textContent = String(count); badge.style.display = ''; }
+        }
+      })
+      .catch(() => {});
+  })();
+</script>
+{% endblock %}

@@ -116,6 +116,7 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "usage.apps.UsageConfig",
     "subscription.apps.SubscriptionConfig",
+    "admin_panel.apps.AdminPanelConfig",
 ]
 
 MIDDLEWARE = [

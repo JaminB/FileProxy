@@ -145,7 +145,7 @@ function sourceLabel(user: User): string {
 // User list page
 // ---------------------------------------------------------------------------
 
-let currentStatus = '';
+let currentStatus: string = (window as any)._ADMIN_INITIAL_STATUS ?? '';
 let currentSearch = '';
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingAction: { userId: number; action: string } | null = null;

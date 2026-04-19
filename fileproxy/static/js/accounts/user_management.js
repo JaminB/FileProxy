@@ -113,7 +113,7 @@ function sourceLabel(user) {
 // ---------------------------------------------------------------------------
 // User list page
 // ---------------------------------------------------------------------------
-let currentStatus = '';
+let currentStatus = window._ADMIN_INITIAL_STATUS ?? '';
 let currentSearch = '';
 let searchTimer = null;
 let pendingAction = null;
