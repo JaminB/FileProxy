@@ -38,7 +38,6 @@ Before running `terraform apply` for the first time:
 | `iam.tf` | GitHub Actions OIDC role, ECS execution role, ECS task role |
 | `secrets.tf` | SSM placeholder parameters for app secrets, auto-computed `static_url` and `celery_broker_url` |
 | `dns.tf` | Route 53 zone, ACM certificate (DNS validation), A alias records |
-| `compute.tf` | Placeholder only — EC2 ASG removed; file retained as migration note |
 
 ---
 
@@ -175,45 +174,45 @@ graph TD
     Internet((Internet))
 
     subgraph DNS["DNS & TLS"]
-        R53["Route53\nfileproxy.io / www.fileproxy.io"]
-        ACM["ACM Certificate\nfileproxy.io + www.fileproxy.io"]
+        R53["Route53<br/>fileproxy.io / www.fileproxy.io"]
+        ACM["ACM Certificate<br/>fileproxy.io + www.fileproxy.io"]
     end
 
     subgraph CDN["Static Content"]
-        CF["CloudFront\nPriceClass_100 / OAC SigV4"]
-        S3["S3\nfileproxy-prod-static (private)"]
+        CF["CloudFront<br/>PriceClass_100 / OAC SigV4"]
+        S3["S3<br/>fileproxy-prod-static (private)"]
     end
 
     subgraph VPC["VPC 10.0.0.0/16"]
         IGW[Internet Gateway]
 
         subgraph PublicSubnets["Public Subnets — 10.0.1/24 (az1), 10.0.2/24 (az2)"]
-            ALB["ALB fileproxy-prod-alb\n:80 redirect → :443\n/api/* → api-tg  •  default → ui-tg"]
+            ALB["ALB fileproxy-prod-alb<br/>:80 redirect → :443<br/>/api/* → api-tg  •  default → ui-tg"]
 
             subgraph ECS["ECS Cluster fileproxy-prod (Fargate)"]
-                API["API service\n1 vCPU / 2 GB • FARGATE\nDJANGO_MODE=api • scales 1–10\naz1 only ①"]
-                UI["UI service\n0.5 vCPU / 1 GB • SPOT\nDJANGO_MODE=ui • scales 1–3"]
-                WORKER["Worker service\n1 vCPU / 2 GB • SPOT\nDJANGO_MODE=worker • scales 1–5\naz1 only ①"]
-                BEAT["Beat service\n256 CPU / 512 MB • SPOT\nDJANGO_MODE=beat • singleton"]
+                API["API service<br/>1 vCPU / 2 GB • FARGATE<br/>DJANGO_MODE=api • scales 1–10<br/>az1 only ①"]
+                UI["UI service<br/>0.5 vCPU / 1 GB • SPOT<br/>DJANGO_MODE=ui • scales 1–3"]
+                WORKER["Worker service<br/>1 vCPU / 2 GB • SPOT<br/>DJANGO_MODE=worker • scales 1–5<br/>az1 only ①"]
+                BEAT["Beat service<br/>256 CPU / 512 MB • SPOT<br/>DJANGO_MODE=beat • singleton"]
             end
         end
 
         subgraph PrivateSubnets["Private Subnets — 10.0.11/24, 10.0.12/24 (no internet)"]
-            RDS[("Aurora PostgreSQL 16.6\nServerless v2 — 0.5–16 ACU")]
-            REDIS[("ElastiCache Redis 7.1\ncache.t4g.micro • TLS")]
+            RDS[("Aurora PostgreSQL 16.6<br/>Serverless v2 — 0.5–16 ACU")]
+            REDIS[("ElastiCache Redis 7.1<br/>cache.t4g.micro • TLS")]
         end
 
-        EFS[("EFS write-cache\nOne Zone • az1 • bursting\n/tmp/fileproxy")]
+        EFS[("EFS write-cache<br/>One Zone • az1 • bursting<br/>/tmp/fileproxy")]
     end
 
     subgraph AWSServices["AWS Services"]
-        ECR["ECR\nfileproxy"]
-        SSM["SSM Parameter Store\n/fileproxy/prod/*"]
-        CW["CloudWatch Logs\n/ecs/fileproxy-prod"]
+        ECR["ECR<br/>fileproxy"]
+        SSM["SSM Parameter Store<br/>/fileproxy/prod/*"]
+        CW["CloudWatch Logs<br/>/ecs/fileproxy-prod"]
     end
 
     subgraph CICD["CI/CD"]
-        GHA["GitHub Actions\nOIDC Role"]
+        GHA["GitHub Actions<br/>OIDC Role"]
     end
 
     Internet -->|"HTTPS fileproxy.io"| R53
