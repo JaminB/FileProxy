@@ -8,6 +8,10 @@ from accounts.ui.views import _require_staff
 from subscription.models import SubscriptionPlan
 
 
+def _pending_count() -> int:
+    return UserProfile.objects.filter(status=UserProfile.STATUS_PENDING).count()
+
+
 def dashboard(request):
     denied = _require_staff(request)
     if denied:
@@ -20,7 +24,7 @@ def dashboard(request):
         "suspended": UserProfile.objects.filter(status=UserProfile.STATUS_SUSPENDED).count(),
         "beta": UserProfile.objects.filter(signup_source=UserProfile.SOURCE_BETA).count(),
     }
-    return render(request, "admin_panel/dashboard.html", {"stats": stats})
+    return render(request, "admin_panel/dashboard.html", {"stats": stats, "pending_count": stats["pending"]})
 
 
 def users(request):
@@ -28,7 +32,7 @@ def users(request):
     if denied:
         return denied
     plans = SubscriptionPlan.objects.filter(expires_at__isnull=True).order_by("name")
-    return render(request, "admin_panel/users.html", {"plans": plans})
+    return render(request, "admin_panel/users.html", {"plans": plans, "pending_count": _pending_count()})
 
 
 def user_detail(request, user_id):
@@ -42,7 +46,7 @@ def user_detail(request, user_id):
     return render(
         request,
         "admin_panel/user_detail.html",
-        {"target_user": target_user, "plans": plans},
+        {"target_user": target_user, "plans": plans, "pending_count": _pending_count()},
     )
 
 
@@ -51,4 +55,4 @@ def beta(request):
     if denied:
         return denied
     plans = SubscriptionPlan.objects.filter(expires_at__isnull=True).order_by("name")
-    return render(request, "admin_panel/beta.html", {"plans": plans})
+    return render(request, "admin_panel/beta.html", {"plans": plans, "pending_count": _pending_count()})

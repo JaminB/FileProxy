@@ -134,12 +134,12 @@
   </div>
 
   <!-- Change Plan Modal -->
-  <div class="modal fade" id="changePlanModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" id="changePlanModal" tabindex="-1" aria-labelledby="changePlanModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm">
       <div class="modal-content">
         <div class="modal-header">
-          <h6 class="modal-title">Change Plan</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <h6 class="modal-title" id="changePlanModalLabel">Change Plan</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <select class="form-select form-select-sm" id="plan-select">
@@ -159,12 +159,12 @@
   </div>
 
   <!-- Reject/Suspend Note Modal -->
-  <div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" id="noteModal" tabindex="-1" aria-labelledby="noteModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm">
       <div class="modal-content">
         <div class="modal-header">
           <h6 class="modal-title" id="noteModalLabel">Add a note (optional)</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <textarea class="form-control form-control-sm" id="note-input" rows="3" placeholder="Reason…"></textarea>

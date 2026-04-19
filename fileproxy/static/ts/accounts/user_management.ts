@@ -1,6 +1,12 @@
 import { getCsrfToken } from '../utils/cookies.js';
 import { qs, setFlash } from '../utils/dom.js';
 
+declare global {
+  interface Window {
+    _ADMIN_INITIAL_STATUS?: string;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -145,7 +151,7 @@ function sourceLabel(user: User): string {
 // User list page
 // ---------------------------------------------------------------------------
 
-let currentStatus: string = (window as any)._ADMIN_INITIAL_STATUS ?? '';
+let currentStatus: string = window._ADMIN_INITIAL_STATUS ?? '';
 let currentSearch = '';
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingAction: { userId: number; action: string } | null = null;
