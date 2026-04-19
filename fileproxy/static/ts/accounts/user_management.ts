@@ -82,7 +82,11 @@ async function apiDelete(url: string): Promise<void> {
   }
 }
 
-async function fetchUsers(statusFilter: string, search: string, signupSource?: string): Promise<User[]> {
+async function fetchUsers(
+  statusFilter: string,
+  search: string,
+  signupSource?: string,
+): Promise<User[]> {
   const params = new URLSearchParams();
   if (statusFilter) params.set('status', statusFilter);
   if (search) params.set('search', search);
