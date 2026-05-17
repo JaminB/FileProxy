@@ -138,23 +138,16 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# API tasks drop session, CSRF, auth, and message middleware to reduce
-# per-request overhead.  AuthenticationMiddleware must be removed with
-# SessionMiddleware because it raises ImproperlyConfigured when request.session
-# is absent.  DRF still populates request.user via its own auth pipeline:
-# APIKeyAuthentication (Bearer token) and BasicAuthentication remain active;
-# SessionAuthentication is registered globally but becomes inoperative in API
-# mode because it relies on request.user set by AuthenticationMiddleware.
+# API tasks drop CSRF and message middleware — both are UI-only concerns.
+# Session and auth middleware are retained so that browser clients using
+# session cookies can authenticate against /api/v1/ endpoints alongside
+# API-key clients (Windows Explorer, etc.).
 if DJANGO_MODE == "api":
     _api_drop = {
-        "django.contrib.sessions.middleware.SessionMiddleware",
         "django.middleware.csrf.CsrfViewMiddleware",
-        "django.contrib.auth.middleware.AuthenticationMiddleware",
         "django.contrib.messages.middleware.MessageMiddleware",
     }
     MIDDLEWARE = [m for m in MIDDLEWARE if m not in _api_drop]
-    # django.contrib.admin requires the dropped middleware; silence its checks
-    # since the admin interface is intentionally unavailable on the API service.
     SILENCED_SYSTEM_CHECKS = ["admin.E408", "admin.E409", "admin.E410"]
 
 REST_FRAMEWORK = {
