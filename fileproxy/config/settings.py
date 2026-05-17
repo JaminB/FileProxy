@@ -153,6 +153,9 @@ if DJANGO_MODE == "api":
         "django.contrib.messages.middleware.MessageMiddleware",
     }
     MIDDLEWARE = [m for m in MIDDLEWARE if m not in _api_drop]
+    # django.contrib.admin requires the dropped middleware; silence its checks
+    # since the admin interface is intentionally unavailable on the API service.
+    SILENCED_SYSTEM_CHECKS = ["admin.E408", "admin.E409", "admin.E410"]
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
