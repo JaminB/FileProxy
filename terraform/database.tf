@@ -14,7 +14,7 @@ resource "aws_rds_cluster" "main" {
   cluster_identifier        = "${var.project}-${var.env}"
   engine                    = "aurora-postgresql"
   engine_mode               = "provisioned"
-  engine_version            = "16.6"
+  engine_version            = "16.11"
   database_name             = "fileproxy"
   master_username           = "fileproxy"
   master_password           = random_password.db.result

@@ -3,6 +3,8 @@ resource "aws_security_group" "redis" {
   description = "Allow Redis from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
+  lifecycle { ignore_changes = [description] }
+
   dynamic "ingress" {
     for_each = {
       "web ECS tasks"         = aws_security_group.ecs.id
