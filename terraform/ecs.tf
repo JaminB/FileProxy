@@ -94,8 +94,8 @@ resource "aws_ecs_task_definition" "api" {
   family                   = "${var.project}-${var.env}-api"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "1024"
-  memory                   = "2048"
+  cpu                      = "256"
+  memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
@@ -123,7 +123,7 @@ resource "aws_ecs_task_definition" "api" {
 
     environment = concat(local.common_env, [
       { name = "DJANGO_MODE",      value = "api" },
-      { name = "GUNICORN_WORKERS", value = "4" },
+      { name = "GUNICORN_WORKERS", value = "1" },
       { name = "GUNICORN_TIMEOUT", value = tostring(local.api_timeout_s) },
     ])
 
@@ -141,8 +141,8 @@ resource "aws_ecs_task_definition" "ui" {
   family                   = "${var.project}-${var.env}-ui"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"
-  memory                   = "1024"
+  cpu                      = "256"
+  memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
@@ -155,7 +155,7 @@ resource "aws_ecs_task_definition" "ui" {
 
     environment = concat(local.common_env, [
       { name = "DJANGO_MODE",      value = "ui" },
-      { name = "GUNICORN_WORKERS", value = "2" },
+      { name = "GUNICORN_WORKERS", value = "1" },
       { name = "GUNICORN_TIMEOUT", value = "60" },
     ])
 
@@ -171,8 +171,8 @@ resource "aws_ecs_task_definition" "worker" {
   family                   = "${var.project}-${var.env}-worker"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "1024"
-  memory                   = "2048"
+  cpu                      = "256"
+  memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
@@ -198,7 +198,7 @@ resource "aws_ecs_task_definition" "worker" {
 
     environment = concat(local.common_env, [
       { name = "DJANGO_MODE",    value = "worker" },
-      { name = "CELERY_WORKERS", value = "4" },
+      { name = "CELERY_WORKERS", value = "1" },
     ])
 
     secrets = local.common_secrets
@@ -395,9 +395,9 @@ resource "aws_ecs_service" "beat" {
 
 locals {
   autoscaling = {
-    api    = { service = aws_ecs_service.api.name,    max = 10, min = 1, target_cpu = 60.0, scale_in = 120 }
-    ui     = { service = aws_ecs_service.ui.name,     max = 3,  min = 1, target_cpu = 70.0, scale_in = 180 }
-    worker = { service = aws_ecs_service.worker.name, max = 5,  min = 1, target_cpu = 60.0, scale_in = 120 }
+    api    = { service = aws_ecs_service.api.name,    max = 1, min = 1, target_cpu = 60.0, scale_in = 120 }
+    ui     = { service = aws_ecs_service.ui.name,     max = 1, min = 1, target_cpu = 70.0, scale_in = 180 }
+    worker = { service = aws_ecs_service.worker.name, max = 1, min = 1, target_cpu = 60.0, scale_in = 120 }
   }
 }
 
